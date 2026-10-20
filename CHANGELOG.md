@@ -50,8 +50,10 @@ where one exists.
 - Raycast vehicles (Ammo and Rapier): `isWheelTouchesGround` reports `false` after
   `resetSuspension()` (so after `resetMotion()`, `RaycastVehicle3dEntity.resetTo` and a network
   snap) until the next physics step, instead of the ground under the pose the car was reset from.
-- Ammo: `AmmoRaycastVehicleComponent.applyBrakeImpulses(subStepLength)` is now `prepareStep`; it
-  also records the steering each step uses.
+- **Breaking** (subclasses of `AmmoRaycastVehicleComponent` only):
+  `applyBrakeImpulses(subStepLength)` is now `prepareStep`; it also records the steering each step
+  uses. `AmmoWorldComponent.simulate()` calls `prepareStep`, so an override of
+  `applyBrakeImpulses` is no longer called: override `prepareStep` instead and call `super`.
 
 ### Fixed
 - Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
@@ -61,6 +63,14 @@ where one exists.
 - Ammo: `isWheelTouchesGround` kept reporting the last step's ground contact after the vehicle was
   removed from the world, and after it was added back until the next step; it reports `false`, as
   on Rapier.
+- Ammo: a raycast vehicle's wheel methods (`setSteering`, `applyEngineForce`,
+  `setWheelFrictionSlip`, `getWheelFrictionSlip`, `isWheelTouchesGround`) given an index past its
+  wheels read and wrote WASM memory outside the wheel array; they ignore it, as on Rapier.
+- Ammo: `isWheelTouchesGround` on a raycast vehicle disposed without being removed from the world
+  first read the freed native vehicle; it reports `false`.
+- Rapier: after a reset (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) a
+  raycast vehicle's wheels were drawn compressed as on the ground the car was reset from until the
+  next step; they hang at their suspension rest length, as on Ammo.
 
 ## [0.0.84] - 2026-10-19
 

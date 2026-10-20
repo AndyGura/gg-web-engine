@@ -107,6 +107,8 @@ export class AmmoRaycastVehicleComponent
   }
 
   dispose(): void {
+    // `isWheelTouchesGround`/`getWheelContact` read `nativeVehicle` only while this is set
+    this.addedToWorld = false;
     // each of these is its own native allocation, freed independently of `nativeBody` (freed by
     // `super.dispose()`, shared with `chassisBody` - see this class's own doc) - guarded the same
     // defensive way every other Ammo component's dispose() guards its own handle(s), so one
@@ -155,23 +157,35 @@ export class AmmoRaycastVehicleComponent
     this.stepSteering.push(0);
   }
 
+  /**
+   * Bullet doesn't check a wheel index (its asserts are compiled out): an index past the wheels
+   * reads and writes WASM memory outside `m_wheelInfo`. Every wheel method checks it here instead.
+   */
+  private hasWheel(wheelIndex: number): boolean {
+    return wheelIndex >= 0 && wheelIndex < this.steering.length;
+  }
+
   setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void {
-    this.nativeVehicle.getWheelInfo(wheelIndex).set_m_frictionSlip(frictionSlip);
+    if (this.hasWheel(wheelIndex)) {
+      this.nativeVehicle.getWheelInfo(wheelIndex).set_m_frictionSlip(frictionSlip);
+    }
   }
 
   getWheelFrictionSlip(wheelIndex: number): number {
-    return this.nativeVehicle.getWheelInfo(wheelIndex).get_m_frictionSlip();
+    return this.hasWheel(wheelIndex) ? this.nativeVehicle.getWheelInfo(wheelIndex).get_m_frictionSlip() : 0;
   }
 
   setSteering(wheelIndex: number, steering: number): void {
-    this.nativeVehicle.setSteeringValue(steering, wheelIndex);
-    if (wheelIndex >= 0 && wheelIndex < this.steering.length) {
+    if (this.hasWheel(wheelIndex)) {
+      this.nativeVehicle.setSteeringValue(steering, wheelIndex);
       this.steering[wheelIndex] = steering;
     }
   }
 
   applyEngineForce(wheelIndex: number, force: number): void {
-    this.nativeVehicle.applyEngineForce(force, wheelIndex);
+    if (this.hasWheel(wheelIndex)) {
+      this.nativeVehicle.applyEngineForce(force, wheelIndex);
+    }
   }
 
   /**
@@ -179,7 +193,7 @@ export class AmmoRaycastVehicleComponent
    * every step - see `prepareStep()`.
    */
   applyBrake(wheelIndex: number, force: number): void {
-    if (wheelIndex >= 0 && wheelIndex < this.brakeForces.length) {
+    if (this.hasWheel(wheelIndex)) {
       this.brakeForces[wheelIndex] = force;
     }
   }
@@ -224,7 +238,9 @@ export class AmmoRaycastVehicleComponent
    */
   isWheelTouchesGround(wheelIndex: number): boolean {
     return (
-      this.addedToWorld && this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0
+      this.addedToWorld &&
+      this.hasWheel(wheelIndex) &&
+      this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0
     );
   }
 
@@ -238,7 +254,7 @@ export class AmmoRaycastVehicleComponent
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     // `addedToWorld` first: `removeFromWorld(world, true)` frees `nativeVehicle`
-    if (!this.addedToWorld || wheelIndex < 0 || wheelIndex >= this.nativeVehicle.getNumWheels()) {
+    if (!this.addedToWorld || !this.hasWheel(wheelIndex)) {
       return null;
     }
     const wheelInfo = this.nativeVehicle.getWheelInfo(wheelIndex);

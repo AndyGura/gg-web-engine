@@ -336,16 +336,20 @@ lever arm, suspension force clamped to `[0, max]` - engines store the spring for
 clamp it). Every input must describe the chassis at the same moment, the step that produced the
 contact: record each wheel's steering right before the native step (the app may steer again before
 it reads the contact), and an engine whose vehicle update casts the wheel rays before the step moves
-the chassis has to carry the stored points to the chassis' current pose - the wheel's hard point,
-for `getWheelTransform`, with the chassis' full motion, and the contact point to where the wheel's
-ray, carried the same way, meets the ground plane the cast found (the ground doesn't move with the
-chassis; projecting the carried point straight onto the plane instead is only right while the ray
-is parallel to the normal). Read the chassis pose from the native body on every call rather than
+the chassis has stored world-space points from the old pose. Rebuild the wheel's ray from the
+chassis' current pose and the wheel's chassis-space connection point and direction instead: its
+hard point places the wheel for `getWheelTransform`, and the contact point is where that ray meets
+the ground plane the cast found (the ground doesn't move with the chassis; carrying the stored point
+rigidly and projecting it straight onto the plane is only right while the ray is parallel to the
+normal). Read the chassis pose from the native body on every call rather than
 caching it between steps: a cache misses any pose write that bypasses the component's setters.
 Wheel contact state must not outlive the pose it was cast from: a removed vehicle, a disposed one
 (without touching freed native handles), a re-added one before its first step and one after
 `resetSuspension()` (a teleport: `resetMotion()`/`RaycastVehicle3dEntity.resetTo`) before its next
-step all report no contact, through `isWheelTouchesGround` too.
+step all report no contact, through `isWheelTouchesGround` too, and after `resetSuspension()`
+`getWheelTransform` hangs every wheel at its suspension rest length. Every wheel-indexed method
+ignores an index that is not a wheel (setters do nothing, `isWheelTouchesGround` is `false`): a
+native library that doesn't check it reads or writes memory past its wheel array.
 `skid` is the native "share of the needed grip the tyre gave" where the library reports one, `null`
 where it does not; never invent it from other values. A wheel "on the ground" flag that some later
 call resets (a wheel-transform update) can't be the contact test: entities read the wheel
@@ -356,8 +360,9 @@ a low `maxSuspensionForce` caps the force the engine applies (the chassis bottom
 reported force, wheels and contact points stay under their chassis corners at 30 m/s, contact
 points stay on the ground while the chassis drops onto its springs and on the wheel's ray while a
 rolled chassis lands sliding sideways, steering set after the step leaves the axle alone, contacts
-survive a `getWheelTransform` call, and none are reported after removal, disposal, a re-add or a
-`resetMotion()` teleport before the next step.
+survive a `getWheelTransform` call, none are reported after removal, disposal, a re-add or a
+`resetMotion()` teleport before the next step (whose wheels hang at rest length), and an index past
+the wheels changes nothing and reports no ground.
 
 ## Character controller component (3D only)
 

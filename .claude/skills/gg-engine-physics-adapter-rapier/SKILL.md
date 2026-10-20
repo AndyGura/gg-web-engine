@@ -778,15 +778,15 @@ grip the wheel was cannot be recovered from them.
 before the step, while `translation()`/`rotation()`/`linvel()`/`worldCom()` read afterwards are the
 pose after it: taken as stored, both sit behind the chassis by speed × substep length (0.25 m at
 30 m/s with 60 FPS frames), and the velocity at the contact point gets a wrong lever arm.
-`stepVehicleController` records the chassis translation and rotation right before `updateVehicle`
-(`castPose`; `updateVehicle` only writes velocities, so that is the pose the rays are cast from),
-and `toCurrentPose(p, pose)` carries a stored point from that pose to the current one.
-`getWheelTransform` applies it to the hard point as is. The carried contact point is on the
-wheel's current ray but off the ground whenever the chassis moved along the normal (on its springs,
-or still falling during the first contact substep of a landing, which the capped wheel impulse
-slows by well under 1 m/s): the ground doesn't move with the chassis. `getWheelContact` slides it
-along the current ray (`wheelDirectionCs` rotated by the current rotation) back onto the ground
-plane through the cast contact. Projecting it straight onto the plane along the normal instead is
+`currentWheelRay(wheel)` therefore places each wheel's ray from the chassis' current pose
+instead: the hard point is `translation() + rotation() * connectionPointCs` (what `updateVehicle`
+computes from the body's isometry, not its centre of mass) and the direction `directionCs` rotated
+by `rotation()`. `getWheelTransform` uses that hard point. For the contact, the cast contact's
+distance from the stored `wheelHardPoint` along the current ray gives the contact carried with the
+chassis; it is off the ground whenever the chassis moved along the normal (on its springs, or still
+falling during the first contact substep of a landing, which the capped wheel impulse slows by well
+under 1 m/s): the ground doesn't move with the chassis. `getWheelContact` slides it along the
+current ray back onto the ground plane through the cast contact. Projecting it straight onto the plane along the normal instead is
 only right while the ray is parallel to the normal: on a rolled chassis landing while sliding
 sideways it left the point 0.5 mm off the wheel's ray. For a ray within ~6° of the ground plane the
 intersection runs far away, so that case falls back to the projection. The contact normal is the
@@ -796,9 +796,9 @@ suite's `raycast vehicle` "driving fast" test (wheel and contact point under the
 at 30 m/s), "drops onto its springs" test (contact points stay at ground height) and "rolled
 chassis lands" test (contact point on the wheel's ray to 0.1 mm).
 
-The chassis pose (`chassisPose()`) is read from the native body on every
+`currentWheelRay` reads the chassis pose from the native body on every
 `getWheelTransform`/`getWheelContact` call, not cached between steps: a cache cleared only by this
-class's own setters left the wheel meshes at the old pose after a write through `nativeBody`
+class's own setters would leave the wheel meshes at the old pose after a write through `nativeBody`
 (`rapier-3d-raycast-vehicle.component.spec.ts`, "write through nativeBody").
 
 `getWheelContact`'s axle uses each wheel's `stepSteering`, the `steering` value `setSteering`
@@ -809,8 +809,10 @@ vehicle keeps its wheels' steering like its other wheel settings.
 
 `resetSuspension()` (called by `resetMotion()`, so by `RaycastVehicle3dEntity.resetTo` and a network
 snap) sets `wheelContactsReset` until the next `stepVehicleController`: `isWheelTouchesGround` reads
-`false` and `getWheelContact` returns `null`. Without it, a teleported chassis carried its old
-contacts to the new pose, on the old ground's plane, and reported them as touching.
+`false`, `getWheelContact` returns `null` and `getWheelTransform` hangs each wheel at its
+`restLength` instead of the last cast's `wheelSuspensionLength`. The old contacts, carried to the
+new pose, would sit on the old ground's plane and report touching, and the old suspension lengths
+would draw the wheels compressed against ground that isn't there.
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
@@ -999,11 +1001,9 @@ compensation for this at the adapter level either way - it's already handled ada
 
 **`getWheelTransform` has no single native call to read from.**
 Rapier's controller only exposes the individual pieces, composed by hand:
-- **Position**: `wheelHardPoint(i)` is already world-space (the wheel ray-cast's own fixed start
-  point), from the pose the rays were cast from, so `toCurrentPose` moves it to the chassis'
-  current pose first (see `getWheelContact` above) - `wheelDirectionCs(i)` (chassis-local) rotated
-  by the chassis's current rotation, then scaled
-  by `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
+- **Position**: the hard point and world-space direction at the chassis' current pose
+  (`currentWheelRay`, see `getWheelContact` above), the direction scaled by
+  `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
   grounded alike) and added to the hard point, lands exactly on the wheel's current center.
 - **Rotation**: composed as chassis rotation ∘ steering (`Qtrn.rotAround(Qtrn.O, Pnt3.Z, wheelSteering(i))`
   - `Pnt3.Z` because `indexUpAxis` is set to `2`) ∘ roll (`Qtrn.rotAround(Qtrn.O, Pnt3.X,
@@ -1019,8 +1019,8 @@ chassis) and visually plausible in the `3d/raycast-vehicle` example.
 *current* suspension length (only the rest length/travel bounds that shape it). Not load-bearing here,
 either - the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
 fresh ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
-within one tick even without an explicit reset. It only drops the wheel contacts until that tick (see
-`getWheelContact` above).
+within one tick even without an explicit reset. Until that tick it drops the wheel contacts and
+draws the wheels at rest length (see `getWheelContact` above).
 
 **`clone()` must also re-add every wheel.** An earlier version's `clone()` only forwarded the chassis
 body, producing a vehicle with zero wheels - `addWheel` must be replayed for each entry in this

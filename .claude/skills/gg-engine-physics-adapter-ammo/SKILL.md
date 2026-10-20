@@ -759,7 +759,15 @@ so a teleport (`resetTo`, a network snap) would report the old ground with a mad
 `set_m_groundObject(0)`). `removeFromWorld` does not touch it: `isWheelTouchesGround` and
 `getWheelContact` check `addedToWorld` before reading anything native, which covers a removed
 vehicle, and `removeFromWorld(world, true)` frees `nativeVehicle` - a second removal writing into it
-would write into freed WASM memory, since an embind call on a freed object doesn't throw.
+would write into freed WASM memory, since an embind call on a freed object doesn't throw. For the
+same reason `dispose()` clears `addedToWorld` itself: a vehicle disposed without a removal would
+otherwise keep reading the freed vehicle.
+
+Bullet checks no wheel index either (`btAssert` is compiled out of this build): `getWheelInfo(4)`
+or `setSteeringValue(v, 4)` on a 4-wheel vehicle reads or writes WASM memory past `m_wheelInfo`
+and returns whatever is there. Every wheel-indexed method goes through `hasWheel(i)` first (a
+setter does nothing, `getWheelFrictionSlip` returns 0, `isWheelTouchesGround` `false`,
+`getWheelContact` `null`).
 
 The axle is built from the steering the last step used, not `getSteeringValue`: an app steering
 between `simulate()` and reading the contact would otherwise turn the axle of a contact the step

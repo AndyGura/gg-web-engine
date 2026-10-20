@@ -456,6 +456,21 @@ export function describePhysics3dContract(
         expect(vehicle.getWheelContact(-1)).toBeNull();
       });
 
+      it('ignores a wheel index past its wheels on the ground', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        for (const index of [4, -1]) {
+          vehicle.setSteering(index, 0.3);
+          vehicle.applyBrake(index, 1000);
+          expect(vehicle.isWheelTouchesGround(index)).toBe(false);
+          expect(vehicle.getWheelContact(index)).toBeNull();
+        }
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)!.axle.x).toBeGreaterThan(0.99);
+        }
+      });
+
       it('reports a sideways slide toward the car right as positive, along the steered axle', () => {
         const vehicle = car({ x: 0, y: 0, z: 1 });
         simulate(3);
@@ -574,6 +589,12 @@ export function describePhysics3dContract(
         for (let i = 0; i < 4; i++) {
           expect(vehicle.isWheelTouchesGround(i)).toBe(false);
           expect(vehicle.getWheelContact(i)).toBeNull();
+          // hanging at the rest length under its corner, not compressed as on the ground it left
+          const expected = Pnt3.add(
+            vehicle.position,
+            Pnt3.rot(Pnt3.add(WHEEL_POSITIONS[i], { x: 0, y: 0, z: -0.3 }), vehicle.rotation),
+          );
+          expect(Pnt3.dist(vehicle.getWheelTransform(i).position, expected)).toBeLessThan(1e-3);
         }
         // a respawn on the ground: the next step finds it again
         vehicle.position = { x: 10, y: 10, z: 0.5 };
