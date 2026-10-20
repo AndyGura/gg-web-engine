@@ -1,9 +1,9 @@
 import {
   BitMask,
+  buildWheelContact,
   CollisionGroup,
   defaultMaxSuspensionForce,
   IRaycastVehicleComponent,
-  Pnt3,
   Point3,
   Point4,
   RaycastVehicle3dEntity,
@@ -190,15 +190,23 @@ export class AmmoRaycastVehicleComponent
     }
   }
 
+  /**
+   * `m_groundObject` of the last step's ray. Only `rayCast` clears it, and nothing casts once the
+   * vehicle's action is out of the world, so a removed vehicle reports no ground instead.
+   */
   isWheelTouchesGround(wheelIndex: number): boolean {
-    return this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0;
+    return (
+      this.addedToWorld && this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0
+    );
   }
 
   /**
    * Reads the wheel's `m_raycastInfo` (contact point and normal), `m_wheelsSuspensionForce` and
    * `m_skidInfo`, all written by the last step. Contact is `m_groundObject`, like
    * `isWheelTouchesGround`, not `m_isInContact`: `updateWheelTransform` (`getWheelTransform`, run by
-   * the entity every tick after the step) resets that flag.
+   * the entity every tick after the step) resets that flag. Bullet updates the vehicle after
+   * integrating the chassis, so the contact and the chassis' pose and velocities belong to the same
+   * moment.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     if (wheelIndex < 0 || wheelIndex >= this.nativeVehicle.getNumWheels() || !this.isWheelTouchesGround(wheelIndex)) {
@@ -209,25 +217,19 @@ export class AmmoRaycastVehicleComponent
     const p = raycastInfo.get_m_contactPointWS();
     const n = raycastInfo.get_m_contactNormalWS();
     const c = this.chassisBody.nativeBody.getCenterOfMassPosition();
-    const point = { x: p.x(), y: p.y(), z: p.z() };
-    const velocity = Pnt3.add(
-      this.linearVelocity,
-      Pnt3.cross(this.angularVelocity, Pnt3.sub(point, { x: c.x(), y: c.y(), z: c.z() })),
-    );
-    // the wheel's axle in chassis space is +X (`wheelAxleCS`), steered about the chassis' up axis
-    const axle = Pnt3.rot(
-      Pnt3.rotAround(Pnt3.X, Pnt3.Z, this.nativeVehicle.getSteeringValue(wheelIndex)),
-      this.rotation,
-    );
-    return {
-      point,
+    return buildWheelContact({
+      point: { x: p.x(), y: p.y(), z: p.z() },
       normal: { x: n.x(), y: n.y(), z: n.z() },
-      axle,
-      velocity,
-      sideSlipSpeed: Pnt3.dot(velocity, axle),
+      // the wheel's axle in chassis space is +X (`wheelAxleCS`)
+      steering: this.nativeVehicle.getSteeringValue(wheelIndex),
+      chassisRotation: this.rotation,
+      linearVelocity: this.linearVelocity,
+      angularVelocity: this.angularVelocity,
+      centerOfMass: { x: c.x(), y: c.y(), z: c.z() },
       suspensionForce: wheelInfo.get_m_wheelsSuspensionForce(),
+      maxSuspensionForce: wheelInfo.get_m_maxSuspensionForce(),
       skid: wheelInfo.get_m_skidInfo(),
-    };
+    });
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {

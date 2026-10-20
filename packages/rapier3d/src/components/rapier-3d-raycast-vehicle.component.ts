@@ -1,4 +1,5 @@
 import {
+  buildWheelContact,
   defaultMaxSuspensionForce,
   IRaycastVehicleComponent,
   Pnt3,
@@ -35,6 +36,12 @@ type WheelEntry = {
  * `Rapier3dWorldComponent.raycastVehicles` on `addToWorld`/`removeFromWorld` so the world component
  * can drive that call centrally from `simulate()` - see that class's doc.
  *
+ * Because the rays are cast before the step, everything `updateVehicle` stores in world space (each
+ * wheel's hard point and contact point) is where the chassis *was* before the last step: at 30 m/s
+ * and 10 ms steps, 0.3 m behind it. `stepVehicleController` records the chassis pose the rays were
+ * cast from, and `getWheelContact`/`getWheelTransform` carry those points along with the chassis to
+ * its current pose (`toCurrentPose`), so they match the chassis' position and velocities.
+ *
  * Like `Rapier3dCharacterControllerComponent`/`Rapier3dTriggerComponent`, this class and
  * `Rapier3dWorldComponent` import each other (the world needs this class purely as a type for its
  * `raycastVehicles` set, the vehicle needs the world's concrete type for its constructor/`addToWorld`
@@ -52,6 +59,9 @@ export class Rapier3dRaycastVehicleComponent
   }
 
   private readonly wheels: WheelEntry[] = [];
+
+  /** The chassis pose of the last `updateVehicle` call, i.e. the pose its wheel rays were cast from. */
+  private castPose: { position: Point3; rotation: Point4 } | null = null;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
@@ -102,6 +112,7 @@ export class Rapier3dRaycastVehicleComponent
       this._nativeVehicle.free();
       this._nativeVehicle = null;
     }
+    this.castPose = null;
     super.removeFromWorld(world, dispose);
   }
 
@@ -128,6 +139,8 @@ export class Rapier3dRaycastVehicleComponent
     for (let i = 0; i < this.wheels.length; i++) {
       this._nativeVehicle.setWheelBrake(i, this.wheels[i].brakeForce * dt);
     }
+    // `updateVehicle` changes the chassis' velocities only, so this is the pose it casts from
+    this.castPose = { position: this.position, rotation: this.rotation };
     this._nativeVehicle.updateVehicle(dt, QueryFilterFlags.EXCLUDE_SENSORS, this.collisionGroups);
   }
 
@@ -212,8 +225,22 @@ export class Rapier3dRaycastVehicleComponent
   }
 
   /**
-   * Reads the controller's contact point, normal and suspension force of the last
-   * `updateVehicle`. Rapier does not report how far over its grip a wheel is, so `skid` is `null`.
+   * Moves a world-space point `updateVehicle` stored from the chassis pose it cast from to the
+   * chassis' current pose - see this class's own doc.
+   */
+  private toCurrentPose(point: Point3): Point3 {
+    if (!this.castPose) {
+      return point;
+    }
+    const inChassis = Pnt3.rot(Pnt3.sub(point, this.castPose.position), Qtrn.conjugate(this.castPose.rotation));
+    return Pnt3.add(Pnt3.rot(inChassis, this.rotation), this.position);
+  }
+
+  /**
+   * Reads the controller's contact point, normal and suspension force of the last `updateVehicle`,
+   * with the point moved to the chassis' current pose (see this class's own doc). The normal is
+   * the ground's and stays as cast. Rapier does not report how far over its grip a wheel is, so
+   * `skid` is `null`.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     const nativeVehicle = this.nativeVehicle;
@@ -225,22 +252,19 @@ export class Rapier3dRaycastVehicleComponent
     if (!nativeVehicle.wheelIsInContact(wheelIndex) || !point || !normal) {
       return null;
     }
-    const contactPoint = Pnt3.clone(point);
-    const velocity = Pnt3.add(
-      this.linearVelocity,
-      Pnt3.cross(this.angularVelocity, Pnt3.sub(contactPoint, Pnt3.clone(this._nativeBody!.worldCom()))),
-    );
-    // every wheel's axle in chassis space is +X (see `addWheel`), steered about the chassis' up axis
-    const axle = Pnt3.rot(Pnt3.rotAround(Pnt3.X, Pnt3.Z, nativeVehicle.wheelSteering(wheelIndex) ?? 0), this.rotation);
-    return {
-      point: contactPoint,
+    return buildWheelContact({
+      point: this.toCurrentPose(Pnt3.clone(point)),
       normal: Pnt3.clone(normal),
-      axle,
-      velocity,
-      sideSlipSpeed: Pnt3.dot(velocity, axle),
+      // every wheel's axle in chassis space is +X (see `addWheel`)
+      steering: nativeVehicle.wheelSteering(wheelIndex) ?? 0,
+      chassisRotation: this.rotation,
+      linearVelocity: this.linearVelocity,
+      angularVelocity: this.angularVelocity,
+      centerOfMass: Pnt3.clone(this._nativeBody!.worldCom()),
       suspensionForce: nativeVehicle.wheelSuspensionForce(wheelIndex) ?? 0,
+      maxSuspensionForce: nativeVehicle.wheelMaxSuspensionForce(wheelIndex) ?? Infinity,
       skid: null,
-    };
+    });
   }
 
   /**
@@ -249,9 +273,11 @@ export class Rapier3dRaycastVehicleComponent
    * (`wheelHardPoint`/`wheelSuspensionLength`/`wheelDirectionCs`/`wheelAxleCs`/`wheelSteering`/
    * `wheelRotation`), which this method composes by hand:
    * - **Position**: `wheelHardPoint` is already world-space (the ray-cast's own start point, fixed
-   *   relative to the chassis) - moving it `wheelSuspensionLength` further along the *world-space*
-   *   suspension direction (`wheelDirectionCs` rotated by the chassis's current rotation) lands
-   *   exactly on the wheel's current (compressed-by-however-much) center, airborne or grounded alike.
+   *   relative to the chassis), but from the pose the rays were cast from, so it is first carried to
+   *   the chassis' current pose (`toCurrentPose`). Moving it `wheelSuspensionLength` further along
+   *   the *world-space* suspension direction (`wheelDirectionCs` rotated by the chassis's current
+   *   rotation) lands exactly on the wheel's current (compressed-by-however-much) center, airborne
+   *   or grounded alike.
    * - **Rotation**: composed as chassis rotation ∘ steering (about the chassis's local up axis,
    *   `Pnt3.Z` - only ever nonzero for wheels `RaycastVehicle3dEntity` actually steers) ∘ roll (about
    *   this wheel's own configured local axle, `wheelRotation`'s accumulated spin angle). This is a
@@ -271,7 +297,7 @@ export class Rapier3dRaycastVehicleComponent
     let position = Pnt3.O;
     if (hardPoint && directionCs) {
       const worldDirection = Pnt3.rot(Pnt3.clone(directionCs), chassisRotation);
-      position = Pnt3.add(Pnt3.clone(hardPoint), Pnt3.scalarMult(worldDirection, suspensionLength));
+      position = Pnt3.add(this.toCurrentPose(Pnt3.clone(hardPoint)), Pnt3.scalarMult(worldDirection, suspensionLength));
     }
 
     const axleCs = this.nativeVehicle.wheelAxleCs(wheelIndex);

@@ -744,7 +744,16 @@ does, never `m_raycastInfo.m_isInContact`: `updateWheelTransform`, which `getWhe
 every tick for the wheel meshes, starts with `updateWheelTransformsWS`, and that resets
 `m_isInContact` to `false`, so it reads `false` for every wheel after the first render tick. Don't
 use `m_raycastInfo.m_wheelAxleWS` for the axle either: it is the chassis axle without steering
-(Bullet steers only the wheel transform `updateFriction` builds its own axle from).
+(Bullet steers only the wheel transform `updateFriction` builds its own axle from). The values go
+to core's `buildWheelContact` together with `m_maxSuspensionForce`: `m_wheelsSuspensionForce` is
+the spring's force before `updateVehicle` clamps it to `m_maxSuspensionForce` for the impulse.
+Bullet runs the vehicle action after integrating the chassis, so the contact point and the
+chassis' pose and velocities read after `simulate()` are from the same moment.
+
+`m_groundObject` is cleared only by `rayCast`, which nothing calls once `removeFromWorld` took the
+vehicle's action out of the world, so it keeps the last step's contact. `isWheelTouchesGround` (and
+with it `getWheelContact`) therefore also checks `addedToWorld`: a removed vehicle has no wheel on
+the ground.
 
 **The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
 only iterates the world's bodies, so a force/torque applied to a body outside the world (before

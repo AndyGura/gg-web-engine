@@ -13,6 +13,7 @@ import {
   IPhysicsWorld3dComponent,
   IRaycastVehicleComponent,
   IRigidBody3dComponent,
+  Pnt3,
   Point3,
   Qtrn,
   Shape3DDescriptor,
@@ -382,7 +383,14 @@ export function describePhysics3dContract(
     describe('raycast vehicle', () => {
       const CAR_MASS = 800;
 
-      const car = (position: Point3): IRaycastVehicleComponent => {
+      const WHEEL_POSITIONS: Point3[] = [];
+      for (const isFront of [true, false]) {
+        for (const isLeft of [true, false]) {
+          WHEEL_POSITIONS.push({ x: isLeft ? -0.8 : 0.8, y: isFront ? 1.4 : -1.2, z: 0 });
+        }
+      }
+
+      const car = (position: Point3, maxSuspensionForce?: number): IRaycastVehicleComponent => {
         const chassis = world.factory.createRigidBody(
           {
             shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
@@ -391,22 +399,21 @@ export function describePhysics3dContract(
           { position },
         );
         const vehicle = world.factory.createRaycastVehicle(chassis);
-        for (const isFront of [true, false]) {
-          for (const isLeft of [true, false]) {
-            vehicle.addWheel(
-              {
-                isFront,
-                isLeft,
-                tyreRadius: 0.35,
-                tyreWidth: 0.25,
-                frictionSlip: 1.2,
-                rollInfluence: 0.2,
-                maxTravel: 0.3,
-                position: { x: isLeft ? -0.8 : 0.8, y: isFront ? 1.4 : -1.2, z: 0 },
-              },
-              { stiffness: 30, damping: 2.3, compression: 4.4, restLength: 0.3 },
-            );
-          }
+        for (const wheelPosition of WHEEL_POSITIONS) {
+          vehicle.addWheel(
+            {
+              isFront: wheelPosition.y > 0,
+              isLeft: wheelPosition.x < 0,
+              tyreRadius: 0.35,
+              tyreWidth: 0.25,
+              frictionSlip: 1.2,
+              rollInfluence: 0.2,
+              maxTravel: 0.3,
+              maxSuspensionForce,
+              position: wheelPosition,
+            },
+            { stiffness: 30, damping: 2.3, compression: 4.4, restLength: 0.3 },
+          );
         }
         return add(vehicle);
       };
@@ -420,6 +427,8 @@ export function describePhysics3dContract(
         simulate(3);
         let load = 0;
         for (let i = 0; i < 4; i++) {
+          // what an entity does every tick after the step, for its wheel meshes
+          vehicle.getWheelTransform(i);
           const contact = vehicle.getWheelContact(i)!;
           expect(contact).not.toBeNull();
           expect(Math.abs(contact.point.z)).toBeLessThan(0.05);
@@ -461,6 +470,70 @@ export function describePhysics3dContract(
         const steered = vehicle.getWheelContact(0)!.axle;
         expect(steered.x).toBeCloseTo(Math.cos(0.3), 2);
         expect(steered.y).toBeCloseTo(Math.sin(0.3), 2);
+      });
+
+      it('keeps every contact point and wheel under its corner of the chassis while driving fast', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.linearVelocity = { x: 0, y: 30, z: 0 };
+        simulate(1 / 60);
+        const inverseRotation = Qtrn.conjugate(vehicle.rotation);
+        for (let i = 0; i < 4; i++) {
+          const wheel = vehicle.getWheelTransform(i).position;
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          // the wheel sits at its configured corner, not where the chassis was before the step
+          const wheelInChassis = Pnt3.rot(Pnt3.sub(wheel, vehicle.position), inverseRotation);
+          expect(Math.abs(wheelInChassis.x - WHEEL_POSITIONS[i].x)).toBeLessThan(0.05);
+          expect(Math.abs(wheelInChassis.y - WHEEL_POSITIONS[i].y)).toBeLessThan(0.05);
+          // and the ground under it is where its ray hit
+          expect(Math.hypot(contact.point.x - wheel.x, contact.point.y - wheel.y)).toBeLessThan(0.05);
+          expect(contact.velocity.y).toBeGreaterThan(25);
+          expect(Math.abs(contact.sideSlipSpeed)).toBeLessThan(0.5);
+        }
+      });
+
+      it('keeps the axle in the ground plane while the chassis rolls', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.rotation = Qtrn.rotAround(Qtrn.O, Pnt3.Y, 0.15);
+        vehicle.angularVelocity = { x: 0, y: 0, z: 0 };
+        simulate(1 / 60);
+        let touching = 0;
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i);
+          if (!contact) {
+            continue;
+          }
+          touching++;
+          expect(Math.abs(Pnt3.dot(contact.axle, contact.normal))).toBeLessThan(1e-6);
+          expect(Pnt3.len(contact.axle)).toBeCloseTo(1, 6);
+          expect(contact.axle.x).toBeGreaterThan(0.99);
+        }
+        expect(touching).toBeGreaterThan(0);
+      });
+
+      it('reports the suspension force the engine applied, never above maxSuspensionForce', () => {
+        // a quarter of the weight per wheel would be ~1960 N; the springs bottom out
+        const vehicle = car({ x: 0, y: 0, z: 1 }, 1000);
+        simulate(3);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i);
+          if (contact) {
+            expect(contact.suspensionForce).toBeGreaterThanOrEqual(0);
+            expect(contact.suspensionForce).toBeLessThanOrEqual(1000);
+          }
+        }
+      });
+
+      it('reports no contact once removed from the world', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        expect(vehicle.getWheelContact(0)).not.toBeNull();
+        vehicle.removeFromWorld(ggWorld);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
       });
     });
 

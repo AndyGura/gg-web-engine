@@ -1,4 +1,4 @@
-import { Point3, Point4 } from '../../../base';
+import { Pnt3, Point3, Point4 } from '../../../base';
 import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
 import { PhysicsTypeDocRepo3D } from '../../gg-3d-world';
 
@@ -49,12 +49,6 @@ export type WheelOptions = {
 };
 
 /**
- * Default `WheelOptions.maxSuspensionForce` for a chassis of `chassisMass` kg: twice the full car
- * weight per wheel (2 × mass × 9.82 N), so it never limits a car on its wheels - braking,
- * cornering, dips and landings stay far below it - and only clamps a pathological spike. Physics
- * engines' own default of 6000 N per wheel holds a 1.5 t car only up to ~1.6 g.
- */
-/**
  * How a raycast vehicle's wheel touches the ground after the last `simulate()` step: what tyre
  * marks, squeal, smoke, surface-dependent grip and arcade assists read. See
  * `IRaycastVehicleComponent.getWheelContact`.
@@ -72,9 +66,9 @@ export type WheelContact = {
   /** The ground's unit normal at `point`, in world coordinates. */
   normal: Point3;
   /**
-   * The wheel's axle as a unit vector in world coordinates, steering included: the direction the
-   * tyre's sideways grip pushes along. It points to the car's right (`+X` of the chassis when the
-   * wheel is straight).
+   * The wheel's axle as a unit vector in world coordinates, steering included and laid into the
+   * ground plane (perpendicular to `normal`): the direction the tyre's sideways grip pushes along.
+   * It points to the car's right (`+X` of the chassis when the wheel is straight).
    */
   axle: Point3;
   /**
@@ -84,16 +78,18 @@ export type WheelContact = {
    */
   velocity: Point3;
   /**
-   * `velocity` along `axle`, in m/s: how fast the wheel slides sideways, positive toward the car's
-   * right. A raycast vehicle's wheels always roll with the ground, so this is the slide that
-   * cornering beyond the grip, drifting or a side hit produce.
+   * `velocity` along `axle`, in m/s: how fast the wheel slides sideways over the ground, positive
+   * toward the car's right. A raycast vehicle's wheels always roll with the ground, so this is the
+   * slide that cornering beyond the grip, drifting or a side hit produce; the chassis bouncing or
+   * rolling on its springs moves along `normal` and does not count.
    */
   sideSlipSpeed: number;
   /**
    * The force the wheel's suspension pushes the chassis up with, in Newtons: the wheel's share of
    * the car's weight plus whatever the bumps, braking and cornering add. The sum over all wheels
    * is about `mass × g` for a car standing still on flat ground (`bodyOptions.mass` is the mass),
-   * and drops toward 0 as the car goes light over a crest.
+   * and drops toward 0 as the car goes light over a crest. Never above the wheel's
+   * `WheelOptions.maxSuspensionForce`: it is the force applied, after that limit.
    */
   suspensionForce: number;
   /**
@@ -106,7 +102,57 @@ export type WheelContact = {
   skid: number | null;
 };
 
+/**
+ * Default `WheelOptions.maxSuspensionForce` for a chassis of `chassisMass` kg: twice the full car
+ * weight per wheel (2 × mass × 9.82 N), so it never limits a car on its wheels - braking,
+ * cornering, dips and landings stay far below it - and only clamps a pathological spike. Physics
+ * engines' own default of 6000 N per wheel holds a 1.5 t car only up to ~1.6 g.
+ */
 export const defaultMaxSuspensionForce = (chassisMass: number): number => 2 * chassisMass * 9.82;
+
+/**
+ * Builds a `WheelContact` from what a physics engine reports for one wheel. Every adapter's
+ * `IRaycastVehicleComponent.getWheelContact` goes through it, so the fields derived here mean the
+ * same on every engine. Every vector is in world coordinates and every input must describe the
+ * chassis at one moment (an engine that casts the wheel rays before moving the chassis has to move
+ * `point` along with the chassis first).
+ *
+ * - `axle`: chassis `+X` turned by `steering` (radians) about the chassis' up axis, rotated by
+ *   `chassisRotation`, and projected onto the plane perpendicular to `normal` (the direction the
+ *   engines' own tyre models apply the side grip along).
+ * - `velocity`: `linearVelocity + angularVelocity × (point - centerOfMass)`.
+ * - `suspensionForce`: clamped to `[0, maxSuspensionForce]`, as the engines do before applying it.
+ */
+export const buildWheelContact = (wheel: {
+  point: Point3;
+  normal: Point3;
+  steering: number;
+  chassisRotation: Point4;
+  linearVelocity: Point3;
+  angularVelocity: Point3;
+  centerOfMass: Point3;
+  suspensionForce: number;
+  maxSuspensionForce: number;
+  skid: number | null;
+}): WheelContact => {
+  const steeredAxle = Pnt3.rot(Pnt3.rotAround(Pnt3.X, Pnt3.Z, wheel.steering), wheel.chassisRotation);
+  const inGroundPlane = Pnt3.sub(steeredAxle, Pnt3.scalarMult(wheel.normal, Pnt3.dot(steeredAxle, wheel.normal)));
+  // an axle along the normal (a wheel on its side against a wall) has no ground-plane direction
+  const axle = Pnt3.len(inGroundPlane) > 1e-6 ? Pnt3.norm(inGroundPlane) : steeredAxle;
+  const velocity = Pnt3.add(
+    wheel.linearVelocity,
+    Pnt3.cross(wheel.angularVelocity, Pnt3.sub(wheel.point, wheel.centerOfMass)),
+  );
+  return {
+    point: wheel.point,
+    normal: wheel.normal,
+    axle,
+    velocity,
+    sideSlipSpeed: Pnt3.dot(velocity, axle),
+    suspensionForce: Math.min(Math.max(wheel.suspensionForce, 0), wheel.maxSuspensionForce),
+    skid: wheel.skid,
+  };
+};
 
 export interface IRaycastVehicleComponent<
   PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,

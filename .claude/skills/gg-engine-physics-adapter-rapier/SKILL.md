@@ -763,12 +763,29 @@ colliders (see below) and has no such offset.
 `WheelEntry.options`, since `addToWorld` rebuilds the native vehicle from the entries; the getter
 reads the native wheel first and falls back to the entry while the vehicle is out of a world.
 
-`getWheelContact(i)` reads `wheelIsInContact`, `wheelContactPoint`, `wheelContactNormal` and
-`wheelSuspensionForce` (Newtons) of the last `updateVehicle`, i.e. the last substep,
-and the world centre of mass from `worldCom()`. `skid` is `null`: the controller keeps a skid value
+`getWheelContact(i)` reads `wheelIsInContact`, `wheelContactPoint`, `wheelContactNormal`,
+`wheelSuspensionForce` (Newtons) and `wheelMaxSuspensionForce` of the last `updateVehicle`, i.e.
+the last substep, and the world centre of mass from `worldCom()`, and hands them to core's
+`buildWheelContact`. `wheelSuspensionForce` is the spring's force before the controller clamps it
+to `wheelMaxSuspensionForce` for the impulse, so on a hard landing it reads several times what was
+applied; `buildWheelContact` clamps it. `skid` is `null`: the controller keeps a skid value
 internally but the JS bindings expose no getter, and `wheelForwardImpulse`/`wheelSideImpulse`
 are read after the controller has already scaled them down to the grip limit, so how far over the
 grip the wheel was cannot be recovered from them.
+
+**Every world-space point `updateVehicle` stores is one substep old.** `updateVehicle` runs before
+`world.step()` (see below), so `wheelContactPoint` and `wheelHardPoint` come from the chassis pose
+before the step, while `translation()`/`rotation()`/`linvel()`/`worldCom()` read afterwards are the
+pose after it. Read together, the contact point and the drawn wheel trailed the chassis by
+speed × substep length (0.25 m at 30 m/s with 60 FPS frames), and the velocity at the contact point
+got a wrong lever arm. `stepVehicleController` records the chassis translation and rotation right
+before `updateVehicle` (`castPose`; `updateVehicle` only writes velocities, so that is the pose the
+rays are cast from), and `toCurrentPose(p)` carries a stored point from that pose to the current one
+(chassis-local under the cast pose, then world under the current pose). `getWheelContact` applies it
+to the contact point, `getWheelTransform` to the hard point; the contact normal is the ground's and
+stays as cast. Calling `updateVehicle` after `world.step()` instead would also line them up, but it
+changes the simulation (inputs act one substep later). Regression: the 3D contract suite's
+`raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner at 30 m/s).
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
@@ -958,7 +975,9 @@ compensation for this at the adapter level either way - it's already handled ada
 **`getWheelTransform` has no single native call to read from.**
 Rapier's controller only exposes the individual pieces, composed by hand:
 - **Position**: `wheelHardPoint(i)` is already world-space (the wheel ray-cast's own fixed start
-  point) - `wheelDirectionCs(i)` (chassis-local) rotated by the chassis's current rotation, then scaled
+  point), from the pose the rays were cast from, so `toCurrentPose` moves it to the chassis'
+  current pose first (see `getWheelContact` above) - `wheelDirectionCs(i)` (chassis-local) rotated
+  by the chassis's current rotation, then scaled
   by `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
   grounded alike) and added to the hard point, lands exactly on the wheel's current center.
 - **Rotation**: composed as chassis rotation ∘ steering (`Qtrn.rotAround(Qtrn.O, Pnt3.Z, wheelSteering(i))`

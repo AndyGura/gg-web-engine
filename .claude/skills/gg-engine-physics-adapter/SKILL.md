@@ -324,16 +324,25 @@ tyres slide and for surface changes, instead of reaching into the backend.
 ## Raycast vehicle component (3D only): wheel contact
 
 `IRaycastVehicleComponent.getWheelContact(wheelIndex)` returns a `WheelContact` (contact point,
-ground normal, steered world axle, chassis velocity at the contact point, its component along the
-axle as `sideSlipSpeed`, suspension force in Newtons, `skid`) for a wheel touching the ground after
-the last `simulate()`, and `null` in the air or for an index that is not a wheel. Read the contact
-point, normal and suspension force from the native wheel. Compute the rest the same way in every
-adapter: the axle is chassis `+X` turned by the wheel's steering about chassis `+Z`, then by the
-chassis rotation; the velocity is `linearVelocity + angularVelocity × (point − world centre of
-mass)`. `skid` is the native "share of the needed grip the tyre gave" where
-the library reports one, `null` where it does not; never invent it from other values. The 3D
-contract suite (`raycast vehicle`) checks units and axes: the loads of a resting car add up to its
-weight, a slide toward the car's right is positive, the steered axle turns with the steering.
+ground normal, steered world axle in the ground plane, chassis velocity at the contact point, its
+component along the axle as `sideSlipSpeed`, suspension force in Newtons, `skid`) for a wheel
+touching the ground after the last `simulate()`, and `null` in the air, for an index that is not a
+wheel, or while the vehicle is out of the world. Read the contact point, normal, suspension force,
+the wheel's maximum suspension force, steering and `skid` from the native wheel and pass them, with
+the chassis rotation, velocities and world centre of mass, to core's `buildWheelContact`, which
+derives the rest the same way for every adapter (axle projected onto the contact plane, velocity
+lever arm, suspension force clamped to `[0, max]` - engines store the spring force before they
+clamp it). Every input must describe the chassis at the same moment: an engine whose vehicle
+update casts the wheel rays before the step moves the chassis has to carry the stored contact point
+(and the wheel's hard point, for `getWheelTransform`) along with the chassis to its current pose.
+`skid` is the native "share of the needed grip the tyre gave" where the library reports one, `null`
+where it does not; never invent it from other values. A wheel "on the ground" flag that some later
+call resets (a wheel-transform update) can't be the contact test: entities read the wheel
+transforms every tick after the step. The 3D contract suite (`raycast vehicle`) checks units and
+axes: the loads of a resting car add up to its weight, a slide toward the car's right is positive,
+the steered axle turns with the steering and stays perpendicular to the normal on a rolled chassis,
+the reported force never exceeds `maxSuspensionForce`, wheels and contact points stay under their
+chassis corners at 30 m/s, contacts survive a `getWheelTransform` call and vanish on removal.
 
 ## Character controller component (3D only)
 

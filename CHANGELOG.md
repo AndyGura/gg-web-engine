@@ -37,6 +37,22 @@ where one exists.
   on Rapier, which does not report it). `null` while the wheel is in the air. Tyre marks, squeal,
   smoke and grip assists can read this on Ammo and Rapier instead of reaching into
   `btRaycastVehicle`'s wheel info.
+- `buildWheelContact(...)`: builds a `WheelContact` from what a physics engine reports for one
+  wheel, for an adapter implementing `getWheelContact`.
+
+### Changed
+- **Breaking** (custom physics adapters only): `IRaycastVehicleComponent` has a new required
+  method, `getWheelContact(wheelIndex)`. A third-party adapter implementing the interface no
+  longer compiles until it adds one; build the result with `buildWheelContact` so its derived
+  fields match the built-in adapters. Apps using `@gg-web-engine/ammo` or
+  `@gg-web-engine/rapier3d` need no change.
+
+### Fixed
+- Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
+  the last physics substep, behind the car by its speed × the substep length (up to 0.3 m at
+  30 m/s).
+- Ammo: `isWheelTouchesGround` kept reporting the last step's ground contact after the vehicle was
+  removed from the world; it reports `false`, as on Rapier.
 
 ## [0.0.84] - 2026-10-19
 
