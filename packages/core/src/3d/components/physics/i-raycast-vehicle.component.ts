@@ -54,6 +54,58 @@ export type WheelOptions = {
  * cornering, dips and landings stay far below it - and only clamps a pathological spike. Physics
  * engines' own default of 6000 N per wheel holds a 1.5 t car only up to ~1.6 g.
  */
+/**
+ * How a raycast vehicle's wheel touches the ground after the last `simulate()` step: what tyre
+ * marks, squeal, smoke, surface-dependent grip and arcade assists read. See
+ * `IRaycastVehicleComponent.getWheelContact`.
+ *
+ * @example
+ * // skid marks: a wheel leaves a mark while it slides sideways faster than 1.5 m/s
+ * const contact = car.raycastVehicle.vehicleComponent.getWheelContact(i);
+ * if (contact && Math.abs(contact.sideSlipSpeed) > 1.5) {
+ *   marks.addPoint(contact.point, contact.normal);
+ * }
+ */
+export type WheelContact = {
+  /** Where the wheel's suspension ray hits the ground, in world coordinates. */
+  point: Point3;
+  /** The ground's unit normal at `point`, in world coordinates. */
+  normal: Point3;
+  /**
+   * The wheel's axle as a unit vector in world coordinates, steering included: the direction the
+   * tyre's sideways grip pushes along. It points to the car's right (`+X` of the chassis when the
+   * wheel is straight).
+   */
+  axle: Point3;
+  /**
+   * Velocity of the chassis at `point`, in m/s, from the chassis' linear and angular velocity (the
+   * ground is taken as still). Its length is how fast the tyre's contact patch moves over the road,
+   * for example the speed a locked wheel drags along at.
+   */
+  velocity: Point3;
+  /**
+   * `velocity` along `axle`, in m/s: how fast the wheel slides sideways, positive toward the car's
+   * right. A raycast vehicle's wheels always roll with the ground, so this is the slide that
+   * cornering beyond the grip, drifting or a side hit produce.
+   */
+  sideSlipSpeed: number;
+  /**
+   * The force the wheel's suspension pushes the chassis up with, in Newtons: the wheel's share of
+   * the car's weight plus whatever the bumps, braking and cornering add. The sum over all wheels
+   * is about `mass × g` for a car standing still on flat ground (`bodyOptions.mass` is the mass),
+   * and drops toward 0 as the car goes light over a crest.
+   */
+  suspensionForce: number;
+  /**
+   * The share of the grip the wheel needed that its friction gave in the last step: `1` while the
+   * tyre holds, below `1` while it is over the grip and slides (Bullet's `m_skidInfo`). `null` on a
+   * physics engine that does not report it (Rapier); use `sideSlipSpeed` there. The value comes
+   * from the engine's own tyre model, so the same car slides at different values on different
+   * engines.
+   */
+  skid: number | null;
+};
+
 export const defaultMaxSuspensionForce = (chassisMass: number): number => 2 * chassisMass * 9.82;
 
 export interface IRaycastVehicleComponent<
@@ -94,6 +146,12 @@ export interface IRaycastVehicleComponent<
   getWheelFrictionSlip(wheelIndex: number): number;
 
   isWheelTouchesGround(wheelIndex: number): boolean;
+
+  /**
+   * Where and how the wheel touches the ground after the last `simulate()` step, or `null` while
+   * it does not (it is in the air, or `wheelIndex` is not a wheel). See `WheelContact`.
+   */
+  getWheelContact(wheelIndex: number): WheelContact | null;
 
   getWheelTransform(wheelIndex: number): {
     position: Point3;

@@ -29,6 +29,15 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `IRaycastVehicleComponent.getWheelContact(wheelIndex)`: where and how a wheel touches the ground
+  after the last physics step, as a `WheelContact` with the contact point, ground normal, steered
+  axle, the chassis velocity at the contact point and its sideways part (`sideSlipSpeed`, m/s), the
+  suspension force in Newtons and `skid` (Bullet's share of the needed grip the tyre gave; `null`
+  on Rapier, which does not report it). `null` while the wheel is in the air. Tyre marks, squeal,
+  smoke and grip assists can read this on Ammo and Rapier instead of reaching into
+  `btRaycastVehicle`'s wheel info.
+
 ## [0.0.84] - 2026-10-19
 
 ### Added

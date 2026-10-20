@@ -11,6 +11,7 @@ import {
   BodyShape3DDescriptor,
   ICharacterController3dComponent,
   IPhysicsWorld3dComponent,
+  IRaycastVehicleComponent,
   IRigidBody3dComponent,
   Point3,
   Qtrn,
@@ -375,6 +376,91 @@ export function describePhysics3dContract(
         simulate(1 / 60);
         const result = world.raycast({ from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 0, z: -10 } });
         expect(result.hasHit).toBe(false);
+      });
+    });
+
+    describe('raycast vehicle', () => {
+      const CAR_MASS = 800;
+
+      const car = (position: Point3): IRaycastVehicleComponent => {
+        const chassis = world.factory.createRigidBody(
+          {
+            shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
+            body: { bodyType: 'dynamic', mass: CAR_MASS, canSleep: false },
+          },
+          { position },
+        );
+        const vehicle = world.factory.createRaycastVehicle(chassis);
+        for (const isFront of [true, false]) {
+          for (const isLeft of [true, false]) {
+            vehicle.addWheel(
+              {
+                isFront,
+                isLeft,
+                tyreRadius: 0.35,
+                tyreWidth: 0.25,
+                frictionSlip: 1.2,
+                rollInfluence: 0.2,
+                maxTravel: 0.3,
+                position: { x: isLeft ? -0.8 : 0.8, y: isFront ? 1.4 : -1.2, z: 0 },
+              },
+              { stiffness: 30, damping: 2.3, compression: 4.4, restLength: 0.3 },
+            );
+          }
+        }
+        return add(vehicle);
+      };
+
+      beforeEach(() => {
+        staticBox({ x: 0, y: 0, z: -0.5 }, { x: 60, y: 60, z: 1 });
+      });
+
+      it('reports every wheel on the ground with its contact point, normal, axle and load', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        let load = 0;
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.05);
+          expect(contact.normal.z).toBeGreaterThan(0.99);
+          expect(contact.axle.x).toBeGreaterThan(0.99);
+          expect(Math.abs(contact.sideSlipSpeed)).toBeLessThan(0.1);
+          if (contact.skid !== null) {
+            expect(contact.skid).toBeGreaterThan(0.99);
+            expect(contact.skid).toBeLessThanOrEqual(1);
+          }
+          load += contact.suspensionForce;
+        }
+        // the wheels carry the car's weight (N), give or take what the springs still oscillate
+        expect(load).toBeGreaterThan(CAR_MASS * 9.8 * 0.8);
+        expect(load).toBeLessThan(CAR_MASS * 9.8 * 1.2);
+      });
+
+      it('reports no contact in the air or for a wheel that does not exist', () => {
+        const vehicle = car({ x: 0, y: 0, z: 20 });
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+        expect(vehicle.getWheelContact(4)).toBeNull();
+        expect(vehicle.getWheelContact(-1)).toBeNull();
+      });
+
+      it('reports a sideways slide toward the car right as positive, along the steered axle', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.setSteering(0, 0.3);
+        vehicle.linearVelocity = { x: 3, y: 0, z: 0 };
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact.sideSlipSpeed).toBeGreaterThan(1);
+          expect(contact.velocity.x).toBeGreaterThan(1);
+        }
+        const steered = vehicle.getWheelContact(0)!.axle;
+        expect(steered.x).toBeCloseTo(Math.cos(0.3), 2);
+        expect(steered.y).toBeCloseTo(Math.sin(0.3), 2);
       });
     });
 

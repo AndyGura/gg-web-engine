@@ -763,6 +763,13 @@ colliders (see below) and has no such offset.
 `WheelEntry.options`, since `addToWorld` rebuilds the native vehicle from the entries; the getter
 reads the native wheel first and falls back to the entry while the vehicle is out of a world.
 
+`getWheelContact(i)` reads `wheelIsInContact`, `wheelContactPoint`, `wheelContactNormal` and
+`wheelSuspensionForce` (Newtons, like Bullet's) of the last `updateVehicle`, i.e. the last substep,
+and the world centre of mass from `worldCom()`. `skid` is `null`: the controller keeps Bullet's skid
+info internally but the JS bindings expose no getter, and `wheelForwardImpulse`/`wheelSideImpulse`
+are read after the controller has already scaled them down to the grip limit, so how far over the
+grip the wheel was cannot be recovered from them.
+
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
 Rapier's controller has no roll influence, so `WheelOptions.rollInfluence` is ignored. Don't map it

@@ -3,10 +3,12 @@ import {
   CollisionGroup,
   defaultMaxSuspensionForce,
   IRaycastVehicleComponent,
+  Pnt3,
   Point3,
   Point4,
   RaycastVehicle3dEntity,
   SuspensionOptions,
+  WheelContact,
   WheelOptions,
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
@@ -190,6 +192,42 @@ export class AmmoRaycastVehicleComponent
 
   isWheelTouchesGround(wheelIndex: number): boolean {
     return this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0;
+  }
+
+  /**
+   * Reads the wheel's `m_raycastInfo` (contact point and normal), `m_wheelsSuspensionForce` and
+   * `m_skidInfo`, all written by the last step. Contact is `m_groundObject`, like
+   * `isWheelTouchesGround`, not `m_isInContact`: `updateWheelTransform` (`getWheelTransform`, run by
+   * the entity every tick after the step) resets that flag.
+   */
+  getWheelContact(wheelIndex: number): WheelContact | null {
+    if (wheelIndex < 0 || wheelIndex >= this.nativeVehicle.getNumWheels() || !this.isWheelTouchesGround(wheelIndex)) {
+      return null;
+    }
+    const wheelInfo = this.nativeVehicle.getWheelInfo(wheelIndex);
+    const raycastInfo = wheelInfo.get_m_raycastInfo();
+    const p = raycastInfo.get_m_contactPointWS();
+    const n = raycastInfo.get_m_contactNormalWS();
+    const c = this.chassisBody.nativeBody.getCenterOfMassPosition();
+    const point = { x: p.x(), y: p.y(), z: p.z() };
+    const velocity = Pnt3.add(
+      this.linearVelocity,
+      Pnt3.cross(this.angularVelocity, Pnt3.sub(point, { x: c.x(), y: c.y(), z: c.z() })),
+    );
+    // the wheel's axle in chassis space is +X (`wheelAxleCS`), steered about the chassis' up axis
+    const axle = Pnt3.rot(
+      Pnt3.rotAround(Pnt3.X, Pnt3.Z, this.nativeVehicle.getSteeringValue(wheelIndex)),
+      this.rotation,
+    );
+    return {
+      point,
+      normal: { x: n.x(), y: n.y(), z: n.z() },
+      axle,
+      velocity,
+      sideSlipSpeed: Pnt3.dot(velocity, axle),
+      suspensionForce: wheelInfo.get_m_wheelsSuspensionForce(),
+      skid: wheelInfo.get_m_skidInfo(),
+    };
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {

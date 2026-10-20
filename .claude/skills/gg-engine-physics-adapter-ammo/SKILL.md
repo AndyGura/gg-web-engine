@@ -737,6 +737,15 @@ sleeping body ignores the force. `applyBrakeImpulses` and the `kinematicVelBodie
 read/write `getWheelInfo(i).m_frictionSlip`, which `btRaycastVehicle::updateFriction` reads every
 step.
 
+`getWheelContact(i)` reads `m_raycastInfo.m_contactPointWS`/`m_contactNormalWS`,
+`m_wheelsSuspensionForce` (already in Newtons: Bullet multiplies the spring's acceleration by the
+chassis mass) and `m_skidInfo`. It tests contact with `m_groundObject`, as `isWheelTouchesGround`
+does, never `m_raycastInfo.m_isInContact`: `updateWheelTransform`, which `getWheelTransform` calls
+every tick for the wheel meshes, starts with `updateWheelTransformsWS`, and that resets
+`m_isInContact` to `false`, so it reads `false` for every wheel after the first render tick. Don't
+use `m_raycastInfo.m_wheelAxleWS` for the axle either: it is the chassis axle without steering
+(Bullet steers only the wheel transform `updateFriction` builds its own axle from).
+
 **The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
 only iterates the world's bodies, so a force/torque applied to a body outside the world (before
 spawn, or between `removeFromWorld` and `addToWorld`) stays in `m_totalForce`/`m_totalTorque` and

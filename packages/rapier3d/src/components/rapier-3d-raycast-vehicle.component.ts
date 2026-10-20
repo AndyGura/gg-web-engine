@@ -6,6 +6,7 @@ import {
   Point4,
   Qtrn,
   SuspensionOptions,
+  WheelContact,
   WheelOptions,
 } from '@gg-web-engine/core';
 import { DynamicRayCastVehicleController, QueryFilterFlags, Vector } from '@dimforge/rapier3d-compat';
@@ -208,6 +209,38 @@ export class Rapier3dRaycastVehicleComponent
 
   isWheelTouchesGround(wheelIndex: number): boolean {
     return this.nativeVehicle?.wheelIsInContact(wheelIndex) ?? false;
+  }
+
+  /**
+   * Reads the controller's contact point, normal and suspension force of the last
+   * `updateVehicle`. Rapier does not report how far over its grip a wheel is, so `skid` is `null`.
+   */
+  getWheelContact(wheelIndex: number): WheelContact | null {
+    const nativeVehicle = this.nativeVehicle;
+    if (!nativeVehicle || wheelIndex < 0 || wheelIndex >= nativeVehicle.numWheels()) {
+      return null;
+    }
+    const point = nativeVehicle.wheelContactPoint(wheelIndex);
+    const normal = nativeVehicle.wheelContactNormal(wheelIndex);
+    if (!nativeVehicle.wheelIsInContact(wheelIndex) || !point || !normal) {
+      return null;
+    }
+    const contactPoint = Pnt3.clone(point);
+    const velocity = Pnt3.add(
+      this.linearVelocity,
+      Pnt3.cross(this.angularVelocity, Pnt3.sub(contactPoint, Pnt3.clone(this._nativeBody!.worldCom()))),
+    );
+    // every wheel's axle in chassis space is +X (see `addWheel`), steered about the chassis' up axis
+    const axle = Pnt3.rot(Pnt3.rotAround(Pnt3.X, Pnt3.Z, nativeVehicle.wheelSteering(wheelIndex) ?? 0), this.rotation);
+    return {
+      point: contactPoint,
+      normal: Pnt3.clone(normal),
+      axle,
+      velocity,
+      sideSlipSpeed: Pnt3.dot(velocity, axle),
+      suspensionForce: nativeVehicle.wheelSuspensionForce(wheelIndex) ?? 0,
+      skid: null,
+    };
   }
 
   /**

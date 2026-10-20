@@ -321,6 +321,20 @@ on re-add from stored wheel options (Rapier) updates the stored options too, so 
 `removeFromWorld`/`addToWorld`. `GgCarEntity` relies on this for a handbrake that lets the rear
 tyres slide and for surface changes, instead of reaching into the backend.
 
+## Raycast vehicle component (3D only): wheel contact
+
+`IRaycastVehicleComponent.getWheelContact(wheelIndex)` returns a `WheelContact` (contact point,
+ground normal, steered world axle, chassis velocity at the contact point, its component along the
+axle as `sideSlipSpeed`, suspension force in Newtons, `skid`) for a wheel touching the ground after
+the last `simulate()`, and `null` in the air or for an index that is not a wheel. Read the contact
+point, normal and suspension force from the native wheel. Compute the rest the same way in every
+adapter: the axle is chassis `+X` turned by the wheel's steering about chassis `+Z`, then by the
+chassis rotation; the velocity is `linearVelocity + angularVelocity × (point − world centre of
+mass)`. `skid` is the native "share of the needed grip the tyre gave" (Bullet's `m_skidInfo`) where
+the library reports one, `null` where it does not; never invent it from other values. The 3D
+contract suite (`raycast vehicle`) checks units and axes: the loads of a resting car add up to its
+weight, a slide toward the car's right is positive, the steered axle turns with the steering.
+
 ## Character controller component (3D only)
 
 `ICharacterController3dComponent` (`packages/core/src/3d/components/physics/i-character-controller-3d.component.ts`)
