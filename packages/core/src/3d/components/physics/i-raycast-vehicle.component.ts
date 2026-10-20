@@ -1,4 +1,4 @@
-import { Pnt3, Point3, Point4 } from '../../../base';
+import { Pnt3, Point3, Point4, Qtrn } from '../../../base';
 import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
 import { PhysicsTypeDocRepo3D } from '../../gg-3d-world';
 
@@ -119,7 +119,8 @@ export const defaultMaxSuspensionForce = (chassisMass: number): number => 2 * ch
  *
  * - `axle`: chassis `+X` turned by `steering` (radians) about the chassis' up axis, rotated by
  *   `chassisRotation`, and projected onto the plane perpendicular to `normal` (the direction the
- *   engines' own tyre models apply the side grip along).
+ *   engines' own tyre models apply the side grip along). When that axle is along `normal`, the
+ *   wheel's forward axis × `normal` instead, so `axle` is always perpendicular to `normal`.
  * - `velocity`: `linearVelocity + angularVelocity × (point - centerOfMass)`.
  * - `suspensionForce`: clamped to `[0, maxSuspensionForce]`, as the engines do before applying it.
  */
@@ -135,10 +136,16 @@ export const buildWheelContact = (wheel: {
   maxSuspensionForce: number;
   skid: number | null;
 }): WheelContact => {
-  const steeredAxle = Pnt3.rot(Pnt3.rotAround(Pnt3.X, Pnt3.Z, wheel.steering), wheel.chassisRotation);
+  const steerRotation = Qtrn.combineRotations(wheel.chassisRotation, Qtrn.rotAround(Qtrn.O, Pnt3.Z, wheel.steering));
+  const steeredAxle = Pnt3.rot(Pnt3.X, steerRotation);
   const inGroundPlane = Pnt3.sub(steeredAxle, Pnt3.scalarMult(wheel.normal, Pnt3.dot(steeredAxle, wheel.normal)));
-  // an axle along the normal (a wheel on its side against a wall) has no ground-plane direction
-  const axle = Pnt3.len(inGroundPlane) > 1e-6 ? Pnt3.norm(inGroundPlane) : steeredAxle;
+  // an axle along the normal (a car on its side, the wheel's ray hitting a wall) has no
+  // ground-plane direction: the wheel's forward axis is then in the ground plane, and forward ×
+  // normal is a ground-plane axle pointing right, as forward × up does for a car on its wheels
+  const axle =
+    Pnt3.len(inGroundPlane) > 1e-6
+      ? Pnt3.norm(inGroundPlane)
+      : Pnt3.norm(Pnt3.cross(Pnt3.rot(Pnt3.Y, steerRotation), wheel.normal));
   const velocity = Pnt3.add(
     wheel.linearVelocity,
     Pnt3.cross(wheel.angularVelocity, Pnt3.sub(wheel.point, wheel.centerOfMass)),

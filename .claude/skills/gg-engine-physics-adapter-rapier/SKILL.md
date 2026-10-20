@@ -776,16 +776,28 @@ grip the wheel was cannot be recovered from them.
 **Every world-space point `updateVehicle` stores is one substep old.** `updateVehicle` runs before
 `world.step()` (see below), so `wheelContactPoint` and `wheelHardPoint` come from the chassis pose
 before the step, while `translation()`/`rotation()`/`linvel()`/`worldCom()` read afterwards are the
-pose after it. Read together, the contact point and the drawn wheel trailed the chassis by
-speed × substep length (0.25 m at 30 m/s with 60 FPS frames), and the velocity at the contact point
-got a wrong lever arm. `stepVehicleController` records the chassis translation and rotation right
-before `updateVehicle` (`castPose`; `updateVehicle` only writes velocities, so that is the pose the
-rays are cast from), and `toCurrentPose(p)` carries a stored point from that pose to the current one
-(chassis-local under the cast pose, then world under the current pose). `getWheelContact` applies it
-to the contact point, `getWheelTransform` to the hard point; the contact normal is the ground's and
+pose after it: taken as stored, both sit behind the chassis by speed × substep length (0.25 m at
+30 m/s with 60 FPS frames), and the velocity at the contact point gets a wrong lever arm.
+`stepVehicleController` records the chassis translation and rotation right before `updateVehicle`
+(`castPosition`/`castRotation`; `updateVehicle` only writes velocities, so that is the pose the rays
+are cast from), and `toCurrentPose(p)` carries a stored point from that pose to the current one.
+`getWheelTransform` applies it to the hard point as is. `getWheelContact` keeps only the part of
+that displacement perpendicular to the contact normal: the chassis moving along the normal (on its
+springs, or still falling during the first contact substep of a landing, which the capped wheel
+impulse slows by well under 1 m/s) moves toward the ground, not the ground with it, so the full
+transform would put the point centimetres under the road. The contact normal is the ground's and
 stays as cast. Calling `updateVehicle` after `world.step()` instead would also line them up, but it
-changes the simulation (inputs act one substep later). Regression: the 3D contract suite's
-`raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner at 30 m/s).
+changes the simulation (inputs act one substep later). Regressions: the 3D contract suite's
+`raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner at
+30 m/s) and "drops onto its springs" test (contact points stay at ground height).
+
+The current pose and the cast-to-current rotation (`currentPose`, built by `chassisPose()`) are read
+from the native body once and shared by every wheel's `getWheelTransform`/`getWheelContact` call.
+The cache is cleared wherever the chassis can move: in `stepVehicleController` (before each
+`world.step()`, and nothing reads it between the two), in `removeFromWorld`, and in the
+`position`/`rotation` setters, which this class overrides (delegating to `super`) for that alone.
+Moving the chassis through `nativeBody` directly bypasses the setters and leaves the cache stale
+until the next step.
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.

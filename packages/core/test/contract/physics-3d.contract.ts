@@ -493,6 +493,19 @@ export function describePhysics3dContract(
         }
       });
 
+      it('keeps every contact point on the ground while the chassis drops onto its springs', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        // a landing: the chassis moves along the ground normal, the ground stays where it is
+        vehicle.linearVelocity = { x: 0, y: 0, z: -4 };
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.005);
+        }
+      });
+
       it('keeps the axle in the ground plane while the chassis rolls', () => {
         const vehicle = car({ x: 0, y: 0, z: 1 });
         simulate(3);
@@ -513,25 +526,45 @@ export function describePhysics3dContract(
         expect(touching).toBeGreaterThan(0);
       });
 
-      it('reports the suspension force the engine applied, never above maxSuspensionForce', () => {
-        // a quarter of the weight per wheel would be ~1960 N; the springs bottom out
+      it('reports the suspension force the engine applied, capped at maxSuspensionForce', () => {
+        // 4 × 1000 N carries about half of the car's weight: the springs give way, the chassis lies
+        // on the ground, and every wheel pushes with its full 1000 N
         const vehicle = car({ x: 0, y: 0, z: 1 }, 1000);
         simulate(3);
+        // the chassis box (0.6 m high) rests on the ground instead of riding on its wheels
+        expect(vehicle.position.z).toBeLessThan(0.35);
         for (let i = 0; i < 4; i++) {
-          const contact = vehicle.getWheelContact(i);
-          if (contact) {
-            expect(contact.suspensionForce).toBeGreaterThanOrEqual(0);
-            expect(contact.suspensionForce).toBeLessThanOrEqual(1000);
-          }
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(contact.suspensionForce).toBeGreaterThan(900);
+          expect(contact.suspensionForce).toBeLessThanOrEqual(1000);
         }
       });
 
-      it('reports no contact once removed from the world', () => {
+      it('reports no contact once removed from the world, nor after disposal', () => {
         const vehicle = car({ x: 0, y: 0, z: 1 });
         simulate(3);
         expect(vehicle.getWheelContact(0)).not.toBeNull();
         vehicle.removeFromWorld(ggWorld);
         for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+        vehicle.dispose();
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+      });
+
+      it('reports no contact after a re-add until the next step casts the wheels again', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.removeFromWorld(ggWorld);
+        vehicle.position = { x: 0, y: 0, z: 20 };
+        vehicle.addToWorld(ggWorld);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
           expect(vehicle.getWheelContact(i)).toBeNull();
         }
       });

@@ -27,6 +27,15 @@ describe('buildWheelContact', () => {
     expect(Pnt3.len(axle)).toBeCloseTo(1, 9);
   });
 
+  it('keeps the axle in the ground plane when it points along the normal', () => {
+    // a car on its side, the wheel's ray hitting a wall in front of its axle, the chassis moving
+    // toward the wall
+    const contact = buildWheelContact({ ...flat, normal: Pnt3.nX, linearVelocity: { x: 1, y: 0, z: 0 } });
+    expect(Pnt3.dot(contact.axle, contact.normal)).toBeCloseTo(0, 9);
+    expect(Pnt3.len(contact.axle)).toBeCloseTo(1, 9);
+    expect(contact.sideSlipSpeed).toBeCloseTo(0, 9);
+  });
+
   it('leaves the chassis bouncing on its springs out of sideSlipSpeed', () => {
     const contact = buildWheelContact({
       ...flat,

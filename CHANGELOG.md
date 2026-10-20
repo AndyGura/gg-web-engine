@@ -52,7 +52,8 @@ where one exists.
   the last physics substep, behind the car by its speed × the substep length (up to 0.3 m at
   30 m/s).
 - Ammo: `isWheelTouchesGround` kept reporting the last step's ground contact after the vehicle was
-  removed from the world; it reports `false`, as on Rapier.
+  removed from the world, and after it was added back until the next step; it reports `false`, as
+  on Rapier.
 
 ## [0.0.84] - 2026-10-19
 

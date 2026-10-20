@@ -40,7 +40,9 @@ type WheelEntry = {
  * wheel's hard point and contact point) is where the chassis *was* before the last step: at 30 m/s
  * and 10 ms steps, 0.3 m behind it. `stepVehicleController` records the chassis pose the rays were
  * cast from, and `getWheelContact`/`getWheelTransform` carry those points along with the chassis to
- * its current pose (`toCurrentPose`), so they match the chassis' position and velocities.
+ * its current pose (`toCurrentPose`), so they match the chassis' position and velocities. A contact
+ * point moves with the chassis' motion along the ground only: the chassis moving along the ground
+ * normal (on its springs, or landing) leaves the ground where it is.
  *
  * Like `Rapier3dCharacterControllerComponent`/`Rapier3dTriggerComponent`, this class and
  * `Rapier3dWorldComponent` import each other (the world needs this class purely as a type for its
@@ -61,13 +63,40 @@ export class Rapier3dRaycastVehicleComponent
   private readonly wheels: WheelEntry[] = [];
 
   /** The chassis pose of the last `updateVehicle` call, i.e. the pose its wheel rays were cast from. */
-  private castPose: { position: Point3; rotation: Point4 } | null = null;
+  private castPosition: Point3 | null = null;
+  private castRotation: Point4 | null = null;
+
+  /**
+   * The chassis' current pose and the rotation from the cast pose to it (`sinceCast`), for
+   * `toCurrentPose`. Every wheel's `getWheelTransform`/`getWheelContact` needs them, so they are
+   * read from the native body once and kept until the chassis moves: cleared before every step
+   * (`stepVehicleController`) and by every `position`/`rotation` write.
+   */
+  private currentPose: { position: Point3; rotation: Point4; sinceCast: Point4 } | null = null;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     private chassisBody: Rapier3dRigidBodyComponent,
   ) {
     super(world, ...chassisBody.factoryProps);
+  }
+
+  public get position(): Point3 {
+    return super.position;
+  }
+
+  public set position(value: Point3) {
+    super.position = value;
+    this.currentPose = null;
+  }
+
+  public get rotation(): Point4 {
+    return super.rotation;
+  }
+
+  public set rotation(value: Point4) {
+    super.rotation = value;
+    this.currentPose = null;
   }
 
   get wheelSpeed(): number {
@@ -112,7 +141,9 @@ export class Rapier3dRaycastVehicleComponent
       this._nativeVehicle.free();
       this._nativeVehicle = null;
     }
-    this.castPose = null;
+    this.castPosition = null;
+    this.castRotation = null;
+    this.currentPose = null;
     super.removeFromWorld(world, dispose);
   }
 
@@ -140,7 +171,9 @@ export class Rapier3dRaycastVehicleComponent
       this._nativeVehicle.setWheelBrake(i, this.wheels[i].brakeForce * dt);
     }
     // `updateVehicle` changes the chassis' velocities only, so this is the pose it casts from
-    this.castPose = { position: this.position, rotation: this.rotation };
+    this.castPosition = this.position;
+    this.castRotation = this.rotation;
+    this.currentPose = null;
     this._nativeVehicle.updateVehicle(dt, QueryFilterFlags.EXCLUDE_SENSORS, this.collisionGroups);
   }
 
@@ -224,23 +257,36 @@ export class Rapier3dRaycastVehicleComponent
     return this.nativeVehicle?.wheelIsInContact(wheelIndex) ?? false;
   }
 
+  /** See `currentPose`. */
+  private chassisPose(): { position: Point3; rotation: Point4; sinceCast: Point4 } {
+    if (!this.currentPose) {
+      const rotation = this.rotation;
+      this.currentPose = {
+        position: this.position,
+        rotation,
+        sinceCast: this.castRotation ? Qtrn.mult(rotation, Qtrn.conjugate(this.castRotation)) : Qtrn.O,
+      };
+    }
+    return this.currentPose;
+  }
+
   /**
    * Moves a world-space point `updateVehicle` stored from the chassis pose it cast from to the
    * chassis' current pose - see this class's own doc.
    */
   private toCurrentPose(point: Point3): Point3 {
-    if (!this.castPose) {
+    if (!this.castPosition) {
       return point;
     }
-    const inChassis = Pnt3.rot(Pnt3.sub(point, this.castPose.position), Qtrn.conjugate(this.castPose.rotation));
-    return Pnt3.add(Pnt3.rot(inChassis, this.rotation), this.position);
+    const pose = this.chassisPose();
+    return Pnt3.add(Pnt3.rot(Pnt3.sub(point, this.castPosition), pose.sinceCast), pose.position);
   }
 
   /**
    * Reads the controller's contact point, normal and suspension force of the last `updateVehicle`,
-   * with the point moved to the chassis' current pose (see this class's own doc). The normal is
-   * the ground's and stays as cast. Rapier does not report how far over its grip a wheel is, so
-   * `skid` is `null`.
+   * with the point moved along the ground plane by the chassis' motion since (see this class's own
+   * doc). The normal is the ground's and stays as cast. Rapier does not report how far over its
+   * grip a wheel is, so `skid` is `null`.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     const nativeVehicle = this.nativeVehicle;
@@ -252,12 +298,15 @@ export class Rapier3dRaycastVehicleComponent
     if (!nativeVehicle.wheelIsInContact(wheelIndex) || !point || !normal) {
       return null;
     }
+    const castPoint = Pnt3.clone(point);
+    const groundNormal = Pnt3.clone(normal);
+    const carried = Pnt3.sub(this.toCurrentPose(castPoint), castPoint);
     return buildWheelContact({
-      point: this.toCurrentPose(Pnt3.clone(point)),
-      normal: Pnt3.clone(normal),
+      point: Pnt3.add(castPoint, Pnt3.sub(carried, Pnt3.scalarMult(groundNormal, Pnt3.dot(carried, groundNormal)))),
+      normal: groundNormal,
       // every wheel's axle in chassis space is +X (see `addWheel`)
       steering: nativeVehicle.wheelSteering(wheelIndex) ?? 0,
-      chassisRotation: this.rotation,
+      chassisRotation: this.chassisPose().rotation,
       linearVelocity: this.linearVelocity,
       angularVelocity: this.angularVelocity,
       centerOfMass: Pnt3.clone(this._nativeBody!.worldCom()),
@@ -289,7 +338,7 @@ export class Rapier3dRaycastVehicleComponent
     if (!this.nativeVehicle) {
       return { position: Pnt3.O, rotation: Qtrn.O };
     }
-    const chassisRotation = this.rotation;
+    const chassisRotation = this.chassisPose().rotation;
 
     const hardPoint = this.nativeVehicle.wheelHardPoint(wheelIndex);
     const directionCs = this.nativeVehicle.wheelDirectionCs(wheelIndex);

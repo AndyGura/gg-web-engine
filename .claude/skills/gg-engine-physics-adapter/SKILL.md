@@ -334,15 +334,22 @@ derives the rest the same way for every adapter (axle projected onto the contact
 lever arm, suspension force clamped to `[0, max]` - engines store the spring force before they
 clamp it). Every input must describe the chassis at the same moment: an engine whose vehicle
 update casts the wheel rays before the step moves the chassis has to carry the stored contact point
-(and the wheel's hard point, for `getWheelTransform`) along with the chassis to its current pose.
+along with the chassis' motion in the ground plane (the chassis moving along the normal, on its
+springs or landing, does not move the ground), and the wheel's hard point, for
+`getWheelTransform`, along with the chassis' full motion to its current pose. Wheel contact state
+must not outlive the vehicle's time in the world: a removed vehicle, a disposed one (without
+touching freed native handles) and a re-added one before its first step all report no contact.
 `skid` is the native "share of the needed grip the tyre gave" where the library reports one, `null`
 where it does not; never invent it from other values. A wheel "on the ground" flag that some later
 call resets (a wheel-transform update) can't be the contact test: entities read the wheel
 transforms every tick after the step. The 3D contract suite (`raycast vehicle`) checks units and
 axes: the loads of a resting car add up to its weight, a slide toward the car's right is positive,
 the steered axle turns with the steering and stays perpendicular to the normal on a rolled chassis,
-the reported force never exceeds `maxSuspensionForce`, wheels and contact points stay under their
-chassis corners at 30 m/s, contacts survive a `getWheelTransform` call and vanish on removal.
+a low `maxSuspensionForce` caps the force the engine applies (the chassis bottoms out) and the
+reported force, wheels and contact points stay under their chassis corners at 30 m/s, contact
+points stay on the ground while the chassis drops onto its springs, contacts survive a
+`getWheelTransform` call, and none are reported after removal, disposal, or a re-add before the
+next step.
 
 ## Character controller component (3D only)
 

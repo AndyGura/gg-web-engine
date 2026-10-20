@@ -82,6 +82,7 @@ export class AmmoRaycastVehicleComponent
       );
     }
     this.addedToWorld = true;
+    this.clearWheelContacts();
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
@@ -92,6 +93,7 @@ export class AmmoRaycastVehicleComponent
 
   removeFromWorld(world: AmmoGgWorld, dispose?: boolean) {
     this.addedToWorld = false;
+    this.clearWheelContacts();
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
     this.world.raycastVehicles.delete(this);
@@ -191,8 +193,20 @@ export class AmmoRaycastVehicleComponent
   }
 
   /**
-   * `m_groundObject` of the last step's ray. Only `rayCast` clears it, and nothing casts once the
-   * vehicle's action is out of the world, so a removed vehicle reports no ground instead.
+   * Clears every wheel's `m_groundObject`, which only Bullet's `rayCast` otherwise writes: from
+   * removal until the first step after an add, the wheels report no ground instead of the contact
+   * of the last step before removal, wherever the chassis has been moved since.
+   */
+  private clearWheelContacts(): void {
+    for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
+      this.nativeVehicle.getWheelInfo(i).get_m_raycastInfo().set_m_groundObject(0);
+    }
+  }
+
+  /**
+   * `m_groundObject` of the last step's ray (cleared on add and removal, see
+   * `clearWheelContacts`). A removed vehicle reports no ground without reading `nativeVehicle`,
+   * which `removeFromWorld(world, true)` has freed.
    */
   isWheelTouchesGround(wheelIndex: number): boolean {
     return (
@@ -209,7 +223,13 @@ export class AmmoRaycastVehicleComponent
    * moment.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
-    if (wheelIndex < 0 || wheelIndex >= this.nativeVehicle.getNumWheels() || !this.isWheelTouchesGround(wheelIndex)) {
+    // `addedToWorld` first: `removeFromWorld(world, true)` frees `nativeVehicle`
+    if (
+      !this.addedToWorld ||
+      wheelIndex < 0 ||
+      wheelIndex >= this.nativeVehicle.getNumWheels() ||
+      !this.isWheelTouchesGround(wheelIndex)
+    ) {
       return null;
     }
     const wheelInfo = this.nativeVehicle.getWheelInfo(wheelIndex);

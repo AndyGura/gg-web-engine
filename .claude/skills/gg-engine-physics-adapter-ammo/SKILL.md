@@ -750,10 +750,13 @@ the spring's force before `updateVehicle` clamps it to `m_maxSuspensionForce` fo
 Bullet runs the vehicle action after integrating the chassis, so the contact point and the
 chassis' pose and velocities read after `simulate()` are from the same moment.
 
-`m_groundObject` is cleared only by `rayCast`, which nothing calls once `removeFromWorld` took the
-vehicle's action out of the world, so it keeps the last step's contact. `isWheelTouchesGround` (and
-with it `getWheelContact`) therefore also checks `addedToWorld`: a removed vehicle has no wheel on
-the ground.
+`m_groundObject` is written only by `rayCast`, which nothing calls while the vehicle's action is
+out of the world, so it would keep the last step's contact through a removal and, after a re-add,
+until the next step - at the old location, wherever the chassis has been moved since.
+`addToWorld` and `removeFromWorld` therefore clear it on every wheel (`clearWheelContacts`,
+`set_m_groundObject(0)`). `isWheelTouchesGround` and `getWheelContact` also check `addedToWorld`
+before reading anything native: `removeFromWorld(world, true)` frees `nativeVehicle`, and an embind
+call on a freed object reads freed WASM memory instead of throwing.
 
 **The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
 only iterates the world's bodies, so a force/torque applied to a body outside the world (before
