@@ -330,7 +330,7 @@ the last `simulate()`, and `null` in the air or for an index that is not a wheel
 point, normal and suspension force from the native wheel. Compute the rest the same way in every
 adapter: the axle is chassis `+X` turned by the wheel's steering about chassis `+Z`, then by the
 chassis rotation; the velocity is `linearVelocity + angularVelocity × (point − world centre of
-mass)`. `skid` is the native "share of the needed grip the tyre gave" (Bullet's `m_skidInfo`) where
+mass)`. `skid` is the native "share of the needed grip the tyre gave" where
 the library reports one, `null` where it does not; never invent it from other values. The 3D
 contract suite (`raycast vehicle`) checks units and axes: the loads of a resting car add up to its
 weight, a slide toward the car's right is positive, the steered axle turns with the steering.

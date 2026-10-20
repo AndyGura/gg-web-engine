@@ -764,9 +764,9 @@ colliders (see below) and has no such offset.
 reads the native wheel first and falls back to the entry while the vehicle is out of a world.
 
 `getWheelContact(i)` reads `wheelIsInContact`, `wheelContactPoint`, `wheelContactNormal` and
-`wheelSuspensionForce` (Newtons, like Bullet's) of the last `updateVehicle`, i.e. the last substep,
-and the world centre of mass from `worldCom()`. `skid` is `null`: the controller keeps Bullet's skid
-info internally but the JS bindings expose no getter, and `wheelForwardImpulse`/`wheelSideImpulse`
+`wheelSuspensionForce` (Newtons) of the last `updateVehicle`, i.e. the last substep,
+and the world centre of mass from `worldCom()`. `skid` is `null`: the controller keeps a skid value
+internally but the JS bindings expose no getter, and `wheelForwardImpulse`/`wheelSideImpulse`
 are read after the controller has already scaled them down to the grip limit, so how far over the
 grip the wheel was cannot be recovered from them.
 
