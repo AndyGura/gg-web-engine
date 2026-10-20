@@ -25,6 +25,9 @@ type WheelEntry = {
   suspension: SuspensionOptions;
   /** Newtons - see `Rapier3dRaycastVehicleComponent.applyBrake()` */
   brakeForce: number;
+  /** Radians, as last set (`setSteering`), and as the last `updateVehicle` used it. */
+  steering: number;
+  stepSteering: number;
 };
 
 /**
@@ -39,10 +42,11 @@ type WheelEntry = {
  * Because the rays are cast before the step, everything `updateVehicle` stores in world space (each
  * wheel's hard point and contact point) is where the chassis *was* before the last step: at 30 m/s
  * and 10 ms steps, 0.3 m behind it. `stepVehicleController` records the chassis pose the rays were
- * cast from, and `getWheelContact`/`getWheelTransform` carry those points along with the chassis to
- * its current pose (`toCurrentPose`), so they match the chassis' position and velocities. A contact
- * point moves with the chassis' motion along the ground only: the chassis moving along the ground
- * normal (on its springs, or landing) leaves the ground where it is.
+ * cast from (`castPose`), and `getWheelContact`/`getWheelTransform` carry those points along with
+ * the chassis to its current pose (`toCurrentPose`), so they match the chassis' position and
+ * velocities. The ground stays where it is: a contact point is where the wheel's ray, carried to the
+ * current pose, meets the ground plane the cast found, so the chassis moving along the ground
+ * normal (on its springs, or landing) leaves it on the ground.
  *
  * Like `Rapier3dCharacterControllerComponent`/`Rapier3dTriggerComponent`, this class and
  * `Rapier3dWorldComponent` import each other (the world needs this class purely as a type for its
@@ -63,40 +67,19 @@ export class Rapier3dRaycastVehicleComponent
   private readonly wheels: WheelEntry[] = [];
 
   /** The chassis pose of the last `updateVehicle` call, i.e. the pose its wheel rays were cast from. */
-  private castPosition: Point3 | null = null;
-  private castRotation: Point4 | null = null;
+  private castPose: { position: Point3; rotation: Point4 } | null = null;
 
   /**
-   * The chassis' current pose and the rotation from the cast pose to it (`sinceCast`), for
-   * `toCurrentPose`. Every wheel's `getWheelTransform`/`getWheelContact` needs them, so they are
-   * read from the native body once and kept until the chassis moves: cleared before every step
-   * (`stepVehicleController`) and by every `position`/`rotation` write.
+   * Set by `resetSuspension()` until the next `updateVehicle`: the contacts of the last cast belong
+   * to where the chassis was before the reset (a teleport), so the wheels report no ground.
    */
-  private currentPose: { position: Point3; rotation: Point4; sinceCast: Point4 } | null = null;
+  private wheelContactsReset = false;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     private chassisBody: Rapier3dRigidBodyComponent,
   ) {
     super(world, ...chassisBody.factoryProps);
-  }
-
-  public get position(): Point3 {
-    return super.position;
-  }
-
-  public set position(value: Point3) {
-    super.position = value;
-    this.currentPose = null;
-  }
-
-  public get rotation(): Point4 {
-    return super.rotation;
-  }
-
-  public set rotation(value: Point4) {
-    super.rotation = value;
-    this.currentPose = null;
   }
 
   get wheelSpeed(): number {
@@ -141,9 +124,8 @@ export class Rapier3dRaycastVehicleComponent
       this._nativeVehicle.free();
       this._nativeVehicle = null;
     }
-    this.castPosition = null;
-    this.castRotation = null;
-    this.currentPose = null;
+    this.castPose = null;
+    this.wheelContactsReset = false;
     super.removeFromWorld(world, dispose);
   }
 
@@ -169,11 +151,11 @@ export class Rapier3dRaycastVehicleComponent
     // 144 FPS for the same value). The impulse of a force over this tick is force × dt.
     for (let i = 0; i < this.wheels.length; i++) {
       this._nativeVehicle.setWheelBrake(i, this.wheels[i].brakeForce * dt);
+      this.wheels[i].stepSteering = this.wheels[i].steering;
     }
     // `updateVehicle` changes the chassis' velocities only, so this is the pose it casts from
-    this.castPosition = this.position;
-    this.castRotation = this.rotation;
-    this.currentPose = null;
+    this.castPose = { position: this.position, rotation: this.rotation };
+    this.wheelContactsReset = false;
     this._nativeVehicle.updateVehicle(dt, QueryFilterFlags.EXCLUDE_SENSORS, this.collisionGroups);
   }
 
@@ -192,6 +174,7 @@ export class Rapier3dRaycastVehicleComponent
     // Rapier's vehicle controller has no roll influence, so `WheelOptions.rollInfluence` is ignored
     // here (see its doc); side grip is its own option.
     nativeVehicle.setWheelSideFrictionStiffness(i, wheel.options.sideFrictionStiffness ?? 1);
+    nativeVehicle.setWheelSteering(i, wheel.steering);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
@@ -216,6 +199,8 @@ export class Rapier3dRaycastVehicleComponent
       options,
       suspension: suspensionOptions,
       brakeForce: 0,
+      steering: 0,
+      stepSteering: 0,
     };
     this.wheels.push(wheel);
     if (this._nativeVehicle) {
@@ -238,6 +223,12 @@ export class Rapier3dRaycastVehicleComponent
   }
 
   setSteering(wheelIndex: number, steering: number): void {
+    const wheel = this.wheels[wheelIndex];
+    if (!wheel) {
+      return;
+    }
+    // kept on the entry too, for `getWheelContact` (see `stepSteering`) and a re-add (`attachWheel`)
+    wheel.steering = steering;
     this.nativeVehicle?.setWheelSteering(wheelIndex, steering);
   }
 
@@ -253,60 +244,75 @@ export class Rapier3dRaycastVehicleComponent
     }
   }
 
+  /** `false` from a `resetSuspension()` until the next step, as on removal. */
   isWheelTouchesGround(wheelIndex: number): boolean {
-    return this.nativeVehicle?.wheelIsInContact(wheelIndex) ?? false;
+    return !this.wheelContactsReset && (this.nativeVehicle?.wheelIsInContact(wheelIndex) ?? false);
   }
 
-  /** See `currentPose`. */
+  /**
+   * The chassis' current pose and the rotation from the cast pose to it (`sinceCast`), for
+   * `toCurrentPose`. Read from the native body on every call, so any pose write, through the
+   * `position`/`rotation` setters or `nativeBody` itself, shows at once.
+   */
   private chassisPose(): { position: Point3; rotation: Point4; sinceCast: Point4 } {
-    if (!this.currentPose) {
-      const rotation = this.rotation;
-      this.currentPose = {
-        position: this.position,
-        rotation,
-        sinceCast: this.castRotation ? Qtrn.mult(rotation, Qtrn.conjugate(this.castRotation)) : Qtrn.O,
-      };
-    }
-    return this.currentPose;
+    const rotation = this.rotation;
+    return {
+      position: this.position,
+      rotation,
+      sinceCast: this.castPose ? Qtrn.mult(rotation, Qtrn.conjugate(this.castPose.rotation)) : Qtrn.O,
+    };
   }
 
   /**
    * Moves a world-space point `updateVehicle` stored from the chassis pose it cast from to the
-   * chassis' current pose - see this class's own doc.
+   * chassis' current pose `pose` - see this class's own doc.
    */
-  private toCurrentPose(point: Point3): Point3 {
-    if (!this.castPosition) {
+  private toCurrentPose(point: Point3, pose: { position: Point3; sinceCast: Point4 }): Point3 {
+    if (!this.castPose) {
       return point;
     }
-    const pose = this.chassisPose();
-    return Pnt3.add(Pnt3.rot(Pnt3.sub(point, this.castPosition), pose.sinceCast), pose.position);
+    return Pnt3.add(Pnt3.rot(Pnt3.sub(point, this.castPose.position), pose.sinceCast), pose.position);
   }
 
   /**
    * Reads the controller's contact point, normal and suspension force of the last `updateVehicle`,
-   * with the point moved along the ground plane by the chassis' motion since (see this class's own
-   * doc). The normal is the ground's and stays as cast. Rapier does not report how far over its
-   * grip a wheel is, so `skid` is `null`.
+   * and the steering it used (`stepSteering`). The point is carried to the chassis' current pose
+   * and put back on the ground: where the wheel's ray, as the chassis now holds it, meets the
+   * ground plane through the cast contact (see this class's own doc). The normal is the ground's
+   * and stays as cast. Rapier does not report how far over its grip a wheel is, so `skid` is
+   * `null`.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     const nativeVehicle = this.nativeVehicle;
-    if (!nativeVehicle || wheelIndex < 0 || wheelIndex >= nativeVehicle.numWheels()) {
+    const wheel = this.wheels[wheelIndex];
+    if (!nativeVehicle || !wheel || wheelIndex >= nativeVehicle.numWheels() || !this.isWheelTouchesGround(wheelIndex)) {
       return null;
     }
     const point = nativeVehicle.wheelContactPoint(wheelIndex);
     const normal = nativeVehicle.wheelContactNormal(wheelIndex);
-    if (!nativeVehicle.wheelIsInContact(wheelIndex) || !point || !normal) {
+    if (!point || !normal) {
       return null;
     }
     const castPoint = Pnt3.clone(point);
     const groundNormal = Pnt3.clone(normal);
-    const carried = Pnt3.sub(this.toCurrentPose(castPoint), castPoint);
+    const pose = this.chassisPose();
+    const carried = this.toCurrentPose(castPoint, pose);
+    // the carried point is on the wheel's current ray; slide it along that ray back onto the
+    // ground plane (along the normal instead for a ray nearly parallel to the ground, which would
+    // otherwise meet the plane far away)
+    const offGround = Pnt3.dot(Pnt3.sub(carried, castPoint), groundNormal);
+    const rayDirection = Pnt3.rot(Pnt3.clone(wheel.directionCs), pose.rotation);
+    const rayAlongNormal = Pnt3.dot(rayDirection, groundNormal);
+    const onGround =
+      Math.abs(rayAlongNormal) > 0.1
+        ? Pnt3.sub(carried, Pnt3.scalarMult(rayDirection, offGround / rayAlongNormal))
+        : Pnt3.sub(carried, Pnt3.scalarMult(groundNormal, offGround));
     return buildWheelContact({
-      point: Pnt3.add(castPoint, Pnt3.sub(carried, Pnt3.scalarMult(groundNormal, Pnt3.dot(carried, groundNormal)))),
+      point: onGround,
       normal: groundNormal,
       // every wheel's axle in chassis space is +X (see `addWheel`)
-      steering: nativeVehicle.wheelSteering(wheelIndex) ?? 0,
-      chassisRotation: this.chassisPose().rotation,
+      steering: wheel.stepSteering,
+      chassisRotation: pose.rotation,
       linearVelocity: this.linearVelocity,
       angularVelocity: this.angularVelocity,
       centerOfMass: Pnt3.clone(this._nativeBody!.worldCom()),
@@ -338,7 +344,8 @@ export class Rapier3dRaycastVehicleComponent
     if (!this.nativeVehicle) {
       return { position: Pnt3.O, rotation: Qtrn.O };
     }
-    const chassisRotation = this.chassisPose().rotation;
+    const pose = this.chassisPose();
+    const chassisRotation = pose.rotation;
 
     const hardPoint = this.nativeVehicle.wheelHardPoint(wheelIndex);
     const directionCs = this.nativeVehicle.wheelDirectionCs(wheelIndex);
@@ -346,7 +353,10 @@ export class Rapier3dRaycastVehicleComponent
     let position = Pnt3.O;
     if (hardPoint && directionCs) {
       const worldDirection = Pnt3.rot(Pnt3.clone(directionCs), chassisRotation);
-      position = Pnt3.add(this.toCurrentPose(Pnt3.clone(hardPoint)), Pnt3.scalarMult(worldDirection, suspensionLength));
+      position = Pnt3.add(
+        this.toCurrentPose(Pnt3.clone(hardPoint), pose),
+        Pnt3.scalarMult(worldDirection, suspensionLength),
+      );
     }
 
     const axleCs = this.nativeVehicle.wheelAxleCs(wheelIndex);
@@ -359,13 +369,16 @@ export class Rapier3dRaycastVehicleComponent
     return { position, rotation };
   }
 
+  /**
+   * Rapier doesn't expose a settable "current suspension length" (only the rest length/travel
+   * bounds that shape it), so the suspension itself is left alone: the next `stepVehicleController`
+   * re-derives every wheel's suspension length from a fresh ray-cast against the vehicle's (by then
+   * already reset) position, so a teleport/respawn recovers within one step. The wheels' contacts
+   * are dropped until that step (`wheelContactsReset`): carried to the new pose, they would report
+   * the old ground's plane under it.
+   */
   resetSuspension(): void {
-    // No native equivalent: Rapier doesn't expose a settable "current suspension length" (only the
-    // rest length/travel bounds that shape it). Not load-bearing, either - the very next
-    // `stepVehicleController` tick re-derives every wheel's suspension length from a fresh ray-cast
-    // against the vehicle's (by then already reset) position, so a teleport/respawn recovers on its
-    // own within one tick without this. Kept as a documented no-op purely for interface conformance,
-    // same spirit as other best-effort gaps in this file.
+    this.wheelContactsReset = true;
   }
 
   public clone(): Rapier3dRaycastVehicleComponent {

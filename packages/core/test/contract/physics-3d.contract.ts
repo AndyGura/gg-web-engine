@@ -526,6 +526,65 @@ export function describePhysics3dContract(
         expect(touching).toBeGreaterThan(0);
       });
 
+      it('keeps every contact point on its wheel ray and on the ground while a rolled chassis lands', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.rotation = Qtrn.rotAround(Qtrn.O, Pnt3.Y, 0.3);
+        vehicle.angularVelocity = { x: 0, y: 0, z: 0 };
+        // falling and sliding sideways: the ray tilted against the ground normal slides along it
+        vehicle.linearVelocity = { x: 3, y: 0, z: -4 };
+        simulate(1 / 60);
+        const rayDirection = Pnt3.rot(Pnt3.nZ, vehicle.rotation);
+        let touching = 0;
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i);
+          if (!contact) {
+            continue;
+          }
+          touching++;
+          const wheel = vehicle.getWheelTransform(i).position;
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.005);
+          // on the ray through the wheel's centre (the ground itself is only checked to 5 mm above)
+          expect(Pnt3.len(Pnt3.cross(Pnt3.sub(contact.point, wheel), rayDirection))).toBeLessThan(1e-4);
+        }
+        expect(touching).toBeGreaterThan(0);
+      });
+
+      it('builds the axle from the steering the last step used', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.setSteering(0, 0.3);
+        simulate(1 / 60);
+        // steering set after the step, before the contact is read
+        vehicle.setSteering(0, -0.3);
+        const axle = vehicle.getWheelContact(0)!.axle;
+        expect(axle.x).toBeCloseTo(Math.cos(0.3), 2);
+        expect(axle.y).toBeCloseTo(Math.sin(0.3), 2);
+        simulate(1 / 60);
+        expect(vehicle.getWheelContact(0)!.axle.y).toBeCloseTo(-Math.sin(0.3), 2);
+      });
+
+      it('reports no contact after a teleport with resetSuspension until the next step', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        expect(vehicle.getWheelContact(0)).not.toBeNull();
+        // `RaycastVehicle3dEntity.resetTo`: a respawn in the air
+        vehicle.position = { x: 10, y: 10, z: 20 };
+        vehicle.resetMotion();
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+        // a respawn on the ground: the next step finds it again
+        vehicle.position = { x: 10, y: 10, z: 0.5 };
+        vehicle.resetMotion();
+        expect(vehicle.getWheelContact(0)).toBeNull();
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)).not.toBeNull();
+        }
+      });
+
       it('reports the suspension force the engine applied, capped at maxSuspensionForce', () => {
         // 4 × 1000 N carries about half of the car's weight: the springs give way, the chassis lies
         // on the ground, and every wheel pushes with its full 1000 N

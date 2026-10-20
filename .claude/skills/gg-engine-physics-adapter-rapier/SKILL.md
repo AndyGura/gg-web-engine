@@ -779,25 +779,38 @@ before the step, while `translation()`/`rotation()`/`linvel()`/`worldCom()` read
 pose after it: taken as stored, both sit behind the chassis by speed × substep length (0.25 m at
 30 m/s with 60 FPS frames), and the velocity at the contact point gets a wrong lever arm.
 `stepVehicleController` records the chassis translation and rotation right before `updateVehicle`
-(`castPosition`/`castRotation`; `updateVehicle` only writes velocities, so that is the pose the rays
-are cast from), and `toCurrentPose(p)` carries a stored point from that pose to the current one.
-`getWheelTransform` applies it to the hard point as is. `getWheelContact` keeps only the part of
-that displacement perpendicular to the contact normal: the chassis moving along the normal (on its
-springs, or still falling during the first contact substep of a landing, which the capped wheel
-impulse slows by well under 1 m/s) moves toward the ground, not the ground with it, so the full
-transform would put the point centimetres under the road. The contact normal is the ground's and
-stays as cast. Calling `updateVehicle` after `world.step()` instead would also line them up, but it
-changes the simulation (inputs act one substep later). Regressions: the 3D contract suite's
-`raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner at
-30 m/s) and "drops onto its springs" test (contact points stay at ground height).
+(`castPose`; `updateVehicle` only writes velocities, so that is the pose the rays are cast from),
+and `toCurrentPose(p, pose)` carries a stored point from that pose to the current one.
+`getWheelTransform` applies it to the hard point as is. The carried contact point is on the
+wheel's current ray but off the ground whenever the chassis moved along the normal (on its springs,
+or still falling during the first contact substep of a landing, which the capped wheel impulse
+slows by well under 1 m/s): the ground doesn't move with the chassis. `getWheelContact` slides it
+along the current ray (`wheelDirectionCs` rotated by the current rotation) back onto the ground
+plane through the cast contact. Projecting it straight onto the plane along the normal instead is
+only right while the ray is parallel to the normal: on a rolled chassis landing while sliding
+sideways it left the point 0.5 mm off the wheel's ray. For a ray within ~6° of the ground plane the
+intersection runs far away, so that case falls back to the projection. The contact normal is the
+ground's and stays as cast. Calling `updateVehicle` after `world.step()` instead would also line
+them up, but it changes the simulation (inputs act one substep later). Regressions: the 3D contract
+suite's `raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner
+at 30 m/s), "drops onto its springs" test (contact points stay at ground height) and "rolled
+chassis lands" test (contact point on the wheel's ray to 0.1 mm).
 
-The current pose and the cast-to-current rotation (`currentPose`, built by `chassisPose()`) are read
-from the native body once and shared by every wheel's `getWheelTransform`/`getWheelContact` call.
-The cache is cleared wherever the chassis can move: in `stepVehicleController` (before each
-`world.step()`, and nothing reads it between the two), in `removeFromWorld`, and in the
-`position`/`rotation` setters, which this class overrides (delegating to `super`) for that alone.
-Moving the chassis through `nativeBody` directly bypasses the setters and leaves the cache stale
-until the next step.
+The chassis pose (`chassisPose()`) is read from the native body on every
+`getWheelTransform`/`getWheelContact` call, not cached between steps: a cache cleared only by this
+class's own setters left the wheel meshes at the old pose after a write through `nativeBody`
+(`rapier-3d-raycast-vehicle.component.spec.ts`, "write through nativeBody").
+
+`getWheelContact`'s axle uses each wheel's `stepSteering`, the `steering` value `setSteering`
+stored on the `WheelEntry`, copied by `stepVehicleController` right before `updateVehicle`: an app
+steering between `simulate()` and reading the contact must not turn the axle of a contact the step
+produced with the old steering. `attachWheel` also restores the stored steering, so a re-added
+vehicle keeps its wheels' steering like its other wheel settings.
+
+`resetSuspension()` (called by `resetMotion()`, so by `RaycastVehicle3dEntity.resetTo` and a network
+snap) sets `wheelContactsReset` until the next `stepVehicleController`: `isWheelTouchesGround` reads
+`false` and `getWheelContact` returns `null`. Without it, a teleported chassis carried its old
+contacts to the new pose, on the old ground's plane, and reported them as touching.
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
@@ -1002,11 +1015,12 @@ as a known limitation rather than chasing exactness, same spirit as
 sound (all four wheels sit at their configured corner offsets and translate/rotate along with the
 chassis) and visually plausible in the `3d/raycast-vehicle` example.
 
-**`resetSuspension()` is a documented no-op.** Rapier exposes no way to directly set a wheel's *current*
-suspension length (only the rest length/travel bounds that shape it). Not load-bearing here, either -
-the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
+**`resetSuspension()` leaves the suspension alone.** Rapier exposes no way to directly set a wheel's
+*current* suspension length (only the rest length/travel bounds that shape it). Not load-bearing here,
+either - the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
 fresh ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
-within one tick even without an explicit reset.
+within one tick even without an explicit reset. It only drops the wheel contacts until that tick (see
+`getWheelContact` above).
 
 **`clone()` must also re-add every wheel.** An earlier version's `clone()` only forwarded the chassis
 body, producing a vehicle with zero wheels - `addWheel` must be replayed for each entry in this

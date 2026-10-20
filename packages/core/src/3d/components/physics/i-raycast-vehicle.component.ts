@@ -66,9 +66,9 @@ export type WheelContact = {
   /** The ground's unit normal at `point`, in world coordinates. */
   normal: Point3;
   /**
-   * The wheel's axle as a unit vector in world coordinates, steering included and laid into the
-   * ground plane (perpendicular to `normal`): the direction the tyre's sideways grip pushes along.
-   * It points to the car's right (`+X` of the chassis when the wheel is straight).
+   * The wheel's axle as a unit vector in world coordinates, with the steering the last step used,
+   * laid into the ground plane (perpendicular to `normal`): the direction the tyre's sideways grip
+   * pushes along. It points to the car's right (`+X` of the chassis when the wheel is straight).
    */
   axle: Point3;
   /**
@@ -79,9 +79,12 @@ export type WheelContact = {
   velocity: Point3;
   /**
    * `velocity` along `axle`, in m/s: how fast the wheel slides sideways over the ground, positive
-   * toward the car's right. A raycast vehicle's wheels always roll with the ground, so this is the
-   * slide that cornering beyond the grip, drifting or a side hit produce; the chassis bouncing or
-   * rolling on its springs moves along `normal` and does not count.
+   * toward the car's right - the sideways motion the engines' tyre friction pushes against. A
+   * raycast vehicle's wheels always roll with the ground, so this is mostly the slide that
+   * cornering beyond the grip, drifting or a side hit produce. The chassis bouncing on its springs
+   * moves along `normal` and pitching moves the contact forward or back, so neither counts. Body
+   * roll does: rolling at `ω` rad/s moves a contact `h` m below the centre of mass sideways at
+   * `ω × h` m/s (about 0.15 m/s for a hard turn-in, 0.3 rad/s at 0.5 m), well under a sliding tyre.
    */
   sideSlipSpeed: number;
   /**
@@ -203,6 +206,11 @@ export interface IRaycastVehicleComponent<
   /**
    * Where and how the wheel touches the ground after the last `simulate()` step, or `null` while
    * it does not (it is in the air, or `wheelIndex` is not a wheel). See `WheelContact`.
+   *
+   * `null`, like `isWheelTouchesGround`, from `resetSuspension()` (which `resetMotion()` and
+   * `RaycastVehicle3dEntity.resetTo` call) until the next step, and while the vehicle is out of a
+   * world or after it is added until the next step: those contacts are of a pose the chassis has
+   * left. Moving the chassis through `position`/`rotation` alone does not clear them.
    */
   getWheelContact(wheelIndex: number): WheelContact | null;
 
@@ -211,6 +219,10 @@ export interface IRaycastVehicleComponent<
     rotation: Point4;
   };
 
+  /**
+   * After a teleport: settles the suspension for the new pose as far as the engine allows, and
+   * drops the wheels' contacts until the next step (see `getWheelContact`).
+   */
   resetSuspension(): void;
 
   clone(): IRaycastVehicleComponent;

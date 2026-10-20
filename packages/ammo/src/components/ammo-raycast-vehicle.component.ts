@@ -31,6 +31,10 @@ export class AmmoRaycastVehicleComponent
   /** Brake force of every wheel, in Newtons - see `applyBrake()`. */
   protected readonly brakeForces: number[] = [];
 
+  /** Steering of every wheel as last set, and as the last step used it - see `prepareStep()`. */
+  protected readonly steering: number[] = [];
+  protected readonly stepSteering: number[] = [];
+
   get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.interactWithCollisionGroups;
   }
@@ -93,7 +97,6 @@ export class AmmoRaycastVehicleComponent
 
   removeFromWorld(world: AmmoGgWorld, dispose?: boolean) {
     this.addedToWorld = false;
-    this.clearWheelContacts();
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
     this.world.raycastVehicles.delete(this);
@@ -148,6 +151,8 @@ export class AmmoRaycastVehicleComponent
     // copied into the wheel by addWheel
     Ammo.destroy(connectionPoint);
     this.brakeForces.push(0);
+    this.steering.push(0);
+    this.stepSteering.push(0);
   }
 
   setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void {
@@ -160,6 +165,9 @@ export class AmmoRaycastVehicleComponent
 
   setSteering(wheelIndex: number, steering: number): void {
     this.nativeVehicle.setSteeringValue(steering, wheelIndex);
+    if (wheelIndex >= 0 && wheelIndex < this.steering.length) {
+      this.steering[wheelIndex] = steering;
+    }
   }
 
   applyEngineForce(wheelIndex: number, force: number): void {
@@ -168,7 +176,7 @@ export class AmmoRaycastVehicleComponent
 
   /**
    * Stores the brake force (Newtons); `AmmoWorldComponent.simulate()` hands it to Bullet before
-   * every step - see `applyBrakeImpulses()`.
+   * every step - see `prepareStep()`.
    */
   applyBrake(wheelIndex: number, force: number): void {
     if (wheelIndex >= 0 && wheelIndex < this.brakeForces.length) {
@@ -177,25 +185,31 @@ export class AmmoRaycastVehicleComponent
   }
 
   /**
-   * Converts every wheel's brake force into what Bullet's `setBrake` takes: the maximum impulse
-   * the wheel's braking may apply in one internal substep (`btRaycastVehicle::updateFriction`
+   * Called by `AmmoWorldComponent.simulate()` right before `stepSimulation`, whose substeps all
+   * have exactly `subStepLength` seconds.
+   *
+   * Records the steering the step uses, for `getWheelContact`'s axle: steering set after the step
+   * must not turn the axle of a contact the step produced with the old steering.
+   *
+   * Converts every wheel's brake force into what Bullet's `setBrake` takes: the maximum impulse the
+   * wheel's braking may apply in one internal substep (`btRaycastVehicle::updateFriction`
    * clamps the wheel's rolling impulse to `m_brake`), i.e. `force × substep length`. Passing the
    * force through unconverted brakes harder the shorter the substeps are, which is the case at a
    * higher frame rate (`AmmoWorldComponent.simulate()` splits each frame into substeps of 5-10 ms
    * depending on the frame's length): a 1.5 t car braked at 3.4 g at 50 FPS and 5 g at 144 FPS
-   * with the same values. Called by `AmmoWorldComponent.simulate()` right before
-   * `stepSimulation`, whose substeps all have exactly `subStepLength` seconds.
+   * with the same values.
    */
-  applyBrakeImpulses(subStepLength: number): void {
+  prepareStep(subStepLength: number): void {
     for (let i = 0; i < this.brakeForces.length; i++) {
       this.nativeVehicle.setBrake(this.brakeForces[i] * subStepLength, i);
+      this.stepSteering[i] = this.steering[i];
     }
   }
 
   /**
-   * Clears every wheel's `m_groundObject`, which only Bullet's `rayCast` otherwise writes: from
-   * removal until the first step after an add, the wheels report no ground instead of the contact
-   * of the last step before removal, wherever the chassis has been moved since.
+   * Clears every wheel's `m_groundObject`, which only Bullet's `rayCast` otherwise writes: after an
+   * add or a `resetSuspension()`, the wheels report no ground until the next step instead of the
+   * contact of the last step, wherever the chassis has been moved since.
    */
   private clearWheelContacts(): void {
     for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
@@ -204,7 +218,7 @@ export class AmmoRaycastVehicleComponent
   }
 
   /**
-   * `m_groundObject` of the last step's ray (cleared on add and removal, see
+   * `m_groundObject` of the last step's ray (cleared on add and by `resetSuspension()`, see
    * `clearWheelContacts`). A removed vehicle reports no ground without reading `nativeVehicle`,
    * which `removeFromWorld(world, true)` has freed.
    */
@@ -216,33 +230,34 @@ export class AmmoRaycastVehicleComponent
 
   /**
    * Reads the wheel's `m_raycastInfo` (contact point and normal), `m_wheelsSuspensionForce` and
-   * `m_skidInfo`, all written by the last step. Contact is `m_groundObject`, like
-   * `isWheelTouchesGround`, not `m_isInContact`: `updateWheelTransform` (`getWheelTransform`, run by
-   * the entity every tick after the step) resets that flag. Bullet updates the vehicle after
-   * integrating the chassis, so the contact and the chassis' pose and velocities belong to the same
-   * moment.
+   * `m_skidInfo`, all written by the last step, and the steering that step used (`stepSteering`).
+   * Contact is `m_groundObject`, like `isWheelTouchesGround`, not `m_isInContact`:
+   * `updateWheelTransform` (`getWheelTransform`, run by the entity every tick after the step) resets
+   * that flag. Bullet updates the vehicle after integrating the chassis, so the contact and the
+   * chassis' pose and velocities belong to the same moment.
    */
   getWheelContact(wheelIndex: number): WheelContact | null {
     // `addedToWorld` first: `removeFromWorld(world, true)` frees `nativeVehicle`
-    if (
-      !this.addedToWorld ||
-      wheelIndex < 0 ||
-      wheelIndex >= this.nativeVehicle.getNumWheels() ||
-      !this.isWheelTouchesGround(wheelIndex)
-    ) {
+    if (!this.addedToWorld || wheelIndex < 0 || wheelIndex >= this.nativeVehicle.getNumWheels()) {
       return null;
     }
     const wheelInfo = this.nativeVehicle.getWheelInfo(wheelIndex);
     const raycastInfo = wheelInfo.get_m_raycastInfo();
+    if (!(raycastInfo.get_m_groundObject() > 0)) {
+      return null;
+    }
     const p = raycastInfo.get_m_contactPointWS();
     const n = raycastInfo.get_m_contactNormalWS();
-    const c = this.chassisBody.nativeBody.getCenterOfMassPosition();
+    // a rigid body's world transform is its centre of mass frame
+    const transform = this.nativeBody.getWorldTransform();
+    const c = transform.getOrigin();
+    const q = transform.getRotation();
     return buildWheelContact({
       point: { x: p.x(), y: p.y(), z: p.z() },
       normal: { x: n.x(), y: n.y(), z: n.z() },
       // the wheel's axle in chassis space is +X (`wheelAxleCS`)
-      steering: this.nativeVehicle.getSteeringValue(wheelIndex),
-      chassisRotation: this.rotation,
+      steering: this.stepSteering[wheelIndex] ?? 0,
+      chassisRotation: { x: q.x(), y: q.y(), z: q.z(), w: q.w() },
       linearVelocity: this.linearVelocity,
       angularVelocity: this.angularVelocity,
       centerOfMass: { x: c.x(), y: c.y(), z: c.z() },
@@ -268,11 +283,17 @@ export class AmmoRaycastVehicleComponent
     };
   }
 
+  /**
+   * Also clears the wheels' contacts (`clearWheelContacts`): Bullet's `resetSuspension` keeps
+   * `m_groundObject` and overwrites the contact normal, so after a teleport the wheels would report
+   * the old ground with a made-up normal until the next step.
+   */
   resetSuspension(): void {
     this.nativeVehicle.resetSuspension();
     for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
       this.nativeVehicle.updateWheelTransform(i, true);
     }
+    this.clearWheelContacts();
   }
 
   public clone(): AmmoRaycastVehicleComponent {
