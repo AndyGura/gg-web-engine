@@ -76,9 +76,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   public readonly kinematicVelBodies: Set<AmmoRigidBodyComponent> = new Set();
 
   /**
-   * Every currently-in-world raycast vehicle, whose brake forces `simulate()` converts into
-   * Bullet's per-substep brake impulses before stepping (see
-   * `AmmoRaycastVehicleComponent.applyBrakeImpulses()`). Maintained by
+   * Every currently-in-world raycast vehicle, which `simulate()` prepares before stepping: brake
+   * forces into Bullet's per-substep brake impulses, and the steering the step uses (see
+   * `AmmoRaycastVehicleComponent.prepareStep()`). Maintained by
    * `AmmoRaycastVehicleComponent.addToWorld`/`removeFromWorld` - not meant to be written to directly.
    */
   public readonly raycastVehicles: Set<AmmoRaycastVehicleComponent> = new Set();
@@ -152,7 +152,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    * against the camera and changes what `position` means for every consumer. Measured with this
    * package's own raycast vehicle at 30/60/90/100/144 FPS, the variable substep changes vehicle
    * behavior by under 2% (braking distance, cornering yaw, suspension travel on a landing) once
-   * brakes are converted per substep (`AmmoRaycastVehicleComponent.applyBrakeImpulses()`), which
+   * brakes are converted per substep (`AmmoRaycastVehicleComponent.prepareStep()`), which
    * doesn't justify that. An app that needs bit-identical physics across frame rates can use
    * `GgWorld`'s `fixedPhysicsStep` option, which calls `simulate()` with a constant `delta`.
    *
@@ -285,7 +285,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     if (dt > 0 && this._dynamicAmmoWorld) {
       const subStep = dt / subSteps;
       for (const vehicle of this.raycastVehicles) {
-        vehicle.applyBrakeImpulses(subStep);
+        vehicle.prepareStep(subStep);
       }
       // half a substep extra, so Bullet's float accumulator fits exactly `subSteps` substeps
       // (`dt / subStep` alone can round to just below `subSteps`)...

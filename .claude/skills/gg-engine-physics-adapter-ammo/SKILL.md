@@ -732,10 +732,49 @@ contract asks for - no adapter bookkeeping. Two embind details: this build expos
 `applyCentralForce`, so a central force is `applyForce(force, zero rel_pos)`; and `rel_pos` is the
 point relative to the centre of mass in world orientation, so a world point is converted with
 `getCenterOfMassPosition()`. Every call ends in `activate(true)`, as the velocity setters do, or a
-sleeping body ignores the force. `applyBrakeImpulses` and the `kinematicVelBodies` integration in
+sleeping body ignores the force. `prepareStep` and the `kinematicVelBodies` integration in
 `simulate()` are unaffected. `setWheelFrictionSlip`/`getWheelFrictionSlip` on the raycast vehicle
 read/write `getWheelInfo(i).m_frictionSlip`, which `btRaycastVehicle::updateFriction` reads every
 step.
+
+`getWheelContact(i)` reads `m_raycastInfo.m_contactPointWS`/`m_contactNormalWS`,
+`m_wheelsSuspensionForce` (already in Newtons: Bullet multiplies the spring's acceleration by the
+chassis mass) and `m_skidInfo`. It tests contact with `m_groundObject`, as `isWheelTouchesGround`
+does, never `m_raycastInfo.m_isInContact`: `updateWheelTransform`, which `getWheelTransform` calls
+every tick for the wheel meshes, starts with `updateWheelTransformsWS`, and that resets
+`m_isInContact` to `false`, so it reads `false` for every wheel after the first render tick. Don't
+use `m_raycastInfo.m_wheelAxleWS` for the axle either: it is the chassis axle without steering
+(Bullet steers only the wheel transform `updateFriction` builds its own axle from). The values go
+to core's `buildWheelContact` together with `m_maxSuspensionForce`: `m_wheelsSuspensionForce` is
+the spring's force before `updateVehicle` clamps it to `m_maxSuspensionForce` for the impulse.
+Bullet runs the vehicle action after integrating the chassis, so the contact point and the
+chassis' pose and velocities read after `simulate()` are from the same moment.
+
+`m_groundObject` is written only by `rayCast`, which nothing calls while the vehicle's action is
+out of the world, so it would keep the last step's contact through a removal and, after a re-add,
+until the next step - at the old location, wherever the chassis has been moved since. Bullet's own
+`resetSuspension` keeps it too, while it overwrites `m_contactNormalWS` with `-m_wheelDirectionWS`,
+so a teleport (`resetTo`, a network snap) would report the old ground with a made-up normal.
+`addToWorld` and `resetSuspension()` therefore clear it on every wheel (`clearWheelContacts`,
+`set_m_groundObject(0)`). `removeFromWorld` does not touch it: `isWheelTouchesGround` and
+`getWheelContact` check `addedToWorld` before reading anything native, which covers a removed
+vehicle, and `removeFromWorld(world, true)` frees `nativeVehicle` - a second removal writing into it
+would write into freed WASM memory, since an embind call on a freed object doesn't throw. For the
+same reason `dispose()` clears `addedToWorld` itself: a vehicle disposed without a removal would
+otherwise keep reading the freed vehicle.
+
+Bullet checks no wheel index either (`btAssert` is compiled out of this build): `getWheelInfo(4)`
+or `setSteeringValue(v, 4)` on a 4-wheel vehicle reads or writes WASM memory past `m_wheelInfo`
+and returns whatever is there. Every wheel-indexed method goes through `hasWheel(i)` first (a
+setter does nothing, `getWheelFrictionSlip` returns 0, `isWheelTouchesGround` `false`,
+`getWheelContact` `null`).
+
+The axle is built from the steering the last step used, not `getSteeringValue`: an app steering
+between `simulate()` and reading the contact would otherwise turn the axle of a contact the step
+produced with the old steering. `setSteering` mirrors each wheel's value in `steering`, and
+`prepareStep` (called by `simulate()` before `stepSimulation`, see below) copies it to
+`stepSteering`. The chassis rotation and centre of mass come from one `getWorldTransform()` (a
+`btRigidBody`'s world transform is its centre-of-mass frame).
 
 **The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
 only iterates the world's bodies, so a force/torque applied to a body outside the world (before
@@ -790,7 +829,7 @@ but that's equally sensitive to a 5 cm change of drop height at a fixed frame ra
 maximum impulse of one substep (`updateFriction` -> `calcRollingFriction` clamps the wheel's rolling
 impulse to `m_brake`); the engine force, by contrast, is multiplied by the step length inside Bullet
 (`rollingFriction = m_engineForce * timeStep`), so it already is a force. `applyBrake()` stores the
-force (Newtons); `simulate()` calls `applyBrakeImpulses(dt / n)` on every vehicle in
+force (Newtons); `simulate()` calls `prepareStep(dt / n)` on every vehicle in
 `raycastVehicles` right before `stepSimulation`, setting `m_brake = force × substep length` - exact,
 since every substep of one call has that length. Unconverted, a 1549 kg car braked at 3.4 g at 50
 FPS, 4.1 g at 60 and 5 g at 144 with the same values. Note also that Bullet applies a wheel's brake

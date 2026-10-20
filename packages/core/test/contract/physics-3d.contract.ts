@@ -11,7 +11,9 @@ import {
   BodyShape3DDescriptor,
   ICharacterController3dComponent,
   IPhysicsWorld3dComponent,
+  IRaycastVehicleComponent,
   IRigidBody3dComponent,
+  Pnt3,
   Point3,
   Qtrn,
   Shape3DDescriptor,
@@ -375,6 +377,276 @@ export function describePhysics3dContract(
         simulate(1 / 60);
         const result = world.raycast({ from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 0, z: -10 } });
         expect(result.hasHit).toBe(false);
+      });
+    });
+
+    describe('raycast vehicle', () => {
+      const CAR_MASS = 800;
+
+      const WHEEL_POSITIONS: Point3[] = [];
+      for (const isFront of [true, false]) {
+        for (const isLeft of [true, false]) {
+          WHEEL_POSITIONS.push({ x: isLeft ? -0.8 : 0.8, y: isFront ? 1.4 : -1.2, z: 0 });
+        }
+      }
+
+      const car = (position: Point3, maxSuspensionForce?: number): IRaycastVehicleComponent => {
+        const chassis = world.factory.createRigidBody(
+          {
+            shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
+            body: { bodyType: 'dynamic', mass: CAR_MASS, canSleep: false },
+          },
+          { position },
+        );
+        const vehicle = world.factory.createRaycastVehicle(chassis);
+        for (const wheelPosition of WHEEL_POSITIONS) {
+          vehicle.addWheel(
+            {
+              isFront: wheelPosition.y > 0,
+              isLeft: wheelPosition.x < 0,
+              tyreRadius: 0.35,
+              tyreWidth: 0.25,
+              frictionSlip: 1.2,
+              rollInfluence: 0.2,
+              maxTravel: 0.3,
+              maxSuspensionForce,
+              position: wheelPosition,
+            },
+            { stiffness: 30, damping: 2.3, compression: 4.4, restLength: 0.3 },
+          );
+        }
+        return add(vehicle);
+      };
+
+      beforeEach(() => {
+        staticBox({ x: 0, y: 0, z: -0.5 }, { x: 60, y: 60, z: 1 });
+      });
+
+      it('reports every wheel on the ground with its contact point, normal, axle and load', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        let load = 0;
+        for (let i = 0; i < 4; i++) {
+          // what an entity does every tick after the step, for its wheel meshes
+          vehicle.getWheelTransform(i);
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.05);
+          expect(contact.normal.z).toBeGreaterThan(0.99);
+          expect(contact.axle.x).toBeGreaterThan(0.99);
+          expect(Math.abs(contact.sideSlipSpeed)).toBeLessThan(0.1);
+          if (contact.skid !== null) {
+            expect(contact.skid).toBeGreaterThan(0.99);
+            expect(contact.skid).toBeLessThanOrEqual(1);
+          }
+          load += contact.suspensionForce;
+        }
+        // the wheels carry the car's weight (N), give or take what the springs still oscillate
+        expect(load).toBeGreaterThan(CAR_MASS * 9.8 * 0.8);
+        expect(load).toBeLessThan(CAR_MASS * 9.8 * 1.2);
+      });
+
+      it('reports no contact in the air or for a wheel that does not exist', () => {
+        const vehicle = car({ x: 0, y: 0, z: 20 });
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+        expect(vehicle.getWheelContact(4)).toBeNull();
+        expect(vehicle.getWheelContact(-1)).toBeNull();
+      });
+
+      it('ignores a wheel index past its wheels on the ground', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        for (const index of [4, -1]) {
+          vehicle.setSteering(index, 0.3);
+          vehicle.applyBrake(index, 1000);
+          expect(vehicle.isWheelTouchesGround(index)).toBe(false);
+          expect(vehicle.getWheelContact(index)).toBeNull();
+        }
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)!.axle.x).toBeGreaterThan(0.99);
+        }
+      });
+
+      it('reports a sideways slide toward the car right as positive, along the steered axle', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.setSteering(0, 0.3);
+        vehicle.linearVelocity = { x: 3, y: 0, z: 0 };
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact.sideSlipSpeed).toBeGreaterThan(1);
+          expect(contact.velocity.x).toBeGreaterThan(1);
+        }
+        const steered = vehicle.getWheelContact(0)!.axle;
+        expect(steered.x).toBeCloseTo(Math.cos(0.3), 2);
+        expect(steered.y).toBeCloseTo(Math.sin(0.3), 2);
+      });
+
+      it('keeps every contact point and wheel under its corner of the chassis while driving fast', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.linearVelocity = { x: 0, y: 30, z: 0 };
+        simulate(1 / 60);
+        const inverseRotation = Qtrn.conjugate(vehicle.rotation);
+        for (let i = 0; i < 4; i++) {
+          const wheel = vehicle.getWheelTransform(i).position;
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          // the wheel sits at its configured corner, not where the chassis was before the step
+          const wheelInChassis = Pnt3.rot(Pnt3.sub(wheel, vehicle.position), inverseRotation);
+          expect(Math.abs(wheelInChassis.x - WHEEL_POSITIONS[i].x)).toBeLessThan(0.05);
+          expect(Math.abs(wheelInChassis.y - WHEEL_POSITIONS[i].y)).toBeLessThan(0.05);
+          // and the ground under it is where its ray hit
+          expect(Math.hypot(contact.point.x - wheel.x, contact.point.y - wheel.y)).toBeLessThan(0.05);
+          expect(contact.velocity.y).toBeGreaterThan(25);
+          expect(Math.abs(contact.sideSlipSpeed)).toBeLessThan(0.5);
+        }
+      });
+
+      it('keeps every contact point on the ground while the chassis drops onto its springs', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        // a landing: the chassis moves along the ground normal, the ground stays where it is
+        vehicle.linearVelocity = { x: 0, y: 0, z: -4 };
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.005);
+        }
+      });
+
+      it('keeps the axle in the ground plane while the chassis rolls', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.rotation = Qtrn.rotAround(Qtrn.O, Pnt3.Y, 0.15);
+        vehicle.angularVelocity = { x: 0, y: 0, z: 0 };
+        simulate(1 / 60);
+        let touching = 0;
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i);
+          if (!contact) {
+            continue;
+          }
+          touching++;
+          expect(Math.abs(Pnt3.dot(contact.axle, contact.normal))).toBeLessThan(1e-6);
+          expect(Pnt3.len(contact.axle)).toBeCloseTo(1, 6);
+          expect(contact.axle.x).toBeGreaterThan(0.99);
+        }
+        expect(touching).toBeGreaterThan(0);
+      });
+
+      it('keeps every contact point on its wheel ray and on the ground while a rolled chassis lands', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.rotation = Qtrn.rotAround(Qtrn.O, Pnt3.Y, 0.3);
+        vehicle.angularVelocity = { x: 0, y: 0, z: 0 };
+        // falling and sliding sideways: the ray tilted against the ground normal slides along it
+        vehicle.linearVelocity = { x: 3, y: 0, z: -4 };
+        simulate(1 / 60);
+        const rayDirection = Pnt3.rot(Pnt3.nZ, vehicle.rotation);
+        let touching = 0;
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i);
+          if (!contact) {
+            continue;
+          }
+          touching++;
+          const wheel = vehicle.getWheelTransform(i).position;
+          expect(Math.abs(contact.point.z)).toBeLessThan(0.005);
+          // on the ray through the wheel's centre (the ground itself is only checked to 5 mm above)
+          expect(Pnt3.len(Pnt3.cross(Pnt3.sub(contact.point, wheel), rayDirection))).toBeLessThan(1e-4);
+        }
+        expect(touching).toBeGreaterThan(0);
+      });
+
+      it('builds the axle from the steering the last step used', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.setSteering(0, 0.3);
+        simulate(1 / 60);
+        // steering set after the step, before the contact is read
+        vehicle.setSteering(0, -0.3);
+        const axle = vehicle.getWheelContact(0)!.axle;
+        expect(axle.x).toBeCloseTo(Math.cos(0.3), 2);
+        expect(axle.y).toBeCloseTo(Math.sin(0.3), 2);
+        simulate(1 / 60);
+        expect(vehicle.getWheelContact(0)!.axle.y).toBeCloseTo(-Math.sin(0.3), 2);
+      });
+
+      it('reports no contact after a teleport with resetSuspension until the next step', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        expect(vehicle.getWheelContact(0)).not.toBeNull();
+        // `RaycastVehicle3dEntity.resetTo`: a respawn in the air
+        vehicle.position = { x: 10, y: 10, z: 20 };
+        vehicle.resetMotion();
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+          // hanging at the rest length under its corner, not compressed as on the ground it left
+          const expected = Pnt3.add(
+            vehicle.position,
+            Pnt3.rot(Pnt3.add(WHEEL_POSITIONS[i], { x: 0, y: 0, z: -0.3 }), vehicle.rotation),
+          );
+          expect(Pnt3.dist(vehicle.getWheelTransform(i).position, expected)).toBeLessThan(1e-3);
+        }
+        // a respawn on the ground: the next step finds it again
+        vehicle.position = { x: 10, y: 10, z: 0.5 };
+        vehicle.resetMotion();
+        expect(vehicle.getWheelContact(0)).toBeNull();
+        simulate(1 / 60);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.getWheelContact(i)).not.toBeNull();
+        }
+      });
+
+      it('reports the suspension force the engine applied, capped at maxSuspensionForce', () => {
+        // 4 × 1000 N carries about half of the car's weight: the springs give way, the chassis lies
+        // on the ground, and every wheel pushes with its full 1000 N
+        const vehicle = car({ x: 0, y: 0, z: 1 }, 1000);
+        simulate(3);
+        // the chassis box (0.6 m high) rests on the ground instead of riding on its wheels
+        expect(vehicle.position.z).toBeLessThan(0.35);
+        for (let i = 0; i < 4; i++) {
+          const contact = vehicle.getWheelContact(i)!;
+          expect(contact).not.toBeNull();
+          expect(contact.suspensionForce).toBeGreaterThan(900);
+          expect(contact.suspensionForce).toBeLessThanOrEqual(1000);
+        }
+      });
+
+      it('reports no contact once removed from the world, nor after disposal', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        expect(vehicle.getWheelContact(0)).not.toBeNull();
+        vehicle.removeFromWorld(ggWorld);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+        vehicle.dispose();
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
+      });
+
+      it('reports no contact after a re-add until the next step casts the wheels again', () => {
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        simulate(3);
+        vehicle.removeFromWorld(ggWorld);
+        vehicle.position = { x: 0, y: 0, z: 20 };
+        vehicle.addToWorld(ggWorld);
+        for (let i = 0; i < 4; i++) {
+          expect(vehicle.isWheelTouchesGround(i)).toBe(false);
+          expect(vehicle.getWheelContact(i)).toBeNull();
+        }
       });
     });
 

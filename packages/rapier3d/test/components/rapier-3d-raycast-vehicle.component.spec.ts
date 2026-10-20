@@ -189,4 +189,23 @@ describe('Rapier3dRaycastVehicleComponent', () => {
     expect(vehicle.nativeVehicle!.wheelSideFrictionStiffness(0)).toBeCloseTo(1, 5);
     expect(vehicle.nativeVehicle!.wheelSideFrictionStiffness(1)).toBeCloseTo(0.5, 5);
   });
+
+  it('places the wheels at the live chassis pose after a write through nativeBody', () => {
+    createFloor(factory, world, 0);
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 2 });
+    advance(world, 2000);
+    const before = vehicle.getWheelTransform(0).position;
+    vehicle.nativeBody!.setTranslation({ x: 10, y: 0, z: vehicle.position.z }, true);
+    const after = vehicle.getWheelTransform(0).position;
+    expect(after.x - before.x).toBeCloseTo(10, 3);
+  });
+
+  it('keeps the steering across a re-add', () => {
+    createFloor(factory, world, 0);
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 2 });
+    vehicle.setSteering(0, 0.3);
+    vehicle.removeFromWorld({ physicsWorld: world } as any);
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    expect(vehicle.nativeVehicle!.wheelSteering(0)).toBeCloseTo(0.3, 5);
+  });
 });

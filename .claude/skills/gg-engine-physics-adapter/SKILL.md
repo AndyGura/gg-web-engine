@@ -87,7 +87,7 @@ export type <Lib>PhysicsTypeDocRepo = {
   maximum impulse of one step** (`updateFriction` clamps the wheel's rolling impulse to it). Store
   the brake force in the component and set the native brake to `force × step length` right before
   each native step - `AmmoWorldComponent.simulate()` calls
-  `AmmoRaycastVehicleComponent.applyBrakeImpulses(subStep)` before `stepSimulation`,
+  `AmmoRaycastVehicleComponent.prepareStep(subStep)` before `stepSimulation`,
   `Rapier3dRaycastVehicleComponent.stepVehicleController(dt)` does it before `updateVehicle`. Passed
   through unconverted, the same brake value braked 3.4 g at 50 FPS and 5 g at 144 FPS on Ammo, and
   in direct proportion to the frame rate on Rapier. A wheel's suspension force cap
@@ -320,6 +320,49 @@ change a wheel's `WheelOptions.frictionSlip` on the live vehicle (Bullet: `getWh
 on re-add from stored wheel options (Rapier) updates the stored options too, so the value survives
 `removeFromWorld`/`addToWorld`. `GgCarEntity` relies on this for a handbrake that lets the rear
 tyres slide and for surface changes, instead of reaching into the backend.
+
+## Raycast vehicle component (3D only): wheel contact
+
+`IRaycastVehicleComponent.getWheelContact(wheelIndex)` returns a `WheelContact` (contact point,
+ground normal, steered world axle in the ground plane, chassis velocity at the contact point, its
+component along the axle as `sideSlipSpeed`, suspension force in Newtons, `skid`) for a wheel
+touching the ground after the last `simulate()`, and `null` in the air, for an index that is not a
+wheel, or while the vehicle is out of the world. Read the contact point, normal, suspension force,
+the wheel's maximum suspension force and `skid` from the native wheel and pass them, with the
+steering the last step used, the chassis rotation, velocities and world centre of mass, to core's
+`buildWheelContact`, which
+derives the rest the same way for every adapter (axle projected onto the contact plane, velocity
+lever arm, suspension force clamped to `[0, max]` - engines store the spring force before they
+clamp it). Every input must describe the chassis at the same moment, the step that produced the
+contact: record each wheel's steering right before the native step (the app may steer again before
+it reads the contact), and an engine whose vehicle update casts the wheel rays before the step moves
+the chassis has stored world-space points from the old pose. Rebuild the wheel's ray from the
+chassis' current pose and the wheel's chassis-space connection point and direction instead: its
+hard point places the wheel for `getWheelTransform`, and the contact point is where that ray meets
+the ground plane the cast found (the ground doesn't move with the chassis; carrying the stored point
+rigidly and projecting it straight onto the plane is only right while the ray is parallel to the
+normal). Read the chassis pose from the native body on every call rather than
+caching it between steps: a cache misses any pose write that bypasses the component's setters.
+Wheel contact state must not outlive the pose it was cast from: a removed vehicle, a disposed one
+(without touching freed native handles), a re-added one before its first step and one after
+`resetSuspension()` (a teleport: `resetMotion()`/`RaycastVehicle3dEntity.resetTo`) before its next
+step all report no contact, through `isWheelTouchesGround` too, and after `resetSuspension()`
+`getWheelTransform` hangs every wheel at its suspension rest length. Every wheel-indexed method
+ignores an index that is not a wheel (setters do nothing, `isWheelTouchesGround` is `false`): a
+native library that doesn't check it reads or writes memory past its wheel array.
+`skid` is the native "share of the needed grip the tyre gave" where the library reports one, `null`
+where it does not; never invent it from other values. A wheel "on the ground" flag that some later
+call resets (a wheel-transform update) can't be the contact test: entities read the wheel
+transforms every tick after the step. The 3D contract suite (`raycast vehicle`) checks units and
+axes: the loads of a resting car add up to its weight, a slide toward the car's right is positive,
+the steered axle turns with the steering and stays perpendicular to the normal on a rolled chassis,
+a low `maxSuspensionForce` caps the force the engine applies (the chassis bottoms out) and the
+reported force, wheels and contact points stay under their chassis corners at 30 m/s, contact
+points stay on the ground while the chassis drops onto its springs and on the wheel's ray while a
+rolled chassis lands sliding sideways, steering set after the step leaves the axle alone, contacts
+survive a `getWheelTransform` call, none are reported after removal, disposal, a re-add or a
+`resetMotion()` teleport before the next step (whose wheels hang at rest length), and an index past
+the wheels changes nothing and reports no ground.
 
 ## Character controller component (3D only)
 

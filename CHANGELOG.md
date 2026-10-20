@@ -29,6 +29,49 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `IRaycastVehicleComponent.getWheelContact(wheelIndex)`: where and how a wheel touches the ground
+  after the last physics step, as a `WheelContact` with the contact point, ground normal, steered
+  axle, the chassis velocity at the contact point and its sideways part (`sideSlipSpeed`, m/s), the
+  suspension force in Newtons and `skid` (Bullet's share of the needed grip the tyre gave; `null`
+  on Rapier, which does not report it). `null` while the wheel is in the air, and after a reset
+  (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) until the next step. Tyre
+  marks, squeal, smoke and grip assists can read this on Ammo and Rapier instead of reaching into
+  `btRaycastVehicle`'s wheel info.
+- `buildWheelContact(...)`: builds a `WheelContact` from what a physics engine reports for one
+  wheel, for an adapter implementing `getWheelContact`.
+
+### Changed
+- **Breaking** (custom physics adapters only): `IRaycastVehicleComponent` has a new required
+  method, `getWheelContact(wheelIndex)`. A third-party adapter implementing the interface no
+  longer compiles until it adds one; build the result with `buildWheelContact` so its derived
+  fields match the built-in adapters. Apps using `@gg-web-engine/ammo` or
+  `@gg-web-engine/rapier3d` need no change.
+- Raycast vehicles (Ammo and Rapier): `isWheelTouchesGround` reports `false` after
+  `resetSuspension()` (so after `resetMotion()`, `RaycastVehicle3dEntity.resetTo` and a network
+  snap) until the next physics step, instead of the ground under the pose the car was reset from.
+- **Breaking** (subclasses of `AmmoRaycastVehicleComponent` only):
+  `applyBrakeImpulses(subStepLength)` is now `prepareStep`; it also records the steering each step
+  uses. `AmmoWorldComponent.simulate()` calls `prepareStep`, so an override of
+  `applyBrakeImpulses` is no longer called: override `prepareStep` instead and call `super`.
+
+### Fixed
+- Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
+  the last physics substep, behind the car by its speed × the substep length (up to 0.3 m at
+  30 m/s).
+- Rapier: a raycast vehicle removed from the world and added back lost its wheels' steering.
+- Ammo: `isWheelTouchesGround` kept reporting the last step's ground contact after the vehicle was
+  removed from the world, and after it was added back until the next step; it reports `false`, as
+  on Rapier.
+- Ammo: a raycast vehicle's wheel methods (`setSteering`, `applyEngineForce`,
+  `setWheelFrictionSlip`, `getWheelFrictionSlip`, `isWheelTouchesGround`) given an index past its
+  wheels read and wrote WASM memory outside the wheel array; they ignore it, as on Rapier.
+- Ammo: `isWheelTouchesGround` on a raycast vehicle disposed without being removed from the world
+  first read the freed native vehicle; it reports `false`.
+- Rapier: after a reset (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) a
+  raycast vehicle's wheels were drawn compressed as on the ground the car was reset from until the
+  next step; they hang at their suspension rest length, as on Ammo.
+
 ## [0.0.84] - 2026-10-19
 
 ### Added
