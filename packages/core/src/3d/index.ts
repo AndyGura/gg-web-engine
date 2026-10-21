@@ -1,3 +1,4 @@
+export * from './components/audio/audio-listener-basis';
 export * from './components/audio/i-audio-scene-3d.component';
 export * from './components/audio/i-audio-source-3d.component';
 export * from './components/physics/i-raycast-vehicle.component';

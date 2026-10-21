@@ -153,9 +153,12 @@ and `bufferSource.playbackRate.value = this._playbackRate` in its `play()` (both
 `web-audio-source-base.component.ts`), each set once on a freshly-created node before it's started,
 and a bus reverb's new `wet` gain starting at `0` before it is connected (`takeReverbChain` in
 `web-audio-scene-base.component.ts`), then ramped up. The other exception is `setParamNow`
-(`utils/ramp.ts`): a jump on a chain that is silent right now - a virtual
+(`utils/ramp.ts`), in two cases. One is a jump on a chain that is silent right now - a virtual
 source's gain/position/pan, re-applied just before it is started again and faded in (see "Voice
-budget" below), or its gain restored on a `play()` while no buffer source is playing into it.
+budget" below), or its gain restored on a `play()` while no buffer source is playing into it. The
+other is the 3D listener on a cut, where a ramp is worse than the jump: a newly set listener
+(position and orientation), and a turn of more than 90° between ticks (orientation only) - see
+"Listener orientation" below.
 
 Static tuning fields that don't change every frame (`refDistance`, `maxDistance`, `rolloffFactor`,
 `distanceModel`, `panningModel`, `coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) are fine to proxy directly to
@@ -199,13 +202,57 @@ tracked separately (`audioListenerAutoBound`) rather than both just meaning "act
 null" - a second renderer must still trigger the warning even though the first one already caused
 an (automatic, not app-chosen) listener to be set.
 
-**Local-forward convention for 3D**: this engine's camera-facing code (`FreeCameraController`,
-`PlayerCharacterController`) treats local `{x:0,y:0,z:-1}` (`Pnt3.nZ`) as "forward" and local
-`{x:0,y:0,z:1}` (`Pnt3.Z`) as "up", both rotated into world space via `Pnt3.rot(vector, rotation)`.
-Any 3D audio adapter computing a listener's or a directional source's forward/up vector from its
-rotation quaternion must use this same convention (see `WebAudioScene3dComponent.update` and
-`WebAudioSource3dComponent`'s `rotation` setter) - using a different local axis would make cone
-orientation/listener facing silently disagree with which way the camera actually looks.
+## Listener orientation and source cones (3D)
+
+This Z-up engine has two local-axis conventions, and the listener can be either kind of object.
+Core names them `AudioListenerBasis` (`3d/components/audio/audio-listener-basis.ts`):
+
+- `'camera'`: forward local -Z (`Pnt3.nZ`), up local +Y (`Pnt3.Y`) - every camera, built like a
+  three.js camera (`Qtrn.lookAt` puts the world's `Pnt3.Z` on a camera's local +Y; what
+  `FreeCameraController`/`ObjectGrabController` read as the look direction).
+- `'body'`: forward local +Y, up local +Z - every other entity (`RaycastVehicle3dEntity`,
+  `CharacterController3dEntity`), so an upright body with the identity rotation faces level.
+
+`IAudioScene3dComponent.setActiveListener(target, basis?)` stores the basis (`activeListenerBasis`);
+without one it takes `defaultAudioListenerBasis(target)`: `'camera'` for a `Camera3dEntity` or
+anything with a `fov` (a bare camera component), `'body'` otherwise. That covers `GgWorld`'s
+auto-bind (a renderer's `Camera3dEntity`) and the `audio_set_listener` console command (a renderer
+or any positionable entity), neither of which passes a basis. Every 3D adapter reads the listener's
+forward/up as `Pnt3.rot(AUDIO_LISTENER_AXES[basis].forward|up, rotation)` (see
+`WebAudioScene3dComponent.syncListener`), so all agree on which way a listener faces.
+
+A directional source's cone points along its local +Y (`AUDIO_LISTENER_AXES.body.forward`, in
+`WebAudioSource3dComponent.writeOrientation`): sources ride bodies (a car's horn, a speaker
+entity) or sit in a level with a rotation, and either way the identity rotation should aim level,
+not at the ground. A `PannerNode` source has no up, only the cone axis.
+
+**Forward and up must never be degenerate** (up parallel to forward, `cross(forward, up) = 0`, or
+either near zero length). Such an orientation has no left/right: Chrome then pans every
+`PannerNode` source meaninglessly (silently wrong), and iOS Safari's `PannerNode`, while the
+listener/source position params are under automation (ramped every tick, so always), renders every
+positional source as severely broken, pitch-garbled audio, HRTF and `'equalpower'` alike - it
+looks like an automation/ramping bug but is the orientation. Two ways to get there:
+
+- A wrong axis pair: reading up from the axis forward already uses (local +Z with local -Z
+  forward). Both `AUDIO_LISTENER_AXES` pairs are perpendicular by construction.
+- The ramp itself. `setTargetAtTime` on each of the six params moves each component on its own,
+  so forward and up travel the straight line between where the listener is and where it is going.
+  Across a turn near 180° (a camera cut, a snap turn, a switch to a listener facing the other way,
+  the first bind from the native default) both pass through near-zero length midway.
+  `syncListener` therefore models where the native listener is right now - the last target eased
+  from the last known value by `1 - exp(-(currentTime - lastTime) / DEFAULT_RAMP_TAU)`, the law
+  `setTargetAtTime` follows - and jumps the orientation (`setParamNow`) when forward or up would
+  have to turn more than `MAX_EASED_TURN` (90°) from there. A new listener (`setActiveListener`
+  with a different target or basis) also jumps its position, instead of sweeping the ears across
+  the level. Comparing against the modelled current value rather than the last target matters on
+  a fast continuous turn, where the ramp lags a few ticks behind.
+
+**Firefox (and older Safari) have no `AudioParam`-based listener** (`listener.positionX` is
+undefined), only the legacy `setPosition`/`setOrientation`, which apply at once - this is the
+everyday path for every Firefox user, not a fallback for ancient browsers. `syncListener` writes
+the same modelled current value there, so the listener eases in on the main thread, tick by tick,
+the way the ramp would; the same 90° and new-listener jumps apply. (`PannerNode.positionX` exists in
+Firefox, so sources use the `AudioParam` path there.)
 
 ## Pooling for high-frequency one-shots
 
@@ -392,7 +439,10 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   `test/components/web-audio-voice-budget.spec.ts` (the
   voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is
   advanced by the test, and its fake `AudioParam`s record the last ramp target, which is how a
-  fade is asserted).
+  fade is asserted) and `test/components/web-audio-listener.spec.ts` (the listener's basis, and
+  its easing: its fake `AudioParam` follows `setTargetAtTime`/`setValueAtTime` as the browser does,
+  so a test samples what the audio thread renders between ticks and asserts forward/up never go
+  degenerate across turns, snap turns and listener switches; plus the legacy-listener easing).
 
 Core-level behavior (the `"Sound"` class, `"PlaySound"` node, `GgWorld`'s
 listener-auto-bind) is covered in `packages/core/test/` against `MockWorld`-style fakes - see

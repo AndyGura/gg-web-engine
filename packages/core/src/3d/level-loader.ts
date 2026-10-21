@@ -315,7 +315,10 @@ export interface Sound3DSettings {
   /** Position of the sound source. */
   position?: Point3;
 
-  /** Rotation of the sound source - only meaningful with a directional cone (`coneOuterAngle` on the source). */
+  /**
+   * Rotation of the sound source - only meaningful with a directional cone (`coneOuterAngle` on the
+   * source), which points along the rotated local +Y.
+   */
   rotation?: Point4;
 
   /** URL of the clip to load. */

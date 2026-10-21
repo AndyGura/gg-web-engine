@@ -20,10 +20,13 @@ export function rampParam(context: BaseAudioContext, param: AudioParam, value: n
 }
 
 /**
- * Jump `param` to `value` right now, dropping any ramp still in progress. The one exception to
- * `rampParam`: only for a param whose node is silent at this moment (nothing playing into it, or
- * cut off from the output), so the jump can't be heard - e.g. a virtual source's gain/position just
- * before it is started again and faded in (see `WebAudioSourceComponentBase`).
+ * Jump `param` to `value` right now, dropping any ramp still in progress. The exception to
+ * `rampParam`, for two cases only: a param whose node is silent at this moment (nothing playing
+ * into it, or cut off from the output), so the jump can't be heard - e.g. a virtual source's
+ * gain/position just before it is started again and faded in (see `WebAudioSourceComponentBase`);
+ * and the 3D listener on a cut, where a ramp would be worse than the jump - a newly set listener,
+ * or a turn too large to ease without passing through an orientation with no left/right (see
+ * `WebAudioScene3dComponent`).
  */
 export function setParamNow(context: BaseAudioContext, param: AudioParam, value: number): void {
   param.cancelScheduledValues(context.currentTime);

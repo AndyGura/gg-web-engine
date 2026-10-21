@@ -1,4 +1,5 @@
 import {
+  AUDIO_LISTENER_AXES,
   AudioDistanceModel,
   AudioPanningModel,
   AudioSource3dDescriptor,
@@ -93,11 +94,11 @@ export class WebAudioSource3dComponent
   }
 
   private writeOrientation(write: typeof rampParam): void {
-    // Local "forward" is -Z, matching every other camera-facing controller in this engine (see
-    // FreeCameraController/PlayerCharacterController's own use of `Pnt3.rot(Pnt3.nZ, rotation)`
-    // for the same reason) - only the cone's own axis needs this, PannerNode has no listener-style
-    // "up" field for a source.
-    const forward = Pnt3.rot(Pnt3.nZ, this._rotation);
+    // The cone points along local +Y, a body's forward in this Z-up engine (the 'body' basis of
+    // AUDIO_LISTENER_AXES): a source riding an upright car or character, or one with the identity
+    // rotation, aims horizontally the way it faces. PannerNode has no listener-style "up" for a
+    // source, the cone's own axis is all it takes.
+    const forward = Pnt3.rot(AUDIO_LISTENER_AXES.body.forward, this._rotation);
     const ctx = this.scene.context;
     if (this.panner.orientationX) {
       write(ctx, this.panner.orientationX, forward.x);

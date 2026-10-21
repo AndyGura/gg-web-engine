@@ -40,6 +40,13 @@ where one exists.
   `btRaycastVehicle`'s wheel info.
 - `buildWheelContact(...)`: builds a `WheelContact` from what a physics engine reports for one
   wheel, for an adapter implementing `getWheelContact`.
+- `AudioListenerBasis` (`'camera'` | `'body'`): which local axes of the 3D audio listener's rotation
+  are its forward and up. `IAudioScene3dComponent.setActiveListener(target, basis?)` takes one and
+  `activeListenerBasis` reads it back; without one, a camera (`Camera3dEntity`, or a camera
+  component) is read as `'camera'` (forward local -Z, up local +Y) and anything else as `'body'`
+  (forward local +Y, up local +Z), so a listener bound to a player or vehicle entity faces the way
+  that entity does. `AUDIO_LISTENER_AXES` and `defaultAudioListenerBasis` expose the same rules to
+  audio adapters.
 
 ### Changed
 - **Breaking** (custom physics adapters only): `IRaycastVehicleComponent` has a new required
@@ -54,6 +61,13 @@ where one exists.
   `applyBrakeImpulses(subStepLength)` is now `prepareStep`; it also records the steering each step
   uses. `AmmoWorldComponent.simulate()` calls `prepareStep`, so an override of
   `applyBrakeImpulses` is no longer called: override `prepareStep` instead and call `super`.
+- **Breaking** (custom audio adapters only): `IAudioScene3dComponent` has a new required
+  `activeListenerBasis` property and its `setActiveListener` takes an optional `basis`. Apps using
+  `@gg-web-engine/audio` need no change.
+- Audio: a 3D source's directional cone points along its local +Y, a body's forward, instead of
+  local -Z. A source with the identity rotation, or riding an upright car or character, aims level
+  the way it faces; it used to aim at the ground. A cone source given a rotation to aim it along
+  local -Z needs that rotation changed.
 
 ### Fixed
 - Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
@@ -82,6 +96,18 @@ where one exists.
   (the world's `inputEnabled` off and on for a menu), or held when a new input starts, as pushed:
   a controls menu opened while the gas trigger is held doesn't capture it. A gamepad seen for the
   first time still reports the press the browser listed it for.
+- Audio: the 3D scene's listener up vector was the active listener's local +Z, the exact opposite
+  of its forward (local -Z), so the listener had no left/right: positional sources panned
+  meaninglessly, and on iOS Safari every positional source played as broken, pitch-garbled audio.
+  Up is the listener's local +Y, the camera convention.
+- Audio: the 3D listener no longer eases through a degenerate orientation on a turn of more than
+  90° in one tick (a camera cut, a snap turn) or a switch to another listener. Easing each
+  component on its own took forward and up through near-zero length on the way, which on iOS
+  Safari garbled every positional source for the length of the ramp; such a turn, and a new
+  listener's position, now apply at once.
+- Audio: in Firefox and older Safari, which have no `AudioParam`-based listener, the 3D listener
+  snapped to the camera every tick, which can be heard as zipper noise on a moving camera. It eases
+  in the same way it does in other browsers.
 
 ## [0.0.84] - 2026-10-19
 

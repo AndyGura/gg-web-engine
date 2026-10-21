@@ -109,7 +109,9 @@ export interface IAudioSceneComponent<
    * (or rendered at a fixed neutral pan, depending on the adapter) while non-spatial sources
    * (ambient/music/UI, `AudioSourceDescriptor.spatial: false`) are unaffected. `GgWorld` binds
    * this automatically when exactly one renderer is present - see its `addEntity` doc - and warns
-   * (without guessing) once more than one renderer exists and no listener has been set.
+   * (without guessing) once more than one renderer exists and no listener has been set. A 3D
+   * scene reads its rotation as a camera's or a body's local axes - see
+   * `IAudioScene3dComponent.activeListenerBasis`.
    */
   readonly activeListener: IPositionable<D, R> | null;
 
