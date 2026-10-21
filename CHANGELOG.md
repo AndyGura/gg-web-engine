@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.85] - 2026-10-21
+
 ### Added
 - `IRaycastVehicleComponent.getWheelContact(wheelIndex)`: where and how a wheel touches the ground
   after the last physics step, as a `WheelContact` with the contact point, ground normal, steered
@@ -1249,7 +1251,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.85...HEAD
+[0.0.85]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...0.0.85
 [0.0.84]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...0.0.84
 [0.0.83]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...0.0.83
 [0.0.82]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...0.0.82
