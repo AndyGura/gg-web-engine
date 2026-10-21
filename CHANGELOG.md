@@ -71,6 +71,17 @@ where one exists.
 - Rapier: after a reset (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) a
   raycast vehicle's wheels were drawn compressed as on the ground the car was reset from until the
   next step; they hang at their suspension rest length, as on Ammo.
+- `GamepadInput.controlPushed$` no longer reports a trigger axis returning to its rest as a push
+  of the axis's other direction: rebinding two actions one after another on a trigger reported as
+  an axis (an XInput pad without the standard mapping) bound the second to the trigger's release.
+  Where each axis rests is learned per gamepad when the browser lists it (the standard mapping's
+  sticks always rest at 0) and learned again when it is plugged in again; sticks and a shared
+  axis resting at 0 still report both directions. `inUse` no longer turns on when such an axis
+  returns to its rest.
+- `GamepadInput.controlPushed$` no longer reports a control held through a restart of the input
+  (the world's `inputEnabled` off and on for a menu), or held when a new input starts, as pushed:
+  a controls menu opened while the gas trigger is held doesn't capture it. A gamepad seen for the
+  first time still reports the press the browser listed it for.
 
 ## [0.0.84] - 2026-10-19
 

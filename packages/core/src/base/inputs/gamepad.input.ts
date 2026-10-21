@@ -130,6 +130,24 @@ const CONTROL_FORMAT = /^(b\d+|a\d+[+-])$/;
 /** an axis changed by less than this between two polls is the noise of a stick held still */
 const AXIS_MOVE_THRESHOLD = 0.01;
 
+/**
+ * How far a control has to be pushed, raw, to count as pushed for `controlPushed$` - and how far an
+ * axis has to sit from 0 when its gamepad is first seen to be taken as resting there
+ */
+const RAW_PUSH_THRESHOLD = 0.5;
+/** the axes the standard mapping defines: two sticks, resting at 0 */
+const STANDARD_STICK_AXES = 4;
+
+/** A gamepad seen on the page, told apart by index and id, and where each of its axes rests */
+type KnownGamepad = {
+  index: number;
+  id: string;
+  /** -1, 0 or 1 by axis index */
+  rests: number[];
+  /** learned on the poll going on: not seen before it */
+  fresh: boolean;
+};
+
 const STANDARD_BUTTON_NAMES = [
   'A',
   'B',
@@ -231,16 +249,43 @@ export class GamepadInput extends IInput {
    */
   private static inUseDevice: { index: number; id: string } | null = null;
 
+  /**
+   * The gamepads seen while connected, with where their axes rest (see `controlPushed$`): learned
+   * on the first poll that lists one and kept over stops and switches, since what is held when an
+   * input (re)starts says nothing about the rest. Forgotten by a poll that finds it gone.
+   */
+  private static readonly knownGamepads: KnownGamepad[] = [];
+
   /** The running inputs, polled together on every frame: one `navigator.getGamepads()` read for all */
   private static readonly runningInputs: Set<GamepadInput> = new Set<GamepadInput>();
   private static frameSubscription: Subscription | null = null;
 
   private static pollAll(): void {
+    GamepadInput.pollGamepads([...GamepadInput.runningInputs]);
+  }
+
+  /** One read of the gamepads for `inputs`, keeping `knownGamepads` up to date around it */
+  private static pollGamepads(inputs: GamepadInput[]): void {
     const gamepads = GamepadInput.connectedGamepads();
-    for (const input of [...GamepadInput.runningInputs]) {
+    const known = GamepadInput.knownGamepads;
+    for (let i = known.length - 1; i >= 0; i--) {
+      if (!gamepads.some(x => x.index === known[i].index && x.id === known[i].id)) {
+        // gone: plugged in again, it is learned again
+        known.splice(i, 1);
+      }
+    }
+    for (const input of inputs) {
       if (input.running) {
         input.readGamepad(input.findGamepad(gamepads));
       }
+    }
+    // a gamepad no input read is learned as well, while it is likely untouched: the browser has
+    // just listed it, and nothing is driven with it yet
+    for (const gamepad of gamepads) {
+      GamepadInput.knownGamepad(gamepad);
+    }
+    for (const gamepad of known) {
+      gamepad.fresh = false;
     }
   }
 
@@ -332,6 +377,24 @@ export class GamepadInput extends IInput {
     return pressed || gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
   }
 
+  /** `gamepad` in `knownGamepads`, added (`fresh`) with where its axes rest as it reads now if new */
+  private static knownGamepad(gamepad: Gamepad): KnownGamepad {
+    let known = GamepadInput.knownGamepads.find(x => x.index === gamepad.index && x.id === gamepad.id);
+    if (!known) {
+      known = { index: gamepad.index, id: gamepad.id, rests: [], fresh: true };
+      GamepadInput.knownGamepads.push(known);
+    }
+    const rests = known.rests;
+    for (let i = rests.length; i < gamepad.axes.length; i++) {
+      // the standard mapping's sticks rest at 0 whatever is held now; any other axis pushed now
+      // (a trigger reported as an axis, a pedal) rests where it is
+      const v = gamepad.axes[i];
+      const stick = gamepad.mapping === 'standard' && i < STANDARD_STICK_AXES;
+      rests.push(!stick && Math.abs(v) > RAW_PUSH_THRESHOLD ? Math.sign(v) : 0);
+    }
+    return known;
+  }
+
   /** The gamepad in use among `gamepads`, if it is connected */
   private static findInUse(gamepads: Gamepad[]): Gamepad | undefined {
     const inUse = GamepadInput.inUseDevice;
@@ -358,7 +421,7 @@ export class GamepadInput extends IInput {
   private buttons: number[] = [];
   /** raw axis values */
   private axes: number[] = [];
-  /** raw axis values of the poll before, to tell a stick moved from one resting off center */
+  /** raw axis values of the poll before, to tell a stick moved from one held still */
   private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
   /**
@@ -410,8 +473,23 @@ export class GamepadInput extends IInput {
 
   /**
    * Every control that became pushed (past half way, raw, no dead zone) on the last poll - for a
-   * controls menu capturing the player's choice. An axis at rest away from 0 (a trigger reported
-   * as an axis rests at -1) stays pushed and is never captured; only its other direction can be.
+   * controls menu capturing the player's choice. What is held on the first read after this input
+   * starts is not reported when the gamepad was seen before (the gas trigger held while a menu
+   * opens); a gamepad seen for the first time reports it, since the browser lists a gamepad
+   * because of a press on it, and a "press any button" menu waits for exactly that press.
+   *
+   * An axis's direction towards where it rests is never reported: a trigger reported as an axis
+   * rests at -1, so pulling it reports `+` and letting it go reports nothing, however many times
+   * it is pulled. A stick or a shared axis resting at 0 reports both directions.
+   *
+   * Where an axis rests is learned per gamepad on the first poll that lists it (by any running
+   * `GamepadInput`): the standard mapping's sticks rest at 0, any other axis then past half way
+   * rests at that end, the rest at 0. Disconnecting the gamepad forgets it, so plugging it in
+   * again learns it again. Known gaps, all on axes outside the standard sticks: a trigger held on
+   * that poll is taken as resting pulled (its pull is then not reported, its release is), an axis
+   * held to one end on it never reports that direction, and a trigger the browser reads as 0
+   * until it is first touched (seen on Linux) is taken as resting at 0, so its release reports `-`
+   * like a push.
    */
   public get controlPushed$(): Observable<GamepadControl> {
     return this._controlPushed$.asObservable();
@@ -641,7 +719,7 @@ export class GamepadInput extends IInput {
     if (!this.running) {
       return;
     }
-    this.readGamepad(this.findGamepad(GamepadInput.connectedGamepads()));
+    GamepadInput.pollGamepads([this]);
   }
 
   protected startInternal(): void {
@@ -686,10 +764,13 @@ export class GamepadInput extends IInput {
   }
 
   private readGamepad(gamepad: Gamepad | null): void {
+    const firstRead = !this.hasRead;
     this._gamepad = gamepad;
     this.hasRead = true;
     const pushed = new Set<GamepadControl>();
     this.previousAxes = this.axes;
+    const known = gamepad && GamepadInput.knownGamepad(gamepad);
+    const rests = known ? known.rests : [];
     if (gamepad) {
       this.buttons = gamepad.buttons.map(b => {
         if (b.value > this.options.triggerDeadzone) {
@@ -698,15 +779,20 @@ export class GamepadInput extends IInput {
         return b.pressed ? 1 : 0;
       });
       this.axes = Array.from(gamepad.axes);
-      gamepad.buttons.forEach((b, i) => (b.pressed || b.value > 0.5) && pushed.add(`b${i}`));
-      gamepad.axes.forEach((v, i) => Math.abs(v) > 0.5 && pushed.add(`a${i}${v < 0 ? '-' : '+'}`));
+      gamepad.buttons.forEach((b, i) => (b.pressed || b.value > RAW_PUSH_THRESHOLD) && pushed.add(`b${i}`));
+      // an axis at rest away from 0 is pushed towards its rest, which is never a push
+      gamepad.axes.forEach(
+        (v, i) =>
+          Math.abs(v) > RAW_PUSH_THRESHOLD && Math.sign(v) !== rests[i] && pushed.add(`a${i}${v < 0 ? '-' : '+'}`),
+      );
     } else {
       this.buttons = [];
       this.axes = [];
     }
-    // a button pressed, or an axis moved from where it rests (a trigger reported as an axis rests
-    // at -1, and pedals listed as a gamepad rest pushed)
-    const used = !!gamepad && (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i)));
+    // a button pressed, or an axis moved away from where it rests (a trigger reported as an axis
+    // rests at -1, and pedals listed as a gamepad rest pushed)
+    const used =
+      !!gamepad && (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i, rests[i] || 0)));
     // switched to another gamepad while one was connected (a new choice): what is already held on
     // the new one was not pushed now, and a controls menu capturing a control must not take it. A
     // gamepad read after none was (the first ever, or one plugged back in) is no switch, so a
@@ -724,7 +810,9 @@ export class GamepadInput extends IInput {
         GamepadInput.inUseDevice = device;
       }
     }
-    const newlyPushed = switched ? [] : [...pushed].filter(c => !this.pushedRaw.has(c));
+    // the first read after a start, of a gamepad seen before: what is held was not pushed now either
+    const baseline = switched || (firstRead && !!known && !known.fresh);
+    const newlyPushed = baseline ? [] : [...pushed].filter(c => !this.pushedRaw.has(c));
     this.pushedRaw = pushed;
     this._connected$.next(!!gamepad);
     if (!gamepad) {
@@ -740,11 +828,11 @@ export class GamepadInput extends IInput {
   }
 
   /**
-   * Whether axis `i` is pushed past its dead zone and moved since the poll before: a trigger
-   * reported as an axis rests at -1 and must not count as used until it is pulled
+   * Whether axis `i` is pushed past its dead zone away from `rest` and moved since the poll before:
+   * a trigger reported as an axis rests at -1 and must not count as used until it is pulled
    */
-  private axisMoved(value: number, i: number): boolean {
-    if (Math.abs(value) <= this.options.stickDeadzone) {
+  private axisMoved(value: number, i: number, rest: number): boolean {
+    if (Math.abs(value - rest) <= this.options.stickDeadzone) {
       return false;
     }
     const previous = this.previousAxes[i];

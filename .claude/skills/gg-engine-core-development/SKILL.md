@@ -1428,8 +1428,29 @@ What it holds to:
   "which device did the player touch last" signal, not "is the gamepad pushed right now": a stick
   held still through a key tap reads as not in use until it moves again, so a controller that
   wants to know whether the gamepad is pushed reads `direction$`/`pressed$` of its own binding.
-  `controlPushed$` emits each control the moment it passes half way, raw, for a controls menu
-  capturing the player's choice.
+  `controlPushed$` emits each control the moment it passes half way (`RAW_PUSH_THRESHOLD`), raw,
+  for a controls menu capturing the player's choice - except an axis direction towards where that
+  axis rests, which is never a push: a trigger resting at -1 swings straight to -1 on release,
+  and a capture of two actions in a row would bind the release to the second. Where each axis
+  rests is one model, the static `knownGamepads` list (index, id, rests), shared by
+  `controlPushed$` and `inUse` (`axisMoved` measures the dead zone from the rest). It is kept up
+  to date in `pollGamepads`, the one read behind both `pollAll` and `poll()`: a gamepad missing
+  from a poll is forgotten, then every input reads, then each connected gamepad not known yet is
+  learned - so a pad listed while another is read is learned when the browser lists it, not
+  once it is chosen with the gas held. Learning: the standard mapping's four stick axes rest at
+  0 whatever is held; any other axis past half way rests at that end, else 0 - the same
+  threshold as a push, so an axis resting at -0.85 (a worn trigger) is never pushed towards its
+  rest. Rests are kept over stops and switches (what is held when an input restarts says
+  nothing about the rest) and relearned on a replug; value-only signals can't tell a resting
+  trigger from a held one, and time-based ones (which side the axis sat on longer) learn a gas
+  trigger held through a race as resting pulled. Known gaps, written in the doc and limited to
+  axes outside the standard sticks: one held on the learning poll, and a trigger read as 0 until
+  first touched (Linux; its release reads as a push). The same list tells a gamepad seen before
+  from a new one: the first read after an input starts reports nothing when the gamepad is not
+  `fresh` (learned on an earlier poll) - like `bindKeys`, a control held through a stop and
+  restart is not pushed now - while a gamepad new on that poll reports what is held, the press
+  the browser listed it for. Specs clear the list in `afterEach`
+  (`(GamepadInput as any).knownGamepads.length = 0`).
 - `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
   the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
   per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.

@@ -24,6 +24,7 @@ describe('GamepadInput', () => {
     input.stop();
     pads.restore();
     GamepadInput.choice = null;
+    (GamepadInput as any).knownGamepads.length = 0;
   });
 
   const connect = (pad: FakeGamepad = {}) => {
@@ -521,6 +522,15 @@ describe('GamepadInput', () => {
     expect(input.inUse).toBe(true);
   });
 
+  it('is not in use by an axis returning to its rest', () => {
+    connect({ axes: [0, 0, 0, 0, -1] });
+    connect({ axes: [0, 0, 0, 0, 1] });
+    expect(input.inUse).toBe(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    connect({ axes: [0, 0, 0, 0, -1] });
+    expect(input.inUse).toBe(false);
+  });
+
   it('stays in use and connected while stopped, and gives it up only when the gamepad is gone', () => {
     const connected: boolean[] = [];
     input.connected$.subscribe(v => connected.push(v));
@@ -578,6 +588,158 @@ describe('GamepadInput', () => {
     connect({ buttons: { 7: 0.6 }, axes: [0, -0.8] });
     connect({ buttons: { 7: 0.4 }, axes: [0.9, 0] });
     expect(pushed).toEqual(['b7', 'a1-', 'a0+']);
+  });
+
+  describe('axes at rest', () => {
+    const trigger = (v: number) => connect({ axes: [0, 0, 0, 0, 0, v] });
+    let pushed: GamepadControl[];
+
+    beforeEach(() => {
+      pushed = [];
+    });
+
+    it('reports the pull of a trigger resting at -1, never its release', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      trigger(-1);
+      expect(pushed).toEqual([]);
+      trigger(1);
+      expect(pushed).toEqual(['a5+']);
+      trigger(0);
+      trigger(-1);
+      expect(pushed).toEqual(['a5+']);
+      trigger(1);
+      trigger(-1); // let go within one poll
+      trigger(1);
+      expect(pushed).toEqual(['a5+', 'a5+', 'a5+']);
+    });
+
+    it('does not report the release of a trigger already held when the capture starts', () => {
+      trigger(-1);
+      trigger(1);
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      trigger(-1);
+      expect(pushed).toEqual([]);
+      trigger(1);
+      expect(pushed).toEqual(['a5+']);
+    });
+
+    it('keeps the rest of a trigger over a stop, and reports nothing held through a restart', () => {
+      trigger(-1);
+      trigger(1);
+      input.stop();
+      input.start();
+      const other = new GamepadInput();
+      other.start();
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      other.controlPushed$.subscribe(c => pushed.push(c));
+      // held through the restart, and when the other input started: not pushed now
+      connect({ buttons: { 0: true }, axes: [0, 0, 0, 0, 0, 1] });
+      other.poll();
+      expect(pushed).toEqual([]);
+      trigger(-1);
+      other.poll();
+      expect(pushed).toEqual([]);
+      trigger(1);
+      other.poll();
+      expect(pushed).toEqual(['a5+', 'a5+']);
+      other.stop();
+    });
+
+    it('takes an axis resting past half way as resting at that end', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      trigger(-0.85); // a worn trigger
+      trigger(1);
+      trigger(-0.85);
+      expect(pushed).toEqual(['a5+']);
+    });
+
+    it('takes a standard stick held when its gamepad is listed as resting at 0', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      connect({ axes: [-1] }); // the push that made the browser list it
+      connect({ axes: [0] });
+      connect({ axes: [-1] });
+      expect(pushed).toEqual(['a0-', 'a0-']);
+    });
+
+    it('learns the rest of a gamepad again when it is plugged in again', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      trigger(1); // held when listed: taken as resting pulled
+      trigger(-1);
+      expect(pushed).toEqual(['a5-']);
+      pads.set(null);
+      input.poll();
+      trigger(-1);
+      trigger(1);
+      expect(pushed).toEqual(['a5-', 'a5+']);
+    });
+
+    it('learns the rest of a gamepad listed while another one is read', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      const both = (wheelTrigger: number) =>
+        pads.setAll([
+          fakeGamepad({ id: 'Pad' }),
+          fakeGamepad({ id: 'Wheel', index: 1, mapping: '', axes: [0, 0, 0, 0, 0, wheelTrigger] }),
+        ]);
+      GamepadInput.choice = { id: 'Pad', nth: 0 };
+      both(-1);
+      input.poll();
+      both(1); // the gas held by the time the wheel is chosen
+      input.poll();
+      GamepadInput.choice = { id: 'Wheel', nth: 0 };
+      input.poll();
+      both(-1);
+      input.poll();
+      both(1);
+      input.poll();
+      expect(pushed).toEqual(['a5+']);
+    });
+
+    it('does not report a trigger at rest on the first read after a start', () => {
+      trigger(-1);
+      input.stop();
+      input.start();
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      trigger(-1);
+      expect(pushed).toEqual([]);
+    });
+
+    it('reports both directions of a shared axis resting at 0', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      connect({ axes: [0, 0, 0] });
+      connect({ axes: [0, 0, 1] }); // LT
+      connect({ axes: [0, 0, 0] });
+      connect({ axes: [0, 0, -1] }); // RT
+      connect({ axes: [0, 0, 1] }); // RT let go and LT pulled within one poll
+      expect(pushed).toEqual(['a2+', 'a2-', 'a2+']);
+    });
+
+    it("reports a stick's left then right in one capture", () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      connect();
+      connect({ axes: [-1] });
+      connect({ axes: [0] });
+      connect({ axes: [1] });
+      connect({ axes: [-1] }); // flicked across within one poll
+      expect(pushed).toEqual(['a0-', 'a0+', 'a0-']);
+    });
+
+    it('learns the rest of each gamepad on its own', () => {
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      pads.setAll([
+        fakeGamepad({ id: 'Pad', axes: [0, 0, 0, 0, 0, -1] }),
+        fakeGamepad({ id: 'Stick', index: 1, axes: [0, 0, 0, 0, 0, 0] }),
+      ]);
+      GamepadInput.choice = { id: 'Pad', nth: 0 };
+      input.poll();
+      GamepadInput.choice = { id: 'Stick', nth: 0 };
+      input.poll();
+      pads.setAll([
+        fakeGamepad({ id: 'Pad', axes: [0, 0, 0, 0, 0, -1] }),
+        fakeGamepad({ id: 'Stick', index: 1, axes: [0, 0, 0, 0, 0, -1] }),
+      ]);
+      input.poll();
+      expect(pushed).toEqual(['a5-']);
+    });
   });
 
   it('ignores polls while stopped', () => {
