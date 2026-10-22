@@ -12,7 +12,7 @@ import {
   Point4,
 } from '@gg-web-engine/core';
 import { DEFAULT_RAMP_TAU, rampParam, setParamNow } from '../utils/ramp';
-import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
+import { WebAudioSceneComponentBase, WebAudioSceneOptions } from './web-audio-scene-base.component';
 import { WebAudioSource3dComponentFactory } from '../web-audio-factory';
 import { WebAudioSource3dComponent } from './web-audio-source-3d.component';
 
@@ -21,6 +21,15 @@ import { WebAudioSource3dComponent } from './web-audio-source-3d.component';
  * spatialization), so `update()` only has to keep the native `AudioListener` in sync with
  * whatever `activeListener` is set to, read with `activeListenerBasis`'s local axes - no manual
  * per-source pan/gain work like the 2D implementation needs.
+ *
+ * On a shared `AudioContext` (`WebAudioSceneOptions.context`) the native listener is shared too -
+ * there is one per context. A scene writes it only from `update()` and only while it has an active
+ * listener, whether or not it owns the context, so give one scene on a context the active listener
+ * at a time: a world's scene (the world binds its camera) next to an app's menu scene that no world
+ * updates (no positional sources) never fight over it, whereas two updated scenes with active
+ * listeners would overwrite each other every frame. A scene's first write after it gets a listener
+ * is a cut to it, not a sweep from wherever the listener was, and disposing a scene leaves the
+ * native listener as it is.
  */
 export class WebAudioScene3dComponent
   extends WebAudioSceneComponentBase<Point3, Point4>
@@ -43,8 +52,12 @@ export class WebAudioScene3dComponent
    * listener change. */
   private listenerState: ListenerState | null = null;
 
-  constructor() {
-    super();
+  /**
+   * @param options `context`: an existing `AudioContext` to build the scene on instead of creating
+   * one - see `WebAudioSceneOptions`.
+   */
+  constructor(options: WebAudioSceneOptions = {}) {
+    super(options);
     this.factory = new WebAudioSource3dComponentFactory(this);
   }
 

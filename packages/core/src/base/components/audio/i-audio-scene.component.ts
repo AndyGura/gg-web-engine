@@ -54,7 +54,7 @@ export interface IAudioSceneComponent<
   /**
    * Master output volume, 0-1, applied on top of every bus's own volume. Most backends can only
    * apply this once a user gesture has resumed the native audio context (browser autoplay
-   * policy) - see `gg-engine-audio-adapter` for the resume-on-first-input pattern. Reads return
+   * policy) - see `gg-engine-audio-adapter` for the resume-on-gesture pattern. Reads return
    * the volume last set, like `getBusVolume`.
    */
   masterVolume: number;
@@ -130,7 +130,8 @@ export interface IAudioSceneComponent<
    * ranked and the lowest ones are made virtual (`IAudioSourceComponent.isVirtual`): silent and
    * free of audio processing, their playback position still advancing, and faded back in where
    * they would be once they rank inside the budget again. Ranking, re-evaluated every `update()`
-   * and whenever a source starts: an audible source before a silent one (effective gain ~0 - a
+   * and whenever a source starts (on a scene no world updates, an adapter re-ranks on its own
+   * while any source is virtual, so a budget works there too): an audible source before a silent one (effective gain ~0 - a
    * muted loop never takes a voice from one that is heard), then higher
    * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x every
    * parent bus's volume x distance attenuation from the source's own distance model; cones are

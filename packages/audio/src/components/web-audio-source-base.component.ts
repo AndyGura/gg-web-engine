@@ -71,6 +71,14 @@ type GainFade = {
  * is (`holdParam`) - a `setTargetAtTime` scheduled alongside a pending linear ramp would otherwise
  * be overridden by it. A virtual source schedules nothing; it joins the fade where it has got to
  * when it is heard again.
+ *
+ * Time: every timestamp a source keeps (playhead anchor, fade start/end, voice fade-out) is on the
+ * scene's `clock`, which is the context clock except while a scene on a shared context is paused:
+ * the scene then holds its sources (`holdForScenePause`: buffer sources stopped, the clock standing
+ * still) and moves their timestamps on by the paused time when it resumes
+ * (`releaseFromScenePause`), so nothing has to tell paused time apart afterwards. `AudioParam`
+ * events are always scheduled on the context clock; nothing timed on the clock is scheduled while
+ * the scene holds its sources.
  */
 export abstract class WebAudioSourceComponentBase<D, R> {
   private static nextVoiceOrder = 0;
@@ -226,8 +234,9 @@ export abstract class WebAudioSourceComponentBase<D, R> {
 
   /**
    * See `IAudioSourceComponent.fadeTo`. A `linearRampToValueAtTime` on the gain from the level
-   * heard now, resolved by a timer that checks the context clock - so a suspended context (a paused
-   * world) holds the fade and its promise alike.
+   * heard now, resolved by a timer that checks the scene's clock - so a suspended context (a paused
+   * world) holds the fade and its promise alike, and so does a paused scene on a shared context
+   * (`WebAudioSceneComponentBase.clock`).
    */
   public fadeTo(volume: number, durationMs: number): Promise<boolean> {
     if (!Number.isFinite(volume) || volume < 0) {
@@ -236,7 +245,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     if (!Number.isFinite(durationMs)) {
       throw new RangeError(`fadeTo duration must be a finite number of milliseconds, got ${durationMs}`);
     }
-    const now = this.scene.context.currentTime;
+    const now = this.scene.clock;
     const heard = this.heardVolume(now);
     this.endFade(false);
     this._volume = volume;
@@ -256,7 +265,9 @@ export abstract class WebAudioSourceComponentBase<D, R> {
         timer: null,
       };
       this.fade = fade;
-      if (!this.gainSilenced) {
+      this.scene.fadeStarted(this);
+      // a scene holding its sources (paused on a shared context) schedules it on resume
+      if (!this.gainSilenced && !this.scene.holdsSources) {
         const gain = this.gainNode.gain;
         holdParam(this.scene.context, gain, heard);
         gain.linearRampToValueAtTime(volume, fade.endTime);
@@ -271,7 +282,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
    * `volume` (the short ramp after a plain write is not modelled). What the voice ranking uses, so
    * a source fading out keeps its rank while it is still heard.
    */
-  protected heardVolume(now: number = this.scene.context.currentTime): number {
+  protected heardVolume(now: number = this.scene.clock): number {
     const fade = this.fade;
     return fade ? fadeLevel(fade, now) : this._volume;
   }
@@ -282,15 +293,19 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   }
 
   /**
-   * Schedules a check for the fade's end on the context clock; resolves it once reached, or with
-   * `false` once the context is closed (its clock never moves again - the scene was disposed).
+   * Schedules a check for the fade's end on the scene's clock; resolves it once reached, or with
+   * `false` once the scene is disposed or the context closed (its clock never moves again).
+   * Nothing is scheduled while the scene holds its sources: `releaseFromScenePause` checks again.
    */
   private watchFade(fade: GainFade): void {
-    const remaining = fade.endTime - this.scene.context.currentTime;
-    if (remaining <= 0 || this.scene.context.state === 'closed') {
+    const remaining = fade.endTime - this.scene.clock;
+    if (remaining <= 0 || this.scene.isDisposed || this.scene.context.state === 'closed') {
       if (this.fade === fade) {
         this.endFade(remaining <= 0);
       }
+      return;
+    }
+    if (this.scene.holdsSources) {
       return;
     }
     fade.timer = setTimeout(
@@ -314,10 +329,11 @@ export abstract class WebAudioSourceComponentBase<D, R> {
       return;
     }
     this.fade = null;
+    this.scene.fadeEnded(this);
     if (fade.timer !== null) {
       clearTimeout(fade.timer);
     }
-    fade.resolve(reached || this.scene.context.currentTime >= fade.endTime);
+    fade.resolve(reached || this.scene.clock >= fade.endTime);
   }
 
   /** Ramps the gain to `value` from `heard` (the level it is at now), freezing a fade's ramp first. */
@@ -337,7 +353,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
    */
   private rampGainIn(): void {
     const ctx = this.scene.context;
-    const now = ctx.currentTime;
+    const now = this.scene.clock;
     const fade = this.runningFade(now);
     if (!fade) {
       rampParam(ctx, this.gainNode.gain, this._volume);
@@ -409,29 +425,29 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     return this.scene.getBusNode(this._bus);
   }
 
+  /** Starts playing, from where `pause()` left it, or from the start. Does nothing on a source of a
+   * disposed scene: a shared context keeps running, and nothing would ever stop it again. */
   public play(): void {
-    if (this._isPlaying) {
+    if (this._isPlaying || this.scene.isDisposed) {
       return;
     }
     this._isPlaying = true;
     this.voiceState = 'real';
-    this.playheadAnchorTime = this.scene.context.currentTime;
+    this.playheadAnchorTime = this.scene.clock;
     if (this.scene.voiceStarted(this)) {
       this.connectOutput();
       // position/rotation set while the chain was disconnected (ended, paused or stopped as a
       // virtual voice) were only stored: write them before anything is heard
       this.resyncSpatialParams();
+      if (this.scene.holdsSources) {
+        // the scene is paused on a shared context: heard from its resume on
+        // (`releaseFromScenePause` restores the gain and starts the buffer source)
+        return;
+      }
       if (this.gainSilenced) {
         // left faded out by an earlier virtual stretch; nothing is playing into it yet, so the
         // jump back to full volume (or to where a fade has got to) can't be heard
-        const ctx = this.scene.context;
-        setParamNow(ctx, this.gainNode.gain, this.heardVolume());
-        const fade = this.runningFade(ctx.currentTime);
-        if (fade) {
-          this.gainNode.gain.linearRampToValueAtTime(fade.to, fade.endTime);
-          this.fadeScheduledUntil = fade.endTime;
-        }
-        this.gainSilenced = false;
+        this.restoreGain();
       }
       this.startBufferSource();
     } else {
@@ -467,7 +483,14 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     if (!this._isPlaying || this.voiceState !== 'real') {
       return;
     }
-    const now = this.scene.context.currentTime;
+    if (this.scene.holdsSources) {
+      // no buffer source plays while the scene is paused on a shared context: nothing to fade out
+      this.voiceState = 'virtual';
+      this.gainSilenced = true;
+      this.disconnectOutput();
+      return;
+    }
+    const now = this.scene.clock;
     this.voiceState = 'fading';
     this.fadeEndsAt = now + VIRTUAL_FADE_SECONDS;
     this.gainSilenced = true;
@@ -485,13 +508,27 @@ export abstract class WebAudioSourceComponentBase<D, R> {
       return;
     }
     const ctx = this.scene.context;
+    if (this.scene.holdsSources) {
+      // paused on a shared context: wired up now, heard from the resume on (`gainSilenced` stays,
+      // so `releaseFromScenePause` restores the gain before starting the buffer source)
+      if (this.voiceState === 'virtual' && this.currentPlayhead().ended) {
+        this.endNaturally();
+        return;
+      }
+      this.stopBufferSource();
+      this.voiceState = 'real';
+      this.gainSilenced = true;
+      this.connectOutput();
+      this.resyncSpatialParams();
+      return;
+    }
     if (this.voiceState === 'fading') {
       // its buffer source is still running: just turn it back up
       this.voiceState = 'real';
       this.gainSilenced = false;
-      if (this.runningFade(ctx.currentTime)) {
+      if (this.runningFade(this.scene.clock)) {
         // the linear ramps of the fade need an anchor: where the demotion's ramp has got to
-        const level = this.demotedFrom * Math.exp(-(ctx.currentTime - this.demotedAt) / DEFAULT_RAMP_TAU);
+        const level = this.demotedFrom * Math.exp(-(this.scene.clock - this.demotedAt) / DEFAULT_RAMP_TAU);
         holdParam(ctx, this.gainNode.gain, level);
       }
       this.rampGainIn();
@@ -519,7 +556,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     if (!this._isPlaying) {
       return;
     }
-    if (this.voiceState === 'fading' && this.scene.context.currentTime >= this.fadeEndsAt) {
+    if (this.voiceState === 'fading' && this.scene.clock >= this.fadeEndsAt) {
       this.stopBufferSource();
       this.disconnectOutput();
       this.voiceState = 'virtual';
@@ -527,6 +564,79 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     if (this.voiceState === 'virtual' && !this._loop && this.currentPlayhead().ended) {
       this.endNaturally();
     }
+  }
+
+  /**
+   * @internal called by a scene on a shared context when it pauses (`setPaused(true)`), for every
+   * source of it playing or fading. The scene's `clock` stands still from now on, which freezes the
+   * playhead and a timed fade where they are; this stops what renders on the context clock, which
+   * runs on: the buffer source of a heard voice (its node chain stays connected), a voice fading
+   * out to go virtual (it goes virtual at once), and the fade's end check.
+   */
+  public holdForScenePause(): void {
+    if (this.fade && this.fade.timer !== null) {
+      clearTimeout(this.fade.timer);
+      this.fade.timer = null;
+    }
+    if (!this._isPlaying) {
+      return;
+    }
+    if (this.voiceState === 'fading') {
+      this.stopBufferSource();
+      this.disconnectOutput();
+      this.voiceState = 'virtual';
+    } else if (this.voiceState === 'real') {
+      this.stopBufferSource();
+    }
+  }
+
+  /**
+   * @internal called by a scene on a shared context when it resumes (`setPaused(false)`), for every
+   * source of it playing or fading, right after its `clock` runs again: moves every timestamp kept
+   * on the clock on by `shift` (the seconds the scene was paused), so the playhead and a timed fade
+   * continue where they stood; a heard voice gets its gain back to the level it was heard at (the
+   * gain's automation ran on with the context clock, while nothing played into it), the rest of a
+   * timed fade scheduled, and a new buffer source from its playhead. A voice that started playing
+   * while paused starts here.
+   */
+  public releaseFromScenePause(shift: number): void {
+    this.playheadAnchorTime += shift;
+    this.fadeEndsAt += shift;
+    this.demotedAt += shift;
+    const fade = this.fade;
+    if (fade) {
+      fade.startTime += shift;
+      fade.endTime += shift;
+    }
+    if (this._isPlaying && this.voiceState === 'real') {
+      this.restoreGain();
+      this.startBufferSource();
+    } else if (!this._isPlaying && fade && !this.gainSilenced) {
+      // a fade on a source that isn't playing: the gain follows it again, for the next play()
+      this.restoreGain();
+    }
+    if (fade && this.fade === fade) {
+      this.watchFade(fade);
+    }
+  }
+
+  /**
+   * Jumps the gain to the level this source is heard at now - where a timed fade has got to, else
+   * `volume` - and schedules the rest of the fade. Only while nothing is playing into the gain, so
+   * the jump can't be heard: a `play()` after a virtual stretch, a resume on a shared context.
+   */
+  private restoreGain(): void {
+    const ctx = this.scene.context;
+    const gain = this.gainNode.gain;
+    setParamNow(ctx, gain, this.heardVolume());
+    const fade = this.runningFade(this.scene.clock);
+    if (fade) {
+      gain.linearRampToValueAtTime(fade.to, fade.endTime);
+      this.fadeScheduledUntil = fade.endTime;
+    } else {
+      this.fadeScheduledUntil = 0;
+    }
+    this.gainSilenced = false;
   }
 
   /**
@@ -602,7 +712,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   private currentPlayhead(): { offset: number; ended: boolean } {
     let position = this.playheadOffset;
     if (this._isPlaying) {
-      position += (this.scene.context.currentTime - this.playheadAnchorTime) * this._playbackRate;
+      position += (this.scene.clock - this.playheadAnchorTime) * this._playbackRate;
     }
     return wrapPlayhead(position, this.clip.duration || 0, this._loop, this._loopStart, this._loopEnd);
   }
@@ -612,7 +722,7 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   private reanchorPlayhead(): void {
     if (this._isPlaying) {
       this.playheadOffset = this.currentPlayhead().offset;
-      this.playheadAnchorTime = this.scene.context.currentTime;
+      this.playheadAnchorTime = this.scene.clock;
     }
   }
 
