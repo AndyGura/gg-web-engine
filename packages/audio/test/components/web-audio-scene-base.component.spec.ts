@@ -31,15 +31,22 @@ class FakeAudioContext {
     this.bufferSources.push(source);
     return source;
   });
-  resume = jest.fn(() => {
+  /** What `resume()`/`suspend()` run - a scene wraps the app-facing methods of a context it created. */
+  nativeResume = jest.fn(() => {
     this.state = this.resumeTo;
     this.onstatechange?.();
     return Promise.resolve();
   });
-  suspend = jest.fn(() => {
+  nativeSuspend = jest.fn(() => {
     this.state = 'suspended';
     return Promise.resolve();
   });
+  resume(): Promise<void> {
+    return this.nativeResume();
+  }
+  suspend(): Promise<void> {
+    return this.nativeSuspend();
+  }
   decodeAudioData = jest.fn((data: ArrayBuffer) => Promise.resolve({ decodedBytes: data.byteLength }));
   close = jest.fn(() => {
     this.state = 'closed';
@@ -82,7 +89,7 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
 
     window.dispatchEvent(new Event('keydown'));
 
-    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(context.nativeResume).toHaveBeenCalledTimes(1);
     expect(context.state).toBe('running');
     expect(context.bufferSources).toHaveLength(1);
     const [unlock] = context.bufferSources;
@@ -92,7 +99,7 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
 
     // a running context is left alone
     tap();
-    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(context.nativeResume).toHaveBeenCalledTimes(1);
     expect(context.bufferSources).toHaveLength(1);
     scene.dispose();
   });
@@ -105,7 +112,7 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
 
     tap();
 
-    expect(context.resume).toHaveBeenCalled();
+    expect(context.nativeResume).toHaveBeenCalled();
     expect(context.state).toBe('running');
     scene.dispose();
   });
@@ -122,7 +129,7 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
 
     tap(control);
 
-    expect(context.resume).toHaveBeenCalled();
+    expect(context.nativeResume).toHaveBeenCalled();
     expect(context.state).toBe('running');
     scene.dispose();
   });
@@ -149,13 +156,13 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
     const context = contextOf(scene);
     tap();
     expect(context.state).toBe('running');
-    const resumes = context.resume.mock.calls.length;
+    const resumes = context.nativeResume.mock.calls.length;
 
     // a phone call, another app's audio, the app in the background
     context.state = 'interrupted';
     tap();
 
-    expect(context.resume.mock.calls.length).toBeGreaterThan(resumes);
+    expect(context.nativeResume.mock.calls.length).toBeGreaterThan(resumes);
     expect(context.state).toBe('running');
     scene.dispose();
   });
@@ -181,7 +188,7 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
     const context = contextOf(scene);
     context.state = 'suspended';
     tap();
-    expect(context.resume).not.toHaveBeenCalled();
+    expect(context.nativeResume).not.toHaveBeenCalled();
 
     addSpy.mockRestore();
     removeSpy.mockRestore();
@@ -217,12 +224,12 @@ describe('WebAudioSceneComponentBase pause and decoding', () => {
     context.state = 'running';
 
     scene.setPaused(true);
-    expect(context.suspend).toHaveBeenCalledTimes(1);
+    expect(context.nativeSuspend).toHaveBeenCalledTimes(1);
     scene.setPaused(true);
-    expect(context.suspend).toHaveBeenCalledTimes(1);
+    expect(context.nativeSuspend).toHaveBeenCalledTimes(1);
 
     scene.setPaused(false);
-    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(context.nativeResume).toHaveBeenCalledTimes(1);
     scene.dispose();
   });
 
@@ -233,20 +240,47 @@ describe('WebAudioSceneComponentBase pause and decoding', () => {
     context.state = 'interrupted';
 
     scene.setPaused(true);
-    context.resume.mockClear();
+    context.nativeResume.mockClear();
     window.dispatchEvent(new Event('click'));
-    expect(context.resume).not.toHaveBeenCalled();
+    expect(context.nativeResume).not.toHaveBeenCalled();
     expect(context.bufferSources).toHaveLength(0);
 
     // unpausing outside a gesture: the browser refuses
     context.resumeTo = 'interrupted';
     scene.setPaused(false);
-    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(context.nativeResume).toHaveBeenCalledTimes(1);
     expect(context.state).toBe('interrupted');
 
     context.resumeTo = 'running';
     window.dispatchEvent(new Event('click'));
-    expect(context.resume).toHaveBeenCalledTimes(2);
+    expect(context.nativeResume).toHaveBeenCalledTimes(2);
+    expect(context.state).toBe('running');
+    scene.dispose();
+  });
+
+  it('leaves a context the app suspended itself to the app: no gesture or unpause resumes it', async () => {
+    const scene = new TestScene();
+    await scene.init();
+    const context = contextOf(scene);
+    context.state = 'running';
+
+    // an app muting everything behind its own overlay
+    await scene.context.suspend();
+    expect(context.nativeSuspend).toHaveBeenCalledTimes(1);
+    expect(context.state).toBe('suspended');
+    window.dispatchEvent(new Event('click'));
+    scene.setPaused(true);
+    scene.setPaused(false);
+    expect(context.nativeResume).not.toHaveBeenCalled();
+    expect(context.bufferSources).toHaveLength(0);
+    expect(context.state).toBe('suspended');
+
+    // the app's own resume hands the context back to the scene
+    await scene.context.resume();
+    expect(context.state).toBe('running');
+    context.state = 'interrupted';
+    window.dispatchEvent(new Event('click'));
+    expect(context.nativeResume).toHaveBeenCalledTimes(2);
     expect(context.state).toBe('running');
     scene.dispose();
   });

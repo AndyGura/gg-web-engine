@@ -1,5 +1,5 @@
 import { MusicPlayer, Point3 } from '@gg-web-engine/core';
-import { VOICE_UPKEEP_INTERVAL_MS } from '../../src/components/web-audio-scene-base.component';
+import { VOICE_UPKEEP_INTERVAL_MS, VOICE_UPKEEP_WATCH_MS } from '../../src/components/web-audio-scene-base.component';
 import { WebAudioScene3dComponent } from '../../src/components/web-audio-scene-3d.component';
 import { WebAudioSource3dComponent } from '../../src/components/web-audio-source-3d.component';
 import { VIRTUAL_FADE_SECONDS } from '../../src/components/web-audio-source-base.component';
@@ -525,6 +525,7 @@ describe('voice budget on a scene no world updates (WebAudioScene3dComponent)', 
     play({ priority: 100 });
     const engine = play({ priority: 50 });
     const advance = jest.spyOn(engine, 'advanceVirtual');
+    const timers = jest.spyOn(global, 'setTimeout');
     let updates = 0;
     for (let i = 0; i < 60; i++) {
       context.currentTime += 0.016;
@@ -533,11 +534,27 @@ describe('voice budget on a scene no world updates (WebAudioScene3dComponent)', 
       updates++;
     }
     expect(advance).toHaveBeenCalledTimes(updates);
+    // only an occasional check that the world still ticks, not a timer every 50 ms
+    expect(timers.mock.calls.length).toBeLessThanOrEqual(Math.ceil((60 * 16) / VOICE_UPKEEP_WATCH_MS) + 1);
+    timers.mockRestore();
 
     // the world stops ticking: the scene takes over
     advance.mockClear();
-    wait(0.5);
+    wait((2 * VOICE_UPKEEP_WATCH_MS) / 1000 + 0.1);
     expect(advance.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('does not take an update() from before the timer was armed for a world still ticking', () => {
+    scene.maxVoices = 1;
+    const horn = play({ priority: 100 });
+    for (let i = 0; i < 3; i++) {
+      scene.update(0, 16); // a world updated it a while ago, with nothing virtual
+    }
+    const engine = play({ priority: 50 }); // the world has stopped since
+    expect(engine.isVirtual).toBe(true);
+    horn.stop();
+    wait(VOICE_UPKEEP_INTERVAL_MS / 1000);
+    expect(engine.isVirtual).toBe(false);
   });
 
   it('stops checking while paused and once disposed', () => {

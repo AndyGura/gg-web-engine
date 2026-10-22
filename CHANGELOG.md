@@ -32,12 +32,14 @@ where one exists.
 ### Added
 - audio: an audio scene can run on an existing `AudioContext`:
   `new WebAudioScene3dComponent({ context })` (and `WebAudioScene2dComponent`) builds the scene's
-  graph on it without owning it (`ownsContext` is `false`). Such a scene never closes the context
-  on `dispose()` (it disposes its own sources and disconnects its own nodes), binds no autoplay
-  gesture listeners, and on `setPaused` pauses only its own sources instead of suspending the
-  context: playing sources stop where they are and continue on resume, a source played while
-  paused starts on resume, and timed fades hold. Volumes, buses, reverbs and the voice budget stay
-  per scene. Meant for building every world's scene on an app's long-lived menu scene's context:
+  graph on it without owning it (`ownsContext` is `false`). Scenes on one context leave each other
+  playing: while more than one is on it, `setPaused` pauses only the scene's own sources instead of
+  suspending the context (playing sources stop where they are and continue on resume, a source
+  played while paused starts on resume, timed fades hold), and the owner's `dispose()` hands the
+  context to another scene on it instead of closing it - the last one closes it. Only the owner
+  binds autoplay gesture listeners. A disposed scene's idle sources never play again. A context the
+  app created and passed in is never suspended, resumed or closed by a scene. Volumes, buses,
+  reverbs and the voice budget stay per scene. Meant for building every world's scene on an app's long-lived menu scene's context:
   iOS starts a new context on its own only shortly after a tap, so a world created after a long
   load stayed silent until the next tap, and suspending or closing a second context disturbed the
   first one's audio there.
@@ -49,7 +51,8 @@ where one exists.
   the outranked ones stayed virtual for good (virtual one-shots never ended or got disposed) and
   every later sound and music track started virtual: the scene went silent. While any source is
   virtual and no `update()` comes, the scene now does its voice bookkeeping itself every 50 ms
-  (`VOICE_UPKEEP_INTERVAL_MS`). Scenes a world updates behave as before.
+  (`VOICE_UPKEEP_INTERVAL_MS`); while a world updates it, it only checks every 250 ms
+  (`VOICE_UPKEEP_WATCH_MS`) that the world still does.
 - audio: a scene whose `AudioContext` was created without a user gesture (a world created while a
   level loads) now starts on the next gesture on iOS too. The scene only listened while the
   context was `'suspended'` (WebKit reports one it holds back as `'interrupted'`, and iOS
@@ -59,8 +62,10 @@ where one exists.
   sound stayed silent until WebKit started the context by chance. For its whole life, the scene now
   listens in the capture phase for `pointerdown`, `pointerup`, `touchend`, `click` and `keydown`
   (`RESUME_GESTURE_EVENTS`); each one finding the context neither running nor closed while the
-  scene is not paused resumes it and starts a silent one-sample buffer within the gesture. The
-  scene no longer sets `context.onstatechange`.
+  scene is not paused resumes it and starts a silent one-sample buffer within the gesture. A
+  context the app suspended itself (`context.suspend()`) is left suspended until the app's own
+  `context.resume()` - neither a gesture nor the end of a pause resumes it. The scene no longer
+  sets `context.onstatechange`.
 
 ## [0.0.86] - 2026-10-22
 

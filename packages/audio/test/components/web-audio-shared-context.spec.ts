@@ -155,8 +155,21 @@ class FakeAudioContext {
     getChannelData: () => new Float32Array(length),
   }));
   createConvolver = jest.fn(() => Object.assign(new FakeNode(), { buffer: null, normalize: true }));
-  resume = jest.fn(() => Promise.resolve());
-  suspend = jest.fn(() => Promise.resolve());
+  /** What `resume()`/`suspend()` run - a scene wraps the app-facing methods of a context it created. */
+  nativeResume = jest.fn(() => {
+    this.state = 'running';
+    return Promise.resolve();
+  });
+  nativeSuspend = jest.fn(() => {
+    this.state = 'suspended';
+    return Promise.resolve();
+  });
+  resume(): Promise<void> {
+    return this.nativeResume();
+  }
+  suspend(): Promise<void> {
+    return this.nativeSuspend();
+  }
   close = jest.fn(() => {
     this.state = 'closed';
     return Promise.resolve();
@@ -283,6 +296,57 @@ describe('a scene on a shared AudioContext', () => {
     });
   });
 
+  describe('the owner disposed first', () => {
+    it('hands the context to a scene still on it, which plays on and closes it last', async () => {
+      const addSpy = jest.spyOn(window, 'addEventListener');
+      await world.init();
+      const engine = play(world);
+      owner.dispose();
+      expect(shared.close).not.toHaveBeenCalled();
+      expect(owner.ownsContext).toBe(false);
+      expect(world.ownsContext).toBe(true);
+      expect(bufferOf(engine)!.stopped).toBe(false);
+      // it unlocks the context from now on
+      expect(addSpy.mock.calls.filter(c => c[0] === 'touchend')).toHaveLength(1);
+      addSpy.mockRestore();
+
+      world.setPaused(true); // alone now: suspends it
+      expect(shared.nativeSuspend).toHaveBeenCalledTimes(1);
+      world.setPaused(false);
+      world.dispose();
+      expect(shared.close).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('never plays an idle source of a disposed scene again', async () => {
+    const pooled = world.factory.createSource({ clip, loop: true, autoplay: false });
+    world.dispose();
+    pooled.play();
+    expect(pooled.isPlaying).toBe(false);
+    expect(shared.bufferSources).toHaveLength(0);
+    expect(world.voiceCounts.playing).toBe(0);
+    const done = jest.fn();
+    pooled.fadeTo(0, 1000).then(done);
+    await Promise.resolve();
+    expect(done).toHaveBeenCalledWith(false);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('never suspends, resumes or closes a context the app created itself', () => {
+    const appContext = new FakeAudioContext();
+    const a = new WebAudioScene3dComponent({ context: appContext as unknown as AudioContext });
+    const b = new WebAudioScene3dComponent({ context: appContext as unknown as AudioContext });
+    expect(a.ownsContext).toBe(false);
+    expect(b.ownsContext).toBe(false);
+    b.dispose();
+    a.setPaused(true);
+    a.setPaused(false);
+    a.dispose();
+    expect(appContext.nativeSuspend).not.toHaveBeenCalled();
+    expect(appContext.nativeResume).not.toHaveBeenCalled();
+    expect(appContext.close).not.toHaveBeenCalled();
+  });
+
   it('binds no gesture listeners of its own (the owner unlocks the context)', async () => {
     const addSpy = jest.spyOn(window, 'addEventListener');
     await world.init();
@@ -301,14 +365,14 @@ describe('a scene on a shared AudioContext', () => {
       advance(1.5); // 3 s of clip played
 
       world.setPaused(true);
-      expect(shared.suspend).not.toHaveBeenCalled();
+      expect(shared.nativeSuspend).not.toHaveBeenCalled();
       expect(first.stopped).toBe(true);
       expect(engine.isPlaying).toBe(true);
       expect(bufferOf(menuMusic)!.stopped).toBe(false);
 
       advance(10); // the shared clock runs on while the world is paused
       world.setPaused(false);
-      expect(shared.resume).not.toHaveBeenCalled();
+      expect(shared.nativeResume).not.toHaveBeenCalled();
       const second = bufferOf(engine)!;
       expect(second).not.toBe(first);
       expect(second.offset).toBeCloseTo(3);
@@ -438,13 +502,58 @@ describe('a scene on a shared AudioContext', () => {
       expect(ambience.isVirtual).toBe(true);
     });
 
-    it('leaves an owning scene suspending its context as before', () => {
+    it('pauses the owner by its own sources too while another scene plays on the context', () => {
+      const menuMusic = play(owner);
+      const engine = play(world);
+      const first = bufferOf(menuMusic)!;
+      owner.setPaused(true);
+      expect(shared.nativeSuspend).not.toHaveBeenCalled();
+      expect(first.stopped).toBe(true);
+      expect(bufferOf(engine)!.stopped).toBe(false);
+      advance(5);
+      owner.setPaused(false);
+      expect(shared.nativeResume).not.toHaveBeenCalled();
+      expect(bufferOf(menuMusic)).not.toBe(first);
+      expect(bufferOf(menuMusic)!.stopped).toBe(false);
+      expect(bufferOf(menuMusic)!.offset).toBeCloseTo(0);
+    });
+
+    it('suspends the context for an owner alone on it', () => {
+      world.dispose();
       const music = play(owner);
       owner.setPaused(true);
-      expect(shared.suspend).toHaveBeenCalledTimes(1);
+      expect(shared.nativeSuspend).toHaveBeenCalledTimes(1);
       expect(bufferOf(music)!.stopped).toBe(false); // the suspended context holds it
       owner.setPaused(false);
-      expect(shared.resume).toHaveBeenCalledTimes(1);
+      expect(shared.nativeResume).toHaveBeenCalledTimes(1);
+    });
+
+    it('switches an owner paused alone to holding its sources once another scene joins', () => {
+      world.dispose();
+      const music = play(owner);
+      advance(2);
+      const first = bufferOf(music)!;
+      owner.setPaused(true);
+      expect(shared.state).toBe('suspended');
+      const late = new WebAudioScene3dComponent({ context: owner.context });
+      expect(shared.state).toBe('running');
+      expect(first.stopped).toBe(true);
+      const engine = play(late);
+      expect(bufferOf(engine)!.stopped).toBe(false);
+      advance(3);
+      owner.setPaused(false);
+      expect(bufferOf(music)!.offset).toBeCloseTo(2);
+      late.dispose();
+    });
+
+    it('never resumes a context the app suspended itself', () => {
+      world.dispose();
+      owner.setPaused(true);
+      owner.context.suspend();
+      owner.setPaused(false);
+      expect(shared.nativeResume).not.toHaveBeenCalled();
+      owner.context.resume();
+      expect(shared.state).toBe('running');
     });
   });
 

@@ -51,8 +51,9 @@ virtual one-shot stays virtual until it would have ended, then fires `ended$` as
 A budget works the same on a scene no world drives (a menu scene of its own, with `MusicPlayer` and
 `playOneShot` on it): while any source is virtual and no `update()` comes, the scene re-ranks its
 voices itself every `VOICE_UPKEEP_INTERVAL_MS` (50 ms), so a freed voice still goes to the best
-virtual source and a virtual one-shot still ends. A world's `update()` takes precedence; a paused
-scene (`setPaused(true)`) waits.
+virtual source and a virtual one-shot still ends. A world's `update()` takes precedence (the scene
+only checks every `VOICE_UPKEEP_WATCH_MS`, 250 ms, that the world still ticks); a paused scene
+(`setPaused(true)`) waits.
 
 `source.isPlaying` stays `true` while virtual; `source.isVirtual` tells whether it is heard.
 `world.audioScene.voiceCounts` gives `{ playing, audible, virtual }`, and the dev console command
@@ -182,28 +183,33 @@ const world = new Gg3dWorld({
   physicsWorld: /* ... */,
   audioScene: new WebAudioScene3dComponent({ context: menuAudio.context }),
 });
-world.audioScene!.ownsContext; // false
+world.audioScene!.ownsContext; // false - menuAudio owns it
 ```
 
 Why: browsers start an `AudioContext` only after a user gesture, and iOS lets a new context start
 on its own only if it is created within a moment of a tap. A world created at the end of a level
 load gets a context that stays silent until the player taps again (holding an on-screen control
 does not count), while the menu's context, unlocked once, keeps running. On iOS, suspending
-(pause) and closing (world disposal) a second context also disturbed the first one's audio. On the
+(pause) and closing (world disposal) a second context also disturbs the first one's audio. On the
 shared context no new context ever needs permission, and nothing is suspended or closed under the
 menu.
 
-A scene given a `context` does not own it:
+Every scene on a context leaves the others playing:
 
-- `dispose()` disposes its sources and disconnects the nodes it created, and never closes the
-  context; the owner's nodes and sources are untouched. Dispose the owner last.
-- `setPaused` (the world pausing) leaves the context running and pauses only that scene's sources:
-  they stop where they are and continue from there on resume; a source played while paused starts
-  on resume; timed fades (`fadeTo`) hold, as they do on a suspended context.
-- It binds no autoplay gesture listeners - the owner unlocks the context.
-- The owner still manages the context for everyone: its own `setPaused` suspends it and its
-  `dispose()` closes it, silencing every scene on it. A menu scene with no world is never paused.
-- Master volume, buses, bus parents, reverbs and the voice budget are its own; apply the app's audio
+- `dispose()` disposes the scene's sources (the idle ones never play again) and disconnects the
+  nodes it created; other scenes' nodes and sources are untouched. The owner (`ownsContext`, the
+  scene that created the context) closes it only if no other scene is on it; otherwise it hands the
+  context to one of them, which closes it once disposed itself, last.
+- `setPaused` (the world pausing) pauses only that scene's sources while other scenes are on the
+  context: they stop where they are and continue from there on resume; a source played while
+  paused starts on resume; timed fades (`fadeTo`) hold, as they do on a suspended context. An owner
+  alone on its context suspends the context instead.
+- Only the owner binds autoplay gesture listeners - it unlocks the context for every scene on it.
+- A context the app suspends itself (`context.suspend()`) stays suspended - no gesture and no end of
+  a pause resumes it - until the app calls `context.resume()`.
+- A context the app created itself and passed as `context` belongs to no scene: none of them ever
+  suspends, resumes or closes it.
+- Master volume, buses, bus parents, reverbs and the voice budget are per scene; apply the app's audio
   settings to each new world's scene as usual. Both master gains feed the context's output.
 - The context has one native `listener`. A 3D scene writes it only while it has an active listener
   and is updated by a world, so a world's scene (its camera) and a world-less menu scene (no

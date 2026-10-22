@@ -606,9 +606,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   start a context only after a gesture, and iOS starts a new one on its own only within ~2 s of a
   tap, so a world created after a long load stays silent until the next tap, while the menu's
   context, unlocked once, keeps running. Such a scene doesn't own the context (`ownsContext`
-  false): its `dispose()` doesn't close it, its pause (the world's) pauses only its own sources, and
-  it binds no unlock listeners. Dispose the menu scene last, and leave the 3D listener to the
-  world's scene (a menu scene no world updates never writes it). **Music**: `new MusicPlayer(scene, { bus?,
+  false); scenes on one context never silence each other: a pause (the world's) pauses only that
+  scene's own sources, and the context is closed only when the last scene on it is disposed. The
+  menu scene (the owner) unlocks it on gestures. A context the app suspends itself
+  (`context.suspend()`) stays suspended until its own `context.resume()`. Leave the 3D listener to
+  the world's scene (a menu scene no world updates never writes it). **Music**: `new MusicPlayer(scene, { bus?,
   crossfadeMs?, loadClip? })` (core) plays `MusicTrack`s (`{ url, volume?, loop?, loopStart?,
   loopEnd? }`, extend it with your own fields such as a title): `play(trackOrList, { crossfadeMs,
   shuffle, repeat })` crossfades from what is playing, `next()`, `stop(fadeMs?)`, `nowPlaying$`

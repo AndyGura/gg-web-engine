@@ -294,12 +294,12 @@ export abstract class WebAudioSourceComponentBase<D, R> {
 
   /**
    * Schedules a check for the fade's end on the scene's clock; resolves it once reached, or with
-   * `false` once the context is closed (its clock never moves again - the scene was disposed).
+   * `false` once the scene is disposed or the context closed (its clock never moves again).
    * Nothing is scheduled while the scene holds its sources: `releaseFromScenePause` checks again.
    */
   private watchFade(fade: GainFade): void {
     const remaining = fade.endTime - this.scene.clock;
-    if (remaining <= 0 || this.scene.context.state === 'closed') {
+    if (remaining <= 0 || this.scene.isDisposed || this.scene.context.state === 'closed') {
       if (this.fade === fade) {
         this.endFade(remaining <= 0);
       }
@@ -425,8 +425,10 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     return this.scene.getBusNode(this._bus);
   }
 
+  /** Starts playing, from where `pause()` left it, or from the start. Does nothing on a source of a
+   * disposed scene: a shared context keeps running, and nothing would ever stop it again. */
   public play(): void {
-    if (this._isPlaying) {
+    if (this._isPlaying || this.scene.isDisposed) {
       return;
     }
     this._isPlaying = true;
