@@ -26,6 +26,16 @@ export const REVERB_RELEASE_SECONDS = 5 * DEFAULT_RAMP_TAU;
  */
 export const VOICE_UPKEEP_INTERVAL_MS = 50;
 
+/**
+ * The `window` events on which a scene resumes a held-back `AudioContext` (see
+ * `WebAudioSceneComponentBase.init()`): `pointerdown` is a user activation for audio in Chromium
+ * and Firefox but not on iOS, where `pointerup`, `touchend`, `click` and `keydown` are.
+ */
+export const RESUME_GESTURE_EVENTS: readonly string[] = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
+
+/** Capture phase, so an element stopping its events' propagation cannot hide a gesture. */
+const RESUME_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true, passive: true };
+
 /** A convolver and the gain of its output - one bus reverb as rendered. */
 type ReverbChain = {
   convolver: ConvolverNode;
@@ -90,12 +100,13 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   private voicesUpdatedByWorld = false;
   private disposed = false;
   private _activeListener: IPositionable<D, R> | null = null;
-  /** The `resume` closure bound in `init()`, kept around so `dispose()` can remove it if the
-   * gesture never fires - `{ once: true }` only removes a listener once it *fires*, not on
-   * dispose, so without this the window would keep holding a live reference to this (disposed)
-   * scene's `resume` closure indefinitely. `null` whenever no listener is currently bound (never
-   * bound, or already resumed/torn down). */
+  /** The gesture handler bound in `init()` (see `RESUME_GESTURE_EVENTS`), kept so `dispose()` can
+   * remove it: the listeners live as long as the scene, and without this the window would keep
+   * holding this (disposed) scene's closure indefinitely. `null` whenever no listener is bound
+   * (never bound - no `window`, as in SSR - or already torn down). */
   private resumeListener: (() => void) | null = null;
+  /** The one-sample silent buffer played by `unlockFromGesture()`, built on first use. */
+  private silentBuffer: AudioBuffer | null = null;
 
   protected constructor() {
     this.context = new AudioContext();
@@ -103,44 +114,75 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     this.masterGain.connect(this.context.destination);
   }
 
+  /**
+   * Arms the autoplay unlock. Browsers hold an `AudioContext` back until a user gesture lets it
+   * play: Chromium and Firefox report it `'suspended'`, WebKit `'suspended'` or `'interrupted'`,
+   * and iOS can interrupt a running context again at any time (a call, another app's audio, the
+   * app going to the background). So for as long as the scene lives - not just until its first
+   * resume - every `RESUME_GESTURE_EVENTS` event on `window` that finds the context neither
+   * running nor closed, while the scene is not paused (`setPaused`), resumes it and starts a
+   * silent one-sample buffer source within the gesture (WebKit starts a context it held back when
+   * a node starts during a gesture). The listeners are capture-phase, so a control that stops its
+   * events' propagation (`@gg-web-engine/mobile-controls` does) cannot hide the gesture, and
+   * several event types are listened to because browsers differ in which ones count as a user
+   * activation for audio (iOS ignores `pointerdown` but accepts `pointerup`/`touchend`/`click`/
+   * `keydown`). A gesture finding the context running costs one state check. An app with its own
+   * "click to start" screen can still call `world.audioScene.context.resume()` from that click.
+   * Without a `window` (SSR, node) nothing is armed.
+   */
   public async init(): Promise<void> {
-    if (this.context.state === 'suspended' && typeof window !== 'undefined' && !this.resumeListener) {
-      const resume = () => {
-        if (this.paused) {
-          // the world is paused: `setPaused(false)` resumes the context, from this same gesture's
-          // allowance, once the world continues
-          return;
-        }
-        this.context.resume().catch(() => {
-          /* ignore - browser will re-suspend until an accepted gesture happens */
-        });
-      };
-      this.resumeListener = resume;
-      // Browser autoplay policy: an AudioContext starts (or is forced back into) "suspended"
-      // until a user gesture resumes it. Resuming on the first pointerdown/keydown covers the
-      // overwhelming majority of apps without requiring them to wire this up themselves; an app
-      // with its own "click to start" screen can call `world.audioScene.context.resume()`
-      // directly from that click handler instead, which makes these listeners no-ops (removed on
-      // the first successful resume regardless of which one fired).
-      window.addEventListener('pointerdown', resume, { once: true });
-      window.addEventListener('keydown', resume, { once: true });
-      this.context.onstatechange = () => {
-        if (this.context.state === 'running') {
-          this.removeResumeListeners();
-        }
-      };
+    if (typeof window === 'undefined' || this.resumeListener || this.disposed) {
+      return;
+    }
+    const resume = () => {
+      // a paused world stays silent: `setPaused(false)` resumes the context once it continues
+      // (and if that comes outside a gesture and the browser refuses, the next gesture does it)
+      if (this.paused || this.disposed || !this.needsResume()) {
+        return;
+      }
+      this.context.resume().catch(() => {
+        /* not an accepted gesture for this browser - the next one tries again */
+      });
+      this.unlockFromGesture();
+    };
+    this.resumeListener = resume;
+    for (const type of RESUME_GESTURE_EVENTS) {
+      window.addEventListener(type, resume, RESUME_LISTENER_OPTIONS);
     }
   }
 
-  /** Removes the `pointerdown`/`keydown` resume listeners bound in `init()`, if still bound -
-   * shared by the "gesture arrived" path (`onstatechange` above) and `dispose()` (for the "scene
-   * was torn down before any gesture arrived" case, see `resumeListener`'s doc). */
+  /** Whether the context is held back (`'suspended'`, or WebKit's `'interrupted'`) and could play. */
+  private needsResume(): boolean {
+    // `'interrupted'` is not in TypeScript's `AudioContextState` yet
+    const state: string = this.context.state;
+    return state !== 'running' && state !== 'closed';
+  }
+
+  /** Starts a one-sample silent buffer source into the destination, from inside a user gesture:
+   * the classic iOS unlock, which makes WebKit start a context it held back. */
+  private unlockFromGesture(): void {
+    try {
+      if (!this.silentBuffer) {
+        this.silentBuffer = this.context.createBuffer(1, 1, this.context.sampleRate);
+      }
+      const source = this.context.createBufferSource();
+      source.buffer = this.silentBuffer;
+      source.connect(this.context.destination);
+      source.onended = () => source.disconnect();
+      source.start(0);
+    } catch {
+      /* a context that can't create nodes (closed, or a test double) - the resume() call stands */
+    }
+  }
+
+  /** Removes the gesture listeners bound in `init()`, if bound - called by `dispose()`. */
   private removeResumeListeners(): void {
     if (!this.resumeListener) {
       return;
     }
-    window.removeEventListener('pointerdown', this.resumeListener);
-    window.removeEventListener('keydown', this.resumeListener);
+    for (const type of RESUME_GESTURE_EVENTS) {
+      window.removeEventListener(type, this.resumeListener, RESUME_LISTENER_OPTIONS);
+    }
     this.resumeListener = null;
   }
 
@@ -564,7 +606,6 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     this.disposed = true;
     this.disarmVoiceUpkeep();
     this.removeResumeListeners();
-    this.context.onstatechange = null;
     for (const source of [...this.sources]) {
       source.dispose();
     }

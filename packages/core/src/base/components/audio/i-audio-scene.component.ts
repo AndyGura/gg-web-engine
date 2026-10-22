@@ -54,7 +54,7 @@ export interface IAudioSceneComponent<
   /**
    * Master output volume, 0-1, applied on top of every bus's own volume. Most backends can only
    * apply this once a user gesture has resumed the native audio context (browser autoplay
-   * policy) - see `gg-engine-audio-adapter` for the resume-on-first-input pattern. Reads return
+   * policy) - see `gg-engine-audio-adapter` for the resume-on-gesture pattern. Reads return
    * the volume last set, like `getBusVolume`.
    */
   masterVolume: number;

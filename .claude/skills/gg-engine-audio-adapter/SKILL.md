@@ -87,7 +87,8 @@ map both values to its own panner, but must keep the property readable/writable.
   resumes the whole `AudioContext`, which does that for free, including sources scheduled but not
   yet audible; nothing is tracked per source. Two things to keep: the autoplay-gesture handler must
   not resume a context that is paused this way (it returns early while paused, and
-  `setPaused(false)` does the resume), and `suspend()`/`resume()` reject on a closed context or one
+  `setPaused(false)` does the resume - or, if that call comes outside a gesture and the browser
+  refuses, the next gesture after it), and `suspend()`/`resume()` reject on a closed context or one
   the browser hasn't allowed to start yet - both are swallowed.
 - **`IAudioSourceComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component.ts`):
   one sound instance - `IPositionable<D,R>` (position/rotation proxied to the native
@@ -438,12 +439,38 @@ where `output` is the parent bus's `input`, or `masterGain` (see "Bus hierarchy"
 
 ## Autoplay policy (browser gesture requirement)
 
-Every browser suspends (or refuses to start) an `AudioContext` until a user gesture accepts it.
-`WebAudioSceneComponentBase.init()` handles the common case by attaching one-shot
-`pointerdown`/`keydown` listeners that resume the context, removed automatically the first time
-either fires - see that method's doc comment. An app with its own "click to start" screen can call
-`world.audioScene.context.resume()` directly from that click handler instead; this makes the
-auto-attached listeners inert (harmless) rather than conflicting with it.
+Every browser holds an `AudioContext` back until a user gesture accepts it, and a world is often
+created without one (while a level loads). `WebAudioSceneComponentBase.init()` handles it for the
+app: for the scene's whole life it listens on `window` for `RESUME_GESTURE_EVENTS` (`pointerdown`,
+`pointerup`, `touchend`, `click`, `keydown`), capture phase, passive; each one that finds the
+context neither `'running'` nor `'closed'`, while the scene is not paused, calls
+`context.resume()` (rejection swallowed) and starts a one-sample silent `AudioBufferSourceNode`
+into the destination within the gesture. `dispose()` removes the listeners (`resumeListener`).
+An app with its own "click to start" screen can still call `world.audioScene.context.resume()`
+from that click; the listeners then find the context running and do nothing.
+
+Pitfalls this design exists for (found with nfs-web on iPhone, 0.0.86 - every sound of a world
+created during a race load stayed silent until WebKit happened to start the context on its own):
+
+- **WebKit's `'interrupted'` state.** A context WebKit holds back can report `'interrupted'`
+  instead of `'suspended'` (Playwright WebKit: a context created before any gesture starts
+  `'interrupted'`), and iOS interrupts a running context later (a call, other audio, the app in
+  the background). Test "not running and not closed", never `=== 'suspended'`;
+  `'interrupted'` is not in TypeScript's `AudioContextState`, compare it as a `string`.
+- **Not only until the first resume.** Because of the later interruptions, the listeners stay for
+  the scene's life; a gesture on a running context costs one state check.
+- **Capture phase.** `@gg-web-engine/mobile-controls`' `TouchControl` calls `stopPropagation()` in
+  its pointer handlers, so bubbling listeners on `window` never see a touch on a control - on a
+  phone with the overlay, nearly every touch during play.
+- **Never `{ once: true }`.** The first gesture may not resume anything: the world is paused (the
+  handler returns early, see `setPaused`), or the browser does not count that event as a user
+  activation for audio. iOS ignores `pointerdown`; it accepts `pointerup`, `touchend`, `click`,
+  `keydown` - hence all of them.
+- **`resume()` alone is not always enough on iOS.** Starting a node inside the gesture is what
+  makes WebKit start a context it held back (the classic silent-buffer unlock); a node started by a
+  game sound during a touch (a tyre squeal) did it by accident before the fix.
+- **SSR / node.** Nothing is bound without a `window`; the silent buffer is built lazily and
+  wrapped in `try`, so a test double context without `createBuffer` keeps working.
 
 ## Level JSON: the `"Sound"` built-in class
 
@@ -497,7 +524,8 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   `packages/core`'s own tests use for physics/rendering components).
 - The real scene/source classes against a hand-rolled fake `AudioContext` installed as
   `global.AudioContext`: `test/components/web-audio-scene-base.component.spec.ts` (the gesture
-  listeners, `setPaused`, `decodeClip`), `test/components/web-audio-buses.spec.ts` (the bus
+  listeners - dispatched as real DOM events, including one a child element stops in the bubbling
+  phase and contexts starting `'interrupted'` - `setPaused`, `decodeClip`), `test/components/web-audio-buses.spec.ts` (the bus
   reverb graph and bus parents on both scenes; its fake nodes record their outgoing connections, so a test asks
   whether a convolver is fed by the bus and reaches the master gain),
   `test/components/web-audio-voice-budget.spec.ts` (the

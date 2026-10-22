@@ -37,6 +37,17 @@ where one exists.
   every later sound and music track started virtual: the scene went silent. While any source is
   virtual and no `update()` comes, the scene now does its voice bookkeeping itself every 50 ms
   (`VOICE_UPKEEP_INTERVAL_MS`). Scenes a world updates behave as before.
+- audio: a scene whose `AudioContext` was created without a user gesture (a world created while a
+  level loads) now starts on the next gesture on iOS too. The scene only listened while the
+  context was `'suspended'` (WebKit reports one it holds back as `'interrupted'`, and iOS
+  interrupts running contexts later), with bubbling listeners that touches on
+  `@gg-web-engine/mobile-controls` never reached (they stop propagation), and only once, so a
+  gesture while paused or one iOS does not accept for audio (`pointerdown`) used them up: every
+  sound stayed silent until WebKit started the context by chance. For its whole life, the scene now
+  listens in the capture phase for `pointerdown`, `pointerup`, `touchend`, `click` and `keydown`
+  (`RESUME_GESTURE_EVENTS`); each one finding the context neither running nor closed while the
+  scene is not paused resumes it and starts a silent one-sample buffer within the gesture. The
+  scene no longer sets `context.onstatechange`.
 
 ## [0.0.86] - 2026-10-22
 
