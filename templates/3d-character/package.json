@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.86",
-    "@gg-web-engine/rapier3d": "0.0.86",
-    "@gg-web-engine/three": "0.0.86",
+    "@gg-web-engine/core": "0.0.87",
+    "@gg-web-engine/rapier3d": "0.0.87",
+    "@gg-web-engine/three": "0.0.87",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

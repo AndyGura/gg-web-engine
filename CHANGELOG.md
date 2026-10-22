@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.87] - 2026-10-22
+
 ### Added
 - audio: an audio scene can run on an existing `AudioContext`:
   `new WebAudioScene3dComponent({ context })` (and `WebAudioScene2dComponent`) builds the scene's
@@ -1483,7 +1485,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...HEAD
+[0.0.87]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...0.0.87
 [0.0.86]: https://github.com/AndyGura/gg-web-engine/compare/0.0.85...0.0.86
 [0.0.85]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...0.0.85
 [0.0.84]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...0.0.84

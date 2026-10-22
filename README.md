@@ -311,7 +311,7 @@ of the same dimensionality; audio, multiplayer and mobile controls are optional.
 ### Bundle sizes
 
 <!-- bundle-sizes:start -->
-Measured for 0.0.86 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
+Measured for 0.0.87 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
 size keeps every export and leaves out its dependencies; the library it wraps is listed separately. Apps
 import less than everything, so their bundles tree-shake below these sums.
 
@@ -324,7 +324,7 @@ import less than everything, so their bundles tree-shake below these sums.
 | `@gg-web-engine/ammo` | 649.8 kB | Bullet, compiled to WebAssembly, ships inside the package |
 | `@gg-web-engine/rapier2d` | 9.3 kB | 1.22 MB `@dimforge/rapier2d-compat`, WebAssembly inlined as base64 |
 | `@gg-web-engine/matter` | 8.4 kB | 27.1 kB `matter-js` |
-| `@gg-web-engine/audio` | 11.2 kB | - |
+| `@gg-web-engine/audio` | 12.3 kB | - |
 | `@gg-web-engine/multiplayer` | 33.7 kB | - |
 | `@gg-web-engine/mobile-controls` | 26.6 kB | - |
 
