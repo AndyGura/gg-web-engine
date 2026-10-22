@@ -68,7 +68,7 @@ map both values to its own panner, but must keep the property readable/writable.
   writing it again), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
   itself (see "How `update()` gets called" below), not by app code. A scene used without a world
   (an app's menu scene) never gets `update()` at all, so nothing a scene-level feature needs to
-  finish may wait on it - see "Timed fades" below.
+  finish may wait on it - see "Timed fades" and "Voice budget" below.
 - **`IAudioSourceComponentFactory<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component-factory.ts`):
   unlike the rendering/physics factories, this one is defined once at the *base* level and just
   narrowed by dimension in `2d/factories.ts`/`3d/factories.ts` (`IAudioSource(2d|3d)ComponentFactory
@@ -340,6 +340,21 @@ and a new adapter should keep the same observable behavior:
   budget is full, so a newcomer that ranks low starts virtual with no buffer source at all. A
   scene with no virtual source and no more playing sources than the budget skips all of it -
   `Infinity` costs nothing.
+- **A scene no world updates still keeps its budget.** `MusicPlayer`, `playOneShot` and
+  `applyMobileAudioDefaults` (a 16-voice budget on any touch device) all work on a world-less
+  menu scene, which never gets `update()`. Everything that frees a voice only *removes* it
+  (`voiceStopped`), and only the bookkeeping pass gives it to a virtual source, finishes a fade-out
+  and ends a virtual one-shot - so without a pass, sources once outranked stay virtual for good,
+  keep counting toward the budget, and every newcomer (a click, a new track fading in from 0) is
+  outranked: the scene goes silent. `packages/audio` therefore runs the same pass
+  (`upkeepVoices`) from a timer while it is needed: any ranking that leaves a source virtual arms a
+  `setTimeout` of `VOICE_UPKEEP_INTERVAL_MS` (50 ms), which re-arms itself until nothing is virtual
+  and the budget isn't exceeded. A world-driven scene is left alone: `updateVoices()` (the
+  `update()` path) sets `voicesUpdatedByWorld`, and a timer tick that finds it set only clears it
+  and re-arms (so a world that stops ticking is taken over a tick later). `setPaused(true)` clears
+  the timer, `setPaused(false)` re-arms it, `dispose()` clears it for good. Don't instead promote
+  from `voiceStopped`: it runs inside `rankVoices` (a promoted one-shot that already ran out ends
+  there) and would change when a world-driven scene hands voices over.
 - **Going virtual** (`demote`): ramp the gain to 0, and once `VIRTUAL_FADE_SECONDS` (5 ramp time
   constants) have passed, stop the buffer source and disconnect the gain/spatial chain from the bus,
   so neither renders. **Coming back** (`promote`): mid-fade, just ramp the gain back up (the buffer
@@ -358,8 +373,8 @@ and a new adapter should keep the same observable behavior:
   pauses or stops, so every path that reconnects it - `promote` *and* `play()` - must
   `resyncSpatialParams()` right after `connectOutput()`, before the buffer source starts; otherwise
   a pooled voice moved and replayed after ending virtually is heard from its previous position.
-- **One-shots stay virtual until they would have ended** (not dropped): the per-frame pass
-  (`advanceVirtual`) ends them then and fires `ended$`, so `playOneShot`/`"PlaySound"`/
+- **One-shots stay virtual until they would have ended** (not dropped): the bookkeeping pass
+  (`advanceVirtual`, from `update()` or the timer) ends them then and fires `ended$`, so `playOneShot`/`"PlaySound"`/
   `AudioSourcePool` cleanup keeps working, and one promoted halfway through resumes halfway through.
 - `isPlaying` stays `true` while virtual; `isVirtual` is `true` from the moment a source is demoted
   (fade-out included). `voiceCounts` is `{ playing, audible, virtual }`; the dev console's
@@ -488,7 +503,9 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   `test/components/web-audio-voice-budget.spec.ts` (the
   voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is
   advanced by the test, and its fake `AudioParam`s record the last ramp target, which is how a
-  fade is asserted), `test/components/web-audio-fade.spec.ts` (`fadeTo` and `playOneShot`; its
+  fade is asserted; its world-less describe block uses jest fake timers, advances clock and timers
+  together in `VOICE_UPKEEP_INTERVAL_MS` steps without calling `update()`, and fires a fake buffer
+  source's `onended` once its clip has played through, as the browser would), `test/components/web-audio-fade.spec.ts` (`fadeTo` and `playOneShot`; its
   fake `AudioParam` keeps the automation timeline and computes the value at any time, run with and
   without `cancelAndHoldAtTime` - sample it only from the current time on, since a cancellation
   rewrites the timeline's past, which the real audio thread had already rendered) and

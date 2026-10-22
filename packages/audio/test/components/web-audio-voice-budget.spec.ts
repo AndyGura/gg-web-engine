@@ -1,4 +1,5 @@
-import { Point3 } from '@gg-web-engine/core';
+import { MusicPlayer, Point3 } from '@gg-web-engine/core';
+import { VOICE_UPKEEP_INTERVAL_MS } from '../../src/components/web-audio-scene-base.component';
 import { WebAudioScene3dComponent } from '../../src/components/web-audio-scene-3d.component';
 import { WebAudioSource3dComponent } from '../../src/components/web-audio-source-3d.component';
 import { VIRTUAL_FADE_SECONDS } from '../../src/components/web-audio-source-base.component';
@@ -16,6 +17,9 @@ class FakeParam {
   });
   setValueAtTime = jest.fn((value: number) => {
     this.value = value;
+    this.target = value;
+  });
+  linearRampToValueAtTime = jest.fn((value: number) => {
     this.target = value;
   });
   cancelScheduledValues = jest.fn();
@@ -55,6 +59,8 @@ class FakeBufferSource extends FakeNode {
   public playbackRate = new FakeParam(1);
   public onended: (() => void) | null = null;
   public startOffset: number | null = null;
+  /** context time of `start()`, set by `FakeAudioContext` */
+  public startedAt: number | null = null;
   public stopped = false;
   start = jest.fn((_when: number, offset: number) => {
     this.startOffset = offset;
@@ -85,6 +91,10 @@ class FakeAudioContext {
   createPanner = jest.fn(() => new FakePannerNode());
   createBufferSource = jest.fn(() => {
     const node = new FakeBufferSource();
+    node.start.mockImplementation((_when: number, offset: number) => {
+      node.startOffset = offset;
+      node.startedAt = this.currentTime;
+    });
     this.bufferSources.push(node);
     return node;
   });
@@ -381,5 +391,173 @@ describe('panning model (WebAudioScene3dComponent)', () => {
     source.panningModel = 'equalpower';
     expect(pannerOf(source).panningModel).toBe('equalpower');
     expect(source.clone().panningModel).toBe('equalpower');
+  });
+});
+
+describe('voice budget on a scene no world updates (WebAudioScene3dComponent)', () => {
+  let originalAudioContext: unknown;
+  let scene: WebAudioScene3dComponent;
+  let context: FakeAudioContext;
+  const clip = { duration: 10 } as unknown as AudioBuffer;
+  const internals = (source: WebAudioSource3dComponent) => source as unknown as Internals;
+
+  function play(descriptor: { priority?: number; volume?: number; loop?: boolean }): WebAudioSource3dComponent {
+    const source = scene.factory.createSource({ clip, loop: true, autoplay: false, spatial: false, ...descriptor });
+    source.play();
+    return source;
+  }
+
+  /**
+   * Lets `seconds` of wall and audio time pass in timer-sized steps, never calling `update()`. A
+   * buffer source still rendering a non-looping clip fires `onended` once it has played it through,
+   * as the browser would.
+   */
+  function wait(seconds: number) {
+    const steps = Math.max(1, Math.round((seconds * 1000) / VOICE_UPKEEP_INTERVAL_MS));
+    for (let i = 0; i < steps; i++) {
+      context.currentTime += seconds / steps;
+      for (const node of [...context.bufferSources]) {
+        const duration = (node.buffer as AudioBuffer | null)?.duration ?? 0;
+        if (
+          !node.stopped &&
+          !node.loop &&
+          node.startedAt !== null &&
+          context.currentTime - node.startedAt + (node.startOffset ?? 0) >= duration
+        ) {
+          node.stopped = true;
+          node.onended?.();
+        }
+      }
+      jest.advanceTimersByTime((seconds * 1000) / steps);
+    }
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    originalAudioContext = (global as any).AudioContext;
+    (global as any).AudioContext = FakeAudioContext;
+    scene = new WebAudioScene3dComponent();
+    context = scene.context as unknown as FakeAudioContext;
+  });
+
+  afterEach(() => {
+    scene.dispose();
+    (global as any).AudioContext = originalAudioContext;
+    jest.useRealTimers();
+  });
+
+  it('finishes fade-outs and promotes virtual sources once voices stop', () => {
+    scene.maxVoices = 2;
+    const loops = [10, 20, 30, 40].map(priority => play({ priority }));
+    expect(loops.map(s => s.isVirtual)).toEqual([true, true, false, false]);
+    wait(1);
+    expect(internals(loops[0]).bufferSource).toBeNull(); // fully virtual: stopped and disconnected
+
+    loops[3].stop();
+    loops[2].stop();
+    wait(VOICE_UPKEEP_INTERVAL_MS / 1000);
+    expect(loops[0].isVirtual).toBe(false);
+    expect(loops[1].isVirtual).toBe(false);
+    expect(internals(loops[0]).bufferSource!.start).toHaveBeenCalled();
+    expect(internals(loops[0]).gainNode.gain.target).toBe(1);
+    expect(scene.voiceCounts).toEqual({ playing: 2, audible: 2, virtual: 0 });
+    expect(jest.getTimerCount()).toBe(0); // nothing virtual: the scene stops checking
+  });
+
+  it('ends a virtual one-shot that ran out, so playOneShot disposes it', () => {
+    scene.maxVoices = 1;
+    play({ priority: 100 });
+    const click = scene.playOneShot({ clip, priority: 50 }) as WebAudioSource3dComponent;
+    // playOneShot's own subscription disposes the source on `ended$`, which completes `ended$`
+    const disposed = jest.fn();
+    click.ended$.subscribe({ complete: disposed });
+    expect(click.isVirtual).toBe(true);
+
+    wait(9.9);
+    expect(click.isPlaying).toBe(true);
+    expect(disposed).not.toHaveBeenCalled();
+    wait(0.2);
+    expect(click.isPlaying).toBe(false);
+    expect(disposed).toHaveBeenCalled();
+    expect(scene.voiceCounts).toEqual({ playing: 1, audible: 1, virtual: 0 });
+  });
+
+  it('keeps a MusicPlayer and UI sounds working after bursts of one-shots over the budget', async () => {
+    scene.maxVoices = 4;
+    const musicClip = { duration: 100 } as unknown as AudioBuffer;
+    const blip = { duration: 0.5 } as unknown as AudioBuffer;
+    const player = new MusicPlayer(scene, { loadClip: () => Promise.resolve(musicClip) });
+    await player.play({ url: 'menu.ogg', loop: true });
+    const musicSource = () => (player as any).current.source as WebAudioSource3dComponent;
+    const firstTrack = musicSource();
+    wait(1.5); // fade-in done
+
+    for (let burst = 0; burst < 5; burst++) {
+      for (let i = 0; i < 8; i++) {
+        scene.playOneShot({ clip: blip, priority: 10 });
+      }
+      expect(scene.voiceCounts.virtual).toBeGreaterThan(0);
+      expect(firstTrack.isVirtual).toBe(false); // music outranks every one-shot
+      wait(0.3);
+    }
+    wait(1);
+    expect(scene.voiceCounts).toEqual({ playing: 1, audible: 1, virtual: 0 });
+
+    // a click is heard at once
+    const click = scene.playOneShot({ clip: blip, priority: 10 }) as WebAudioSource3dComponent;
+    expect(click.isVirtual).toBe(false);
+    // and the next track, starting its fade-in at volume 0, is heard too
+    await player.play({ url: 'options.ogg', loop: true });
+    expect(musicSource()).not.toBe(firstTrack);
+    expect(musicSource().isVirtual).toBe(false);
+    wait(1.5); // the crossfade ends, the first track is released
+    for (let i = 0; i < 5; i++) {
+      await Promise.resolve(); // the fade's promise, then MusicPlayer's release
+    }
+    expect(firstTrack.isPlaying).toBe(false);
+    expect(musicSource().isPlaying).toBe(true);
+    expect(scene.voiceCounts).toEqual({ playing: 1, audible: 1, virtual: 0 });
+    player.dispose();
+  });
+
+  it('leaves the bookkeeping to update() while a world drives the scene', () => {
+    scene.maxVoices = 1;
+    play({ priority: 100 });
+    const engine = play({ priority: 50 });
+    const advance = jest.spyOn(engine, 'advanceVirtual');
+    let updates = 0;
+    for (let i = 0; i < 60; i++) {
+      context.currentTime += 0.016;
+      jest.advanceTimersByTime(16);
+      scene.update(0, 16);
+      updates++;
+    }
+    expect(advance).toHaveBeenCalledTimes(updates);
+
+    // the world stops ticking: the scene takes over
+    advance.mockClear();
+    wait(0.5);
+    expect(advance.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('stops checking while paused and once disposed', () => {
+    scene.maxVoices = 1;
+    const horn = play({ priority: 100 });
+    const engine = play({ priority: 50 });
+    expect(jest.getTimerCount()).toBe(1);
+    scene.setPaused(true);
+    expect(jest.getTimerCount()).toBe(0);
+    horn.stop();
+    wait(1);
+    expect(engine.isVirtual).toBe(true); // nothing happens while paused
+
+    scene.setPaused(false);
+    wait(VOICE_UPKEEP_INTERVAL_MS / 1000);
+    expect(engine.isVirtual).toBe(false);
+
+    play({ priority: 100 });
+    expect(jest.getTimerCount()).toBe(1);
+    scene.dispose();
+    expect(jest.getTimerCount()).toBe(0);
   });
 });

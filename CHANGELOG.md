@@ -29,6 +29,15 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- audio: a voice budget (`maxVoices`, also set by `applyMobileAudioDefaults` on touch devices) now
+  works on a scene no world updates, such as a menu scene with `MusicPlayer` and `playOneShot`.
+  Such a scene never re-ranked its voices, so once more sources played than the budget allowed,
+  the outranked ones stayed virtual for good (virtual one-shots never ended or got disposed) and
+  every later sound and music track started virtual: the scene went silent. While any source is
+  virtual and no `update()` comes, the scene now does its voice bookkeeping itself every 50 ms
+  (`VOICE_UPKEEP_INTERVAL_MS`). Scenes a world updates behave as before.
+
 ## [0.0.86] - 2026-10-22
 
 

@@ -17,6 +17,15 @@ import { WebAudioSourceComponentBase } from './web-audio-source-base.component';
  */
 export const REVERB_RELEASE_SECONDS = 5 * DEFAULT_RAMP_TAU;
 
+/**
+ * How often, in milliseconds, a scene that has virtual (or fading-out) voices checks whether a world
+ * still drives its voice bookkeeping, and does it itself when no `update()` came since the last
+ * check: a scene with no world (an app's menu scene, `MusicPlayer` and `playOneShot` on a scene of
+ * their own) still promotes virtual sources once voices free up, finishes fade-outs and ends virtual
+ * one-shots. A world ticking more often than this never sees it run.
+ */
+export const VOICE_UPKEEP_INTERVAL_MS = 50;
+
 /** A convolver and the gain of its output - one bus reverb as rendered. */
 type ReverbChain = {
   convolver: ConvolverNode;
@@ -51,7 +60,8 @@ type WebAudioBus = {
  * `AudioContext`, the master/bus gain graph (bus reverbs included), clip loading+caching, the
  * currently active listener reference, and the voice budget (`maxVoices`). Dimension-specific
  * listener orientation math lives in the two subclasses' `update()` overrides, which end with
- * `updateVoices()` and `updateReverbs()`.
+ * `updateVoices()` and `updateReverbs()`. While voices are virtual and no world calls `update()`, a
+ * timer does the voice bookkeeping instead (`VOICE_UPKEEP_INTERVAL_MS`).
  */
 export abstract class WebAudioSceneComponentBase<D, R> {
   public readonly context: AudioContext;
@@ -72,6 +82,13 @@ export abstract class WebAudioSceneComponentBase<D, R> {
    * world (an `AudioSourcePool` voice never is) - what the voice budget ranks. */
   private readonly voices = new Set<WebAudioSourceComponentBase<D, R>>();
   private _maxVoices = Infinity;
+  /** The self-driven voice bookkeeping timer, armed while any voice is virtual (or the budget is
+   * exceeded) and the scene is neither paused nor disposed - see `VOICE_UPKEEP_INTERVAL_MS`. */
+  private voiceUpkeepTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Whether `update()` ran the voice bookkeeping since the timer last fired: a world drives this
+   * scene, so the timer leaves it alone. */
+  private voicesUpdatedByWorld = false;
+  private disposed = false;
   private _activeListener: IPositionable<D, R> | null = null;
   /** The `resume` closure bound in `init()`, kept around so `dispose()` can remove it if the
    * gesture never fires - `{ once: true }` only removes a listener once it *fires*, not on
@@ -383,7 +400,8 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   }
 
   /** @internal called by a source once it stops playing (pause/stop/end/dispose). The voice it
-   * frees goes to the best virtual source on the next `update()`. */
+   * frees goes to the best virtual source on the next voice bookkeeping pass: the next `update()`,
+   * or within `VOICE_UPKEEP_INTERVAL_MS` on a scene no world updates. */
   public voiceStopped(source: WebAudioSourceComponentBase<D, R>): void {
     this.voices.delete(source);
   }
@@ -392,23 +410,65 @@ export abstract class WebAudioSceneComponentBase<D, R> {
    * Per-frame voice bookkeeping, called at the end of both subclasses' `update()`: finishes
    * fade-outs, ends virtual one-shots that have run out, and re-ranks every playing source against
    * `maxVoices` (sources move, volumes change). Nothing to do while the budget isn't exceeded and
-   * nothing is virtual - the case for every scene that never sets `maxVoices`.
+   * nothing is virtual - the case for every scene that never sets `maxVoices`. Also tells the
+   * self-driven timer that a world drives this scene, so it does nothing itself.
    */
   protected updateVoices(): void {
-    let anyVirtual = false;
+    this.voicesUpdatedByWorld = true;
+    this.upkeepVoices();
+  }
+
+  /** Whether the voice bookkeeping has anything to do: a voice is virtual (or fading out), or more
+   * sources play than the budget allows. */
+  private needsVoiceUpkeep(): boolean {
+    if (this.voices.size > this._maxVoices) {
+      return true;
+    }
     for (const voice of this.voices) {
       if (voice.isVirtual) {
-        anyVirtual = true;
-        break;
+        return true;
       }
     }
-    if (!anyVirtual && this.voices.size <= this._maxVoices) {
+    return false;
+  }
+
+  private upkeepVoices(): void {
+    if (!this.needsVoiceUpkeep()) {
       return;
     }
     for (const voice of [...this.voices]) {
       voice.advanceVirtual();
     }
     this.rankVoices(null);
+  }
+
+  /**
+   * Arms the self-driven voice bookkeeping timer if the scene needs it and it isn't armed yet.
+   * Called whenever a ranking leaves a source virtual, and on `setPaused(false)`.
+   */
+  private armVoiceUpkeep(): void {
+    if (this.voiceUpkeepTimer !== null || this.paused || this.disposed || !this.needsVoiceUpkeep()) {
+      return;
+    }
+    this.voiceUpkeepTimer = setTimeout(this.onVoiceUpkeepTimer, VOICE_UPKEEP_INTERVAL_MS);
+  }
+
+  private readonly onVoiceUpkeepTimer = (): void => {
+    this.voiceUpkeepTimer = null;
+    if (this.voicesUpdatedByWorld) {
+      // a world's `update()` did it since the last check: keep watching, in case the world stops
+      this.voicesUpdatedByWorld = false;
+    } else {
+      this.upkeepVoices();
+    }
+    this.armVoiceUpkeep();
+  };
+
+  private disarmVoiceUpkeep(): void {
+    if (this.voiceUpkeepTimer !== null) {
+      clearTimeout(this.voiceUpkeepTimer);
+      this.voiceUpkeepTimer = null;
+    }
   }
 
   /** Ranks every playing source, promotes/demotes all but `incoming`, and returns whether
@@ -439,6 +499,9 @@ export abstract class WebAudioSceneComponentBase<D, R> {
         source.promote();
       }
     }
+    if (virtual.length > 0) {
+      this.armVoiceUpkeep();
+    }
     return incomingAudible;
   }
 
@@ -447,12 +510,18 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   /**
    * Suspends the whole `AudioContext` while paused: every source, including ones scheduled but not
    * yet audible, stops where it is and continues from there - nothing has to be tracked per source.
+   * The self-driven voice bookkeeping stops meanwhile too.
    */
   public setPaused(paused: boolean): void {
     if (this.paused === paused) {
       return;
     }
     this.paused = paused;
+    if (paused) {
+      this.disarmVoiceUpkeep();
+    } else {
+      this.armVoiceUpkeep();
+    }
     const change = paused ? this.context.suspend() : this.context.resume();
     change.catch(() => {
       /* closed, or not yet allowed to start by the browser - nothing to do either way */
@@ -492,6 +561,8 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   public abstract update(elapsed: number, delta: number): void;
 
   public dispose(): void {
+    this.disposed = true;
+    this.disarmVoiceUpkeep();
     this.removeResumeListeners();
     this.context.onstatechange = null;
     for (const source of [...this.sources]) {

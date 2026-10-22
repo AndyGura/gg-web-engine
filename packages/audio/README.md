@@ -48,6 +48,12 @@ attenuation), with a
 slight preference for the sources already heard so near-equal ones don't swap back and forth. A
 virtual one-shot stays virtual until it would have ended, then fires `ended$` as usual.
 
+A budget works the same on a scene no world drives (a menu scene of its own, with `MusicPlayer` and
+`playOneShot` on it): while any source is virtual and no `update()` comes, the scene re-ranks its
+voices itself every `VOICE_UPKEEP_INTERVAL_MS` (50 ms), so a freed voice still goes to the best
+virtual source and a virtual one-shot still ends. A world's `update()` takes precedence; a paused
+scene (`setPaused(true)`) waits.
+
 `source.isPlaying` stays `true` while virtual; `source.isVirtual` tells whether it is heard.
 `world.audioScene.voiceCounts` gives `{ playing, audible, virtual }`, and the dev console command
 `audio_voices [int|inf]` reads or sets the budget and prints those counts.
