@@ -12,8 +12,9 @@ import {
   Point3,
   Point4,
   stableKey,
+  TextureOptions,
 } from '../base';
-import { LoadGlbOptions } from './loaders';
+import { LoadModelOptions } from './loaders';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
@@ -644,24 +645,29 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
   /**
    * Loads a six-image cube-map sky for `IVisualScene3dComponent.setEnvironment`. Cached and freed
-   * like `loadTexture`.
+   * like `loadTexture`; the same faces with another `filter` are another texture.
+   * @param faces - The six images, see `CubeTextureFaces`
+   * @param options - `filter` as in `loadTexture` (`'nearest'` keeps a pixel-art sky's hard texel
+   * edges), plus the usual progress/signal/scope
    * @throws if the world has no visual scene
    */
   public async loadCubeTexture(
     faces: CubeTextureFaces,
-    options: LoadTaskOptions = {},
+    options: TextureOptions & LoadTaskOptions = {},
   ): Promise<TypeDoc['vTypeDoc']['texture']> {
     const loader = this.visualLoader();
-    return this.acquireAsset(`cubeTexture:${stableKey(faces)}`, faces.px, options, async (item, loadSignal) => {
+    const { onProgress, signal, scope, ...textureOptions } = options;
+    const key = `cubeTexture:${stableKey(faces)}:${stableKey(textureOptions)}`;
+    return this.acquireAsset(key, faces.px, options, async (item, loadSignal) => {
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (loader.cubeTextureFromData) {
         const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
         const files = await Promise.all(names.map(n => fetchWithProgress(faces[n], item.file(), loadSignal)));
         const blobs = {} as Record<keyof CubeTextureFaces, Blob>;
         names.forEach((n, i) => (blobs[n] = imageBlob(files[i], faces[n])));
-        texture = await loader.cubeTextureFromData(blobs);
+        texture = await loader.cubeTextureFromData(blobs, textureOptions);
       } else {
-        texture = await loader.loadCubeTexture(faces);
+        texture = await loader.loadCubeTexture(faces, textureOptions);
       }
       await loader.prepare?.(texture);
       return { value: texture, dispose: () => loader.disposeTexture(texture) };
@@ -673,28 +679,44 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * for a visual-only asset that has no physics representation of its own (a character model
    * driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
    * The file is fetched and parsed once per world; every call returns its own copy to place
-   * (`IDisplayObjectComponent.clone`). `undefined`/`null` if there's no visual scene to load against.
+   * (`IDisplayObjectComponent.clone`), sharing the original's geometry, materials and textures
+   * unless `options.unique` asks for copies of them. `undefined`/`null` if there's no visual scene
+   * to load against.
    * @param path - Path (URL or path prefix, without extension) to the `.glb` file
-   * @param options - See `LoadGlbOptions`
+   * @param options - See `LoadModelOptions`
+   *
+   * @example
+   * ```ts
+   * // every car recolored on its own: each copy gets materials of its own, geometry stays shared
+   * const car = await world.loader.loadModel('assets/car', { unique: 'materials' });
+   * ```
    */
   public async loadModel(
     path: string,
-    options: LoadGlbOptions & LoadTaskOptions = {},
+    options: LoadModelOptions & LoadTaskOptions = {},
   ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
     const template = await this.acquireModel(path, options);
-    return template ? template.clone() : null;
+    if (!template) {
+      return null;
+    }
+    const copy = template.clone();
+    if (options.unique) {
+      copy.makeUnique(options.unique);
+    }
+    return copy;
   }
 
   /** The cached, never-shown original of a `loadModel` asset. */
   private async acquireModel(
     path: string,
-    options: LoadGlbOptions & LoadTaskOptions,
+    options: LoadModelOptions & LoadTaskOptions,
   ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
     const loader = this.world.visualScene?.loader;
     if (!loader) {
       return null;
     }
-    const { onProgress, signal, scope, ...glbOptions } = options;
+    // `unique` applies to the copy, not to the cached original: it is not part of the key
+    const { onProgress, signal, scope, unique, ...glbOptions } = options;
     return this.acquireAsset(
       `glb:${path}:${stableKey(glbOptions)}`,
       `${path}.glb`,
@@ -726,7 +748,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       }
     } else if (ref.kind === 'cubeTexture') {
       if (this.world.visualScene) {
-        await this.loadCubeTexture(ref.faces as CubeTextureFaces, options);
+        await this.loadCubeTexture(ref.faces as CubeTextureFaces, { ...ref.options, ...options });
       }
     } else {
       await super.preloadAsset(ref, options);

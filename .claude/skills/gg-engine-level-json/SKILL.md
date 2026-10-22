@@ -1101,7 +1101,8 @@ An `AssetRef` names one loader call: `{ kind: 'ggGlb', url, loadProps?, propsPat
 `{ kind: 'glb', url, options? }` (`loadModel`), `{ kind: 'texture', url, options? }` (`loadTexture`),
 `{ kind: 'cubeTexture', faces }`, `{ kind: 'clip', url }`. For the cache to be hit, `url` and
 `options` must be exactly what the generator passes (a `loadModel` with an `offset` is a different
-entry from one without). The hook is optional: without it the generator's loads are counted from
+entry from one without; `unique` is the exception - it applies to the returned copy, not the
+cached file, so the hook can leave it out). The hook is optional: without it the generator's loads are counted from
 the moment it makes them. The third `registerClass` argument is either this options object (with
 `entityClass` next to `assets`) or, as a shorthand, the entity constructor alone.
 `registerBlueprintNode` takes the same kind of hook as its fourth argument.

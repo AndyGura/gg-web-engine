@@ -32,3 +32,24 @@ export function setParamNow(context: BaseAudioContext, param: AudioParam, value:
   param.cancelScheduledValues(context.currentTime);
   param.setValueAtTime(value, context.currentTime);
 }
+
+/**
+ * Freezes `param` at the level it has reached right now, dropping every event scheduled from now
+ * on - the step before scheduling anything new on a param that may still be inside a
+ * `linearRampToValueAtTime` (a timed fade, `WebAudioSourceComponentBase.fadeTo`). Without it, a
+ * `setTargetAtTime` written at the current time sorts before the fade's end event, and the fade
+ * then carries on from it; a bare `cancelScheduledValues` drops the ramp in progress instead, and
+ * the param jumps back to where the ramp started - an audible click. Uses `cancelAndHoldAtTime`
+ * where the browser has it (not Firefox); elsewhere re-anchors at `level`, the caller's own model
+ * of where the param is now - `param.value` is not a dependable read of an automated param across
+ * browsers.
+ */
+export function holdParam(context: BaseAudioContext, param: AudioParam, level: number): void {
+  const now = context.currentTime;
+  if (typeof param.cancelAndHoldAtTime === 'function') {
+    param.cancelAndHoldAtTime(now);
+  } else {
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(level, now);
+  }
+}

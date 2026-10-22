@@ -23,6 +23,7 @@ const displayObject = (log: string[], label: string): any => ({
   label,
   dispose: jest.fn(() => log.push(`dispose ${label}`)),
   clone: jest.fn(() => displayObject(log, `${label}#copy`)),
+  makeUnique: jest.fn(),
   popChild: () => displayObject(log, `${label}/child`),
   isEmpty: () => true,
 });
@@ -60,6 +61,12 @@ describe('asset loading through Gg3dLoader', () => {
     'sky.hdr': { data: new Uint8Array(16), chunks: 2 },
     'wall.png': { data: new Uint8Array(8), chunks: 2, contentLength: false },
     'wind.mp3': { data: new Uint8Array(10), chunks: 2 },
+    'px.png': { data: new Uint8Array(4), chunks: 1 },
+    'nx.png': { data: new Uint8Array(4), chunks: 1 },
+    'py.png': { data: new Uint8Array(4), chunks: 1 },
+    'ny.png': { data: new Uint8Array(4), chunks: 1 },
+    'pz.png': { data: new Uint8Array(4), chunks: 1 },
+    'nz.png': { data: new Uint8Array(4), chunks: 1 },
   };
 
   beforeEach(() => {
@@ -148,6 +155,15 @@ describe('asset loading through Gg3dLoader', () => {
       expect((first.entities[0].object3D as any).label).toBe('ggGlb#copy');
       expect(first.entities[0].object3D).not.toBe(second.entities[0].object3D);
       expect(first.entities[0].objectBody!.name).toBe('b#copy');
+    });
+
+    it('makes every loaded display object unique when asked, props included', async () => {
+      const result = await world.loader.loadGgGlb('assets/room', { unique: 'materials' });
+      expect((result.entities[0].object3D as any).makeUnique).toHaveBeenCalledWith('materials');
+      expect((result.props![0].entities[0].object3D as any).makeUnique).toHaveBeenCalledWith('materials');
+      const plain = await world.loader.loadGgGlb('assets/room');
+      expect((plain.entities[0].object3D as any).makeUnique).not.toHaveBeenCalled();
+      expect(visualLoader.loadFromGgGlb).toHaveBeenCalledTimes(2);
     });
 
     it('shares one fetch between loads started at the same time', async () => {
@@ -245,6 +261,18 @@ describe('asset loading through Gg3dLoader', () => {
       );
     });
 
+    it('loadModel makes only the returned copy unique, sharing one cached original between all loads', async () => {
+      const plain = await world.loader.loadModel('assets/hero', { offset: { x: 0, y: 0, z: 1 } });
+      const unique = await world.loader.loadModel('assets/hero', { offset: { x: 0, y: 0, z: 1 }, unique: 'meshes' });
+      expect(fetched('assets/hero.glb')).toBe(1);
+      expect(visualLoader.loadFromGlb).toHaveBeenCalledTimes(1);
+      // the option is the loader's, not the adapter's
+      expect(visualLoader.loadFromGlb).toHaveBeenCalledWith(expect.anything(), { offset: { x: 0, y: 0, z: 1 } });
+      expect((plain as any).makeUnique).not.toHaveBeenCalled();
+      expect((unique as any).makeUnique).toHaveBeenCalledWith('meshes');
+      expect(world.loader.assetCache.size).toBe(1);
+    });
+
     it('loadTexture decodes fetched bytes, caches per url and options, and frees with its scope', async () => {
       const scope = world.loader.createAssetScope();
       const progress = record();
@@ -278,6 +306,43 @@ describe('asset loading through Gg3dLoader', () => {
 
       scope.release();
       expect(visualLoader.disposeTexture).toHaveBeenCalledTimes(4);
+    });
+
+    const faces = { px: 'px.png', nx: 'nx.png', py: 'py.png', ny: 'ny.png', pz: 'pz.png', nz: 'nz.png' };
+
+    it('loadCubeTexture hands its filter to the adapter and caches per faces and filter', async () => {
+      visualLoader.cubeTextureFromData = jest.fn(async (_faces: any, options: any) => `cube:${options.filter}`);
+      const scope = world.loader.createAssetScope();
+      const nearest = await world.loader.loadCubeTexture(faces, { filter: 'nearest', scope });
+      expect(nearest).toBe('cube:nearest');
+      expect(visualLoader.cubeTextureFromData).toHaveBeenCalledWith(
+        {
+          px: expect.any(Blob),
+          nx: expect.any(Blob),
+          py: expect.any(Blob),
+          ny: expect.any(Blob),
+          pz: expect.any(Blob),
+          nz: expect.any(Blob),
+        },
+        { filter: 'nearest' },
+      );
+      expect(await world.loader.loadCubeTexture(faces, { filter: 'nearest', scope })).toBe(nearest);
+      expect(visualLoader.cubeTextureFromData).toHaveBeenCalledTimes(1);
+      // another filter is another texture
+      expect(await world.loader.loadCubeTexture(faces, { scope })).toBe('cube:undefined');
+      expect(visualLoader.cubeTextureFromData).toHaveBeenCalledTimes(2);
+      // preloading with the same options fills the entry the call uses
+      await world.loader.preload([{ kind: 'cubeTexture', faces, options: { filter: 'linear' } }], { scope });
+      expect(await world.loader.loadCubeTexture(faces, { filter: 'linear', scope })).toBe('cube:linear');
+      expect(visualLoader.cubeTextureFromData).toHaveBeenCalledTimes(3);
+      scope.release();
+      expect(visualLoader.disposeTexture).toHaveBeenCalledTimes(3);
+    });
+
+    it('loadCubeTexture passes its filter to the url loader of an adapter that cannot decode bytes', async () => {
+      expect(await world.loader.loadCubeTexture(faces, { filter: 'nearest' })).toBe('url-cube');
+      expect(visualLoader.loadCubeTexture).toHaveBeenCalledWith(faces, { filter: 'nearest' });
+      expect(fetch).not.toHaveBeenCalled();
     });
 
     it('reports an unknown byte total, and still completes, when Content-Length is hidden', async () => {

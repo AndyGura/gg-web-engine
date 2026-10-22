@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, skip, takeUntil } from 'rxjs';
+import { BehaviorSubject, Observable, skip, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, filter } from 'rxjs/operators';
 import { AnalogDirection, DirectionInput, KeyboardInput } from '@gg-web-engine/core';
 import { TouchControl, TouchControlOptions } from './touch-control';
@@ -21,6 +21,7 @@ export class TouchButton extends TouchControl {
   public readonly mode: 'hold' | 'toggle';
 
   private readonly _pressed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  private readonly tap$: Subject<PointerEvent> = new Subject<PointerEvent>();
   private _pressed: boolean = false;
   private emitting: boolean = false;
   private disposeRequested: boolean = false;
@@ -107,6 +108,19 @@ export class TouchButton extends TouchControl {
     return this;
   }
 
+  /**
+   * Calls `callback` every time a finger (or the mouse button) that pressed the button lifts - inside
+   * the `pointerup` handler, so `callback` runs within the user gesture. Not when the button is
+   * released by `reset` (hidden, the overlay taken off the screen, the window losing focus) or by a
+   * cancelled pointer. The way to run what a browser allows only in reaction to the user (entering
+   * fullscreen, starting audio): for a touch, a browser grants that on the finger lifting, not on it
+   * going down, so `onPress` is too early for it.
+   */
+  public onTap(callback: (event: PointerEvent) => void): this {
+    this.tap$.pipe(takeUntil(this.disposed$)).subscribe(callback);
+    return this;
+  }
+
   public reset(): void {
     super.reset();
     this.pressed = false;
@@ -131,9 +145,12 @@ export class TouchButton extends TouchControl {
     this.pressed = this.mode === 'toggle' ? !this.pressed : true;
   }
 
-  protected onPointerEnd(): void {
+  protected onPointerEnd(event: PointerEvent | null): void {
     if (this.mode === 'hold') {
       this.pressed = false;
+    }
+    if (event?.type === 'pointerup' && !this.disposed) {
+      this.tap$.next(event);
     }
   }
 }

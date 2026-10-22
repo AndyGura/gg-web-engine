@@ -1,3 +1,4 @@
+import { assertCanvasReusable } from '../base/components/rendering/canvas-reuse';
 import {
   assertWorldDimensions,
   BodyType,
@@ -338,10 +339,13 @@ export class Gg3dWorld<
    * Creates a renderer drawing the scene through `camera` onto `canvas`, wraps it in a
    * `Renderer3dEntity` (which is also how the camera is moved) and adds it to the world.
    * @param camera - A camera from `world.visualScene.factory.createPerspectiveCamera()`
-   * @param canvas - The canvas to draw on, already in the DOM
+   * @param canvas - The canvas to draw on, already in the DOM. One canvas hosts one renderer:
+   * disposing the renderer releases its context, so the next world's renderer needs another canvas
+   * (`replaceCanvas(canvas)` swaps in a blank copy)
    * @param rendererOptions - Size, background, antialiasing and the adapter's own extra options
    * @returns The renderer entity; set its `position`/`rotation` to move the camera
    * @throws if the world has no visual scene
+   * @throws if a renderer drawing on `canvas` was disposed before
    *
    * @example
    * ```ts
@@ -366,6 +370,7 @@ export class Gg3dWorld<
         "Cannot add a renderer to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
       );
     }
+    assertCanvasReusable(canvas);
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);
     return entity;

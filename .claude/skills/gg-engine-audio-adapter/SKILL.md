@@ -63,8 +63,12 @@ map both values to its own panner, but must keep the property readable/writable.
   "Bus hierarchy" below), per-bus `setBusReverb`/`getBusReverb` (see "Bus reverb" below), the
   single `activeListener` reference
   (`setActiveListener`), the voice budget `maxVoices` plus its `voiceCounts` (see "Voice budget"
-  below), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
-  itself (see "How `update()` gets called" below), not by app code.
+  below), `playOneShot(descriptor)` (a non-positional, self-disposing one-shot on a bus - delegate
+  to core's `playAudioOneShot(this.factory, descriptor)`, as `packages/audio` does, rather than
+  writing it again), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
+  itself (see "How `update()` gets called" below), not by app code. A scene used without a world
+  (an app's menu scene) never gets `update()` at all, so nothing a scene-level feature needs to
+  finish may wait on it - see "Timed fades" below.
 - **`IAudioSourceComponentFactory<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component-factory.ts`):
   unlike the rendering/physics factories, this one is defined once at the *base* level and just
   narrowed by dimension in `2d/factories.ts`/`3d/factories.ts` (`IAudioSource(2d|3d)ComponentFactory
@@ -88,7 +92,8 @@ map both values to its own panner, but must keep the property readable/writable.
 - **`IAudioSourceComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component.ts`):
   one sound instance - `IPositionable<D,R>` (position/rotation proxied to the native
   spatialization node) plus `loop`/`loopStart`/`loopEnd`/`volume`/`playbackRate`/`spatial`/`bus`/
-  `priority`, `play()`/`pause()`/`stop()`, `isPlaying`, `isVirtual`, and `ended$` (fires once when a non-looping clip
+  `priority`, `play()`/`pause()`/`stop()`, `fadeTo(volume, durationMs)` (see "Timed fades" below),
+  `isPlaying`, `isVirtual`, and `ended$` (fires once when a non-looping clip
   finishes - what `AudioSource(2d|3d)Entity.playOneShot` and the `"PlaySound"` blueprint node
   subscribe to for self-cleanup). `loopStart`/`loopEnd` (seconds, both default `0` - `loopEnd: 0`
   means "end of clip", matching `AudioBufferSourceNode.loopEnd`'s own default) confine looping to a
@@ -102,6 +107,10 @@ Core supplies the generic entity wrapper (`AudioSource3dEntity`/`AudioSource2dEn
 `3d(2d)/entities/audio-source-(3d|2d).entity.ts`) - **you never need to write this yourself**, only
 the components it wraps. It handles all three placement modes (static/attached/one-shot via
 `playOneShot`) generically over whatever `TypeDoc['aTypeDoc']['source']` your adapter supplies.
+The same goes for core's `MusicPlayer` (`base/audio/music-player.ts`: playlists, crossfades,
+shuffle, `nowPlaying$`) and `applyMobileAudioDefaults` (`base/audio/mobile-audio-defaults.ts`):
+both are written against the scene/source contract only (`factory`, `fadeTo`, `ended$`,
+`maxVoices`, a 3D scene's `defaultPanningModel`), so a correct `fadeTo` is all an adapter owes them.
 
 ## File layout (mirror `packages/audio`)
 
@@ -158,7 +167,8 @@ source's gain/position/pan, re-applied just before it is started again and faded
 budget" below), or its gain restored on a `play()` while no buffer source is playing into it. The
 other is the 3D listener on a cut, where a ramp is worse than the jump: a newly set listener
 (position and orientation), and a turn of more than 90° between ticks (orientation only) - see
-"Listener orientation" below.
+"Listener orientation" below. A timed fade (`fadeTo`) is a ramp too, just a long linear one - see
+"Timed fades" below for the one rule it adds to every other gain write.
 
 Static tuning fields that don't change every frame (`refDistance`, `maxDistance`, `rolloffFactor`,
 `distanceModel`, `panningModel`, `coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) are fine to proxy directly to
@@ -254,6 +264,45 @@ the same modelled current value there, so the listener eases in on the main thre
 the way the ramp would; the same 90° and new-listener jumps apply. (`PannerNode.positionX` exists in
 Firefox, so sources use the `AudioParam` path there.)
 
+## Timed fades (`fadeTo`)
+
+`fadeTo(volume, durationMs)` is a deliberate, audible fade (music out over a second), not the
+~40 ms smoothing `rampParam` gives every write. `packages/audio` (`WebAudioSourceComponentBase`)
+implements it as follows; a new adapter should keep the observable behavior:
+
+- **On the audio clock.** A `linearRampToValueAtTime(volume, now + durationMs / 1000)` on the
+  source's gain, mirrored on the main thread as `fade` (`from`, `to`, start and end in context
+  time), so the level reached so far (`heardVolume`) is computed, never read back from
+  `param.value` (not dependable across browsers for an automated param). The promise is resolved by
+  a `setTimeout` that re-checks `context.currentTime` against the end and re-arms itself (at least
+  every `MIN_FADE_POLL_MS`) until it is past: a suspended context (a paused world, a context the
+  browser hasn't allowed to start) stops the clock, so fade and promise wait together. A closed
+  context (the scene disposed) resolves `false` and stops the polling - its clock never moves
+  again, and a source the scene doesn't dispose itself (one never added to a world, such as a
+  `MusicPlayer` track) would otherwise poll forever. Not resolved from `update()`: a scene used
+  without a world is never updated.
+- **`volume` reads the target at once**, like every setter here; the voice ranking uses
+  `heardVolume()` instead (`estimateGain`), so a source fading out keeps its rank while it is still
+  heard rather than counting as silent from the first frame.
+- **Every other gain write freezes a pending fade first** (`holdParam`, `utils/ramp.ts`, while
+  `fadeScheduledUntil` is ahead of the clock). Two Web Audio rules make this necessary: a
+  `setTargetAtTime` at the current time sorts *before* the fade's end event, so the linear ramp
+  carries on from it and the write is lost; and `cancelScheduledValues` alone removes the ramp in
+  progress, so the param snaps back to the value of the event before it - where the fade started,
+  an audible click. `holdParam` uses `cancelAndHoldAtTime` where it exists (not Firefox), else
+  cancels and re-anchors with `setValueAtTime` at the modelled level.
+- **Interruptions resolve `false`**: a `volume` write, another `fadeTo` (which starts from
+  `heardVolume()`, so a fade reversed halfway has no jump) and `dispose()`. An interruption after
+  the clock already passed the end still resolves `true`. `stop()`/`pause()`/`play()` don't touch
+  the fade - the gain's automation runs on regardless; a `play()` that has to restore a silenced
+  gain jumps it to `heardVolume()` and schedules the rest of the fade.
+- **Virtual sources schedule nothing** (the chain is disconnected - see "Voice budget" below).
+  `demote` freezes a fade before ramping to 0 and records where it started (`demotedFrom`/
+  `demotedAt`, the exponential `setTargetAtTime` follows from there, for the fallback anchor);
+  `promote` (`rampGainIn`) ramps linearly to where the fade will be `FADE_CATCH_UP_SECONDS` later,
+  then follows the rest of it - linear ramps chain cleanly from an anchor, while a linear ramp
+  after a `setTargetAtTime` event starts from a point browsers disagree on.
+
 ## Pooling for high-frequency one-shots
 
 `AudioSourcePool<D,R>` (`utils/audio-source-pool.ts`) is a fixed-size, LRU-stealing pool of
@@ -282,8 +331,8 @@ and a new adapter should keep the same observable behavior:
   sweep uses.
 - **Ranking** (`utils/voice-ranking.ts`, pure and unit-tested): audible before silent (estimated
   gain <= `SILENT_VOICE_GAIN`, so a loop parked at volume 0 never takes a voice from a sound being
-  heard, whatever its priority), then `priority`, then estimated gain at the listener (volume x
-  effective bus volume - its own times every parent bus's, `getEffectiveBusVolume` - x the source's
+  heard, whatever its priority), then `priority`, then estimated gain at the listener (volume as
+  heard, `heardVolume()` - mid-fade, the level reached - x effective bus volume - its own times every parent bus's, `getEffectiveBusVolume` - x the source's
   own distance model through `computeDistanceGain` - cones ignored) with
   `AUDIBLE_VOICE_BIAS` for the sources already heard (otherwise two near-equal sources at the
   budget's edge swap every frame), then the one already heard, then creation order. Re-ranked every
@@ -435,19 +484,26 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   `global.AudioContext`: `test/components/web-audio-scene-base.component.spec.ts` (the gesture
   listeners, `setPaused`, `decodeClip`), `test/components/web-audio-buses.spec.ts` (the bus
   reverb graph and bus parents on both scenes; its fake nodes record their outgoing connections, so a test asks
-  whether a convolver is fed by the bus and reaches the master gain) and
+  whether a convolver is fed by the bus and reaches the master gain),
   `test/components/web-audio-voice-budget.spec.ts` (the
   voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is
   advanced by the test, and its fake `AudioParam`s record the last ramp target, which is how a
-  fade is asserted) and `test/components/web-audio-listener.spec.ts` (the listener's basis, and
+  fade is asserted), `test/components/web-audio-fade.spec.ts` (`fadeTo` and `playOneShot`; its
+  fake `AudioParam` keeps the automation timeline and computes the value at any time, run with and
+  without `cancelAndHoldAtTime` - sample it only from the current time on, since a cancellation
+  rewrites the timeline's past, which the real audio thread had already rendered) and
+  `test/components/web-audio-listener.spec.ts` (the listener's basis, and
   its easing: its fake `AudioParam` follows `setTargetAtTime`/`setValueAtTime` as the browser does,
   so a test samples what the audio thread renders between ticks and asserts forward/up never go
   degenerate across turns, snap turns and listener switches; plus the legacy-listener easing).
 
 Core-level behavior (the `"Sound"` class, `"PlaySound"` node, `GgWorld`'s
-listener-auto-bind) is covered in `packages/core/test/` against `MockWorld`-style fakes - see
-`packages/core/test/base/blueprint/play-sound.node.spec.ts` and the "audio listener auto-bind"
-describe block in `packages/core/test/base/gg-world.spec.ts` for the pattern.
+listener-auto-bind, `MusicPlayer`, `playAudioOneShot`, `applyMobileAudioDefaults`) is covered in
+`packages/core/test/` against `MockWorld`-style fakes - see
+`packages/core/test/base/blueprint/play-sound.node.spec.ts`, the "audio listener auto-bind"
+describe block in `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/audio/`
+(over `test/mocks/audio-scene.mock.ts`, whose fake source leaves each `fadeTo` pending until the
+test settles it) for the pattern.
 
 ## Wiring a new adapter into the repo
 

@@ -73,6 +73,57 @@ the moment after it loads) runs nowhere rather than everywhere. Run consequences
 broadcast them (`net.despawn`, `net.send(data)` → `appMessages$`). `net.joinState` supplies late
 joiners with game state (`joinState$`).
 
+### Rooms and lobby
+A game with a room list and a lobby (pick a room, wait for players, start together) builds it on
+`RoomDirectory` and `Lobby`, above signaling. The backend is `FirebaseLobbyBackend` (same project
+and auth as `FirebaseSignaling`) or `BroadcastChannelLobbyBackend` (tabs of one browser, no backend).
+
+```typescript
+const directory = new RoomDirectory<Player, LobbyState, RoomMeta>(new FirebaseLobbyBackend());
+directory.rooms$.subscribe(rooms => showRooms(rooms)); // name, capacity, memberCount, meta, started, joinable
+const lobby = await directory.createRoom({ name: 'Night race', capacity: 8, meta, member: { name } });
+// or: await directory.joinRoom(roomId, { member: { name } }) - throws LobbyJoinError 'full' | 'started' | 'not-found'
+
+lobby.members$.subscribe(showPlayers); // senior first; lobby.isHost$ - the senior member hosts
+await lobby.setState({ track: 'alpine' }); // host only; everybody reads lobby.state$
+
+if (lobby.isHost) await lobby.startMatch(); // locks the roster; the room admits nobody until endMatch()
+const match = await firstValueFrom(lobby.match$.pipe(filter(m => m !== null))); // every member
+const round = `${match.id}:0`;
+const net = new Network3dController({
+  transport: new WebRtcMeshTransport({ signaling, roomId: lobby.roomId, localPeerId: lobby.localPeerId }),
+});
+// ... build the game from match.roster, connect
+await net.waitForPeers(match.roster, 15_000); // links open, not just known
+await lobby.setReady(round);
+if (lobby.isHost) {
+  await lobby.waitForReady(round, 90_000); // { ready, waiting, complete } - start without the late ones
+  await lobby.scheduleStart(round, lobby.serverNow() + 5000);
+}
+lobby.startsAt$(round).subscribe(at => at !== null && countdown(at - lobby.serverNow()));
+await lobby.writeResult(round, racerPeerId, { time }); // first write wins
+```
+
+- **Capacity and presence** are the backend's: a join is atomic (two players never take the last
+  place both), a closed tab or a lost connection removes its member, and a room without members
+  disappears. Every join gets a fresh peer id; the directory runs one operation at a time, so a
+  double click joins once.
+- **Host** = the senior member (earliest join, ties by peer id), the same on every peer without an
+  election; the next senior member takes over when the host leaves. `isHost` is `false` while the
+  backend is unreachable.
+- **Shared state** is written by the host only and replaced as a whole; a member's own data
+  (`setMemberData`) is written by that member only.
+- **The roster** is fixed at `startMatch`: build the game from `match.roster`, never from the live
+  members, which a join or leave racing the start would make differ between peers. A roster peer
+  missing from `members` has left. A match nobody of its roster is left in is ended by the host.
+- **Rounds**: readiness, the start time and results are keyed by a string the game picks, so nothing
+  of a previous round is taken for the current one. `waitForReady` waits for the roster members
+  still in the room (every member without a match) and resolves on timeout too, with who is missing.
+- **Time**: `scheduleStart` and `startsAt$` are in backend time (`serverNow()`: Firebase's server
+  clock, the local clock for BroadcastChannel), the same moment for every member.
+- `lobby.closed$` emits `'lost'` when the member is gone without leaving (connection to the backend
+  lost): treat it like being dropped from the room. Writes after that are ignored.
+
 ### Units
 Distances in the defaults (correction deadzone/snap distance, the 10 m ownership floor, the contact
 impulse threshold) are scaled by `unitScale`, world units per meter: 1 for `Network3dController`,
@@ -155,6 +206,23 @@ The rules the client relies on:
   another peer's name), validated for shape/size, and never edited. A message may be deleted by its
   sender or by the owner of `presence/{to}`, the whole inbox only by that owner - and by anyone once
   `presence/{to}` is gone (an orphaned inbox).
+
+`FirebaseLobbyBackend` keeps its rooms under `gg-lobby/{roomId}` (rules in the same file). App
+values (`meta`, `data`, `value`) are stored as JSON strings:
+
+| Node | Shape | Written by |
+|---|---|---|
+| `info` | `{ name, capacity, meta, createdAt, uid }` | the creator, once, with its member record and seat 0 in one write |
+| `members/{peerId}` | `{ uid, joinedAt, data, ready? }` | that member only; created only while the room has no `match` |
+| `seats/{index}` | `{ peer, uid }` | taken by a transaction (`index < capacity`); a member counts only with a seat |
+| `state`, `match`, `start` | `{ by, value }`, `{ by, id, roster }`, `{ by, round, at }` | a member (`by`); the client lets only the host write |
+| `results/{subject}` | `{ by, round, value }` | a member, by a transaction that keeps the first result of a round |
+
+The lobby rules: a room is created in one write (its `info.uid` the writer's) and deleted by anyone
+once it has no members; `members/{peerId}` and `seats/{index}` are created and changed by their own
+uid only, and a seat is also removable by anyone once its member record is gone; `joinedAt` and
+`createdAt` are the server's time; sizes are capped (name 64, `meta`/`data`/a result 4000, `state`
+16000 characters, capacity 32).
 
 Every node a client writes is registered with `onDisconnect().remove()`. The optional backstop
 (`firebase/functions`, needs the Blaze plan) is a scheduled function removing presence/signal nodes

@@ -44,6 +44,36 @@ describe('NetworkController features', () => {
     expect(await ggstatic.runConsoleCommand('remove', ['ground', '0'])).toContain('removed');
   });
 
+  it('waitForPeers resolves once links to the peers are open, false on timeout or leave', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    expect(await a.net.waitForPeers(0, 0)).toBe(true);
+    let toB: boolean | null = null;
+    a.net.waitForPeers(['a', 'b'], 5000).then(r => (toB = r));
+    const tooMany = a.net.waitForPeers(2, 1000);
+    await h.addPeer('b');
+    await h.run(2);
+    expect(toB).toBe(true);
+    h.step(Math.ceil(1000 / TICK_MS));
+    expect(await tooMany).toBe(false);
+
+    // c is in the room, but its link to a opens late
+    h.hub.cutLink('a', 'c');
+    await h.addPeer('c');
+    let toC: boolean | null = null;
+    a.net.waitForPeers(['c'], 5000).then(r => (toC = r));
+    await h.run(10);
+    expect(toC).toBeNull();
+    h.hub.openLink('a', 'c');
+    await h.run(2);
+    expect(toC).toBe(true);
+    expect(await a.net.waitForPeers(['b', 'c'], 0)).toBe(true);
+
+    const never = a.net.waitForPeers(['nobody'], Infinity);
+    a.net.leave();
+    expect(await never).toBe(false);
+  });
+
   it('net_panel shows live stats of the session and every peer, and goes away with the controller', async () => {
     jest.useFakeTimers({ doNotFake: ['setTimeout', 'performance'] });
     try {

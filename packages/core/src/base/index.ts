@@ -1,5 +1,7 @@
 export * from './assets';
 
+export * from './audio';
+
 export * from './blueprint/blueprint';
 export * from './blueprint/blueprint-node';
 export * from './blueprint/nodes/remove-entity.node';
@@ -19,6 +21,9 @@ export * from './components/physics/i-physics-world.component';
 export * from './components/rendering/i-display-object.component';
 export * from './components/rendering/i-renderer.component';
 export * from './components/rendering/i-visual-scene.component';
+export * from './components/rendering/viewport';
+// `markCanvasReleased`/`assertCanvasReusable` stay internal: the worlds' and renderer entity's own check
+export { replaceCanvas } from './components/rendering/canvas-reuse';
 export * from './components/i-component';
 export * from './components/i-world-component';
 

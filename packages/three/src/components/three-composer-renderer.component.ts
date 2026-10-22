@@ -34,6 +34,12 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
     this.nativeComposer.setSize(newSize.x, newSize.y);
   }
 
+  /** Sets the pixel ratio of the native renderer and of the composer, whose render targets follow it. */
+  setResolution(resolution: number): void {
+    super.setResolution(resolution);
+    this.nativeComposer.setPixelRatio(resolution);
+  }
+
   render(): void {
     this.nativeComposer.render();
     if (this.physicsDebugViewActive) {

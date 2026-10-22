@@ -34,8 +34,9 @@ export type ParticleSystem3dRenderOptions<Tex = unknown> = ParticleSystemRenderO
  * .createParticleSystem` and driven by `ParticleSystem3dEntity` (which owns the simulation, in core,
  * so every adapter draws exactly the same particles). One draw call per system: an adapter renders
  * every particle as a textured, camera-facing quad (see `ParticleSystem3dRenderOptions.billboard`),
- * reading `ParticleRenderBuffers` - sprite center, width and height, rotation, tint and opacity,
- * atlas region. The quads never cast or receive shadows.
+ * reading `ParticleRenderBuffers` - sprite position, width and height, rotation, tint and opacity,
+ * atlas region, and the anchor: the point of the sprite placed at its position, which a rotating
+ * sprite turns around. The quads never cast or receive shadows.
  *
  * As a display object it has a position and rotation: particle positions are relative to them.
  * `ParticleSystem3dEntity` keeps them at the origin for a world-space system and moves them with the

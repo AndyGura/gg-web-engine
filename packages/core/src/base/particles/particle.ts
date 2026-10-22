@@ -143,7 +143,7 @@ export class Particle<D extends Point2 | Point3 = Point3, T = any> {
   public frameLoop: boolean = false;
 
   /**
-   * Four free numbers copied to the render buffers' `extra` array (`instanceExtra` in the three.js
+   * Four free numbers copied to the render buffers' `extra` array (`particleExtra` in the three.js
    * adapter), for a custom material/shader. The built-in materials ignore them.
    */
   public readonly shaderData: [number, number, number, number] = [0, 0, 0, 0];

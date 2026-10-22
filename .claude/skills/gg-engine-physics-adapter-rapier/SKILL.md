@@ -625,7 +625,7 @@ sensor) - read that note first, everything in it applies here too (the collider-
 handle distinction, `ActiveEvents.COLLISION_EVENTS` needing to be set on plain rigid-body colliders
 too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `contactPair`/
 `TempContactManifold.contactImpulse(i)` approach to a real solved impulse rather than a
-`CONTACT_FORCE_EVENTS` force-times-`dt` estimate). Three points worth calling out specifically for the
+`CONTACT_FORCE_EVENTS` force-times-`dt` estimate). Four points worth calling out specifically for the
 3D package:
 
 - **Naming differs, behavior doesn't**: this package's dispatch methods are
@@ -645,14 +645,24 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   touching"** by emitting `null` for the latter, per `CollisionEvent`'s own doc convention (mirroring
   `ITriggerComponent.onEntityLeft`'s same optional-null convention, which `Rapier3dTriggerComponent`
   itself doesn't actually exercise - it always passes the real body reference, even on removal-
-  triggered exit). Implemented via a `collidingWith: Set<Rapier3dRigidBodyComponent>` on
-  `Rapier3dRigidBodyComponent` itself, added to on every `notifyCollisionStart`/removed on every
-  `notifyCollisionEnd`, and walked by `removeFromWorld()`: every partner still in the set when a body
+  triggered exit). Implemented via `collidingWith` on `Rapier3dRigidBodyComponent` itself (see the
+  next point for what it counts), walked by `removeFromWorld()`: every partner still in it when a body
   is removed gets `notifyCollisionEnd(null)` and has this body dropped from its own `collidingWith` in
   turn. This is necessary because Rapier does not reliably emit a native collision-stop event for a
   collider that's simply deleted mid-contact (the same reason `Rapier3dTriggerComponent.checkOverlaps`
   needs its own manual `!body.nativeBody` cleanup pass instead of trusting the event queue for that
   case) - without it, the partner body would simply never hear that the contact ended at all.
+- **Collision events are per collider, `onCollisionStart`/`onCollisionEnd` per body pair.**
+  `drainCollisionEvents` reports each touching collider pair, and a `COMPOUND` body is one collider
+  per part, so a two-box body landing flat on a floor gets two native starts, and a native stop
+  whenever one box bounces off while the other still rests. `collidingWith` is therefore a
+  `Map<Rapier3dRigidBodyComponent, number>` of touching collider pairs per partner:
+  `notifyCollisionStart` emits only when a partner's count goes from 0 to 1, `notifyCollisionEnd`
+  only when it drops back to 0 (and ignores a stop for a partner with no count). `collectCollisionEvents`
+  never drops a native start - when `computeContactGeometry` finds no manifold it falls back to
+  `fallbackContactGeometry` (midpoint, direction between the bodies, no impulse) - since a skipped
+  start would leave the count one short of the stops to come. Regression: the 3D contract suite's
+  "fires onCollisionStart once per body pair, for a compound body".
 - **`relativeVelocity` reads each body's `linvel()` *after* the step that produced the `started` event
   has already fully resolved the contact** (both `drainCollisionEvents` and `contactPair` are read
   right after the `world.step()` the contact started in, there is no earlier point to read from without re-deriving the pre-solve state

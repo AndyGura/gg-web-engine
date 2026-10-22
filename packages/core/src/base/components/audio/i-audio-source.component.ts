@@ -109,6 +109,25 @@ export interface IAudioSourceComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D
    */
   readonly ended$: Observable<void>;
 
+  /**
+   * Fades `volume` from where it is heard now to `volume` over `durationMs` milliseconds - a
+   * deliberate, audible fade (a menu theme fading out, music crossfading into the next track), not
+   * the short smoothing every `volume` write already gets. `volume` reads back the target at once,
+   * like every other setter here.
+   *
+   * Runs on the audio clock, not on wall time or the world clock: while the backend is suspended
+   * (the world paused, or the browser not yet allowing audio to start) the fade waits with it. It
+   * keeps running whether or not the source is playing, and while the source is virtual (silent
+   * under the voice budget), which then hears it at the level the fade has reached.
+   *
+   * Resolves `true` once the fade has reached `volume`, `false` when something took over first:
+   * another `fadeTo` (which starts from the level reached so far), a `volume` write, or `dispose()`.
+   * So `if (await source.fadeTo(0, 500)) source.stop();` stops a sound only if nothing faded it back
+   * in meanwhile. A `durationMs` of 0 (or less) sets the volume and resolves `true` at once.
+   * @throws RangeError when `volume` or `durationMs` is not a finite number, or `volume` is negative
+   */
+  fadeTo(volume: number, durationMs: number): Promise<boolean>;
+
   play(): void;
 
   pause(): void;

@@ -17,6 +17,7 @@ import {
   warnOnce,
 } from '../base';
 import { Gg3dLevelLoader } from './level-loader';
+import { UniqueResources3d } from './components/rendering/i-display-object-3d.component';
 import type { MapGraph3dEntity } from './entities/map-graph-3d.entity';
 import { first } from 'rxjs';
 
@@ -66,6 +67,14 @@ export type LoadOptions = {
   castShadow?: boolean;
   /** Same as `castShadow`, for `IDisplayObject3dComponent.receiveShadow`. */
   receiveShadow?: boolean;
+  /**
+   * Gives every loaded display object (including nested props) its own copies of these resources,
+   * see `IDisplayObject3dComponent.makeUnique` - for a model changed per load (recolored,
+   * re-textured, its geometry edited). Left out, the display objects share geometry, materials and
+   * textures with the cached original and every other load of the file. Changes nothing with
+   * `CachingStrategy.Nothing`, whose result already owns everything.
+   */
+  unique?: UniqueResources3d;
 };
 
 const defaultLoadOptions: LoadOptions = {
@@ -457,6 +466,9 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy, rootSlot);
     const result: LoadResultWithProps<TypeDoc> = {
       entities: resources.map((x, index) => {
+        if (loadOptions.unique) {
+          x.object3D?.makeUnique(loadOptions.unique);
+        }
         const entity = new Entity3d<TypeDoc>({ object3D: x.object3D, objectBody: x.body });
         if (nameScope !== null) {
           // Mirrors Entity3d's own constructor fallback order: object3D's name is only ever
@@ -484,6 +496,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
             ...(loadOptions.cachingStrategy !== undefined ? { cachingStrategy: loadOptions.cachingStrategy } : {}),
             ...(loadOptions.castShadow !== undefined ? { castShadow: loadOptions.castShadow } : {}),
             ...(loadOptions.receiveShadow !== undefined ? { receiveShadow: loadOptions.receiveShadow } : {}),
+            ...(loadOptions.unique !== undefined ? { unique: loadOptions.unique } : {}),
           }),
         ),
       );

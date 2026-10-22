@@ -479,6 +479,77 @@ describe('GgWorld', () => {
     });
   });
 
+  describe('getOrAddEntity', () => {
+    class Service extends IEntity {
+      static readonly entityTypeName: string = 'Service';
+      readonly tickOrder: TickOrder = TickOrder.CONTROLLERS;
+      private constructor() {
+        super();
+      }
+      static create(): Service {
+        return new Service();
+      }
+    }
+
+    it('creates, names and adds the entity on the first call, and returns that same one afterwards', () => {
+      const factory = jest.fn(() => Service.create());
+      const first = world.getOrAddEntity('Skids', factory, Service);
+      expect(first).toBeInstanceOf(Service);
+      expect(first.name).toBe('Skids');
+      expect(first.world).toBe(world);
+      expect(world.getEntityByName('Skids')).toBe(first);
+      expect(world.getOrAddEntity('Skids', factory, Service)).toBe(first);
+      expect(world.getOrAddEntity('Skids', factory)).toBe(first);
+      expect(factory).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps one entity per world', () => {
+      const other = new MockWorld();
+      const a = world.getOrAddEntity('Skids', () => Service.create());
+      const b = other.getOrAddEntity('Skids', () => Service.create());
+      expect(a).not.toBe(b);
+      expect(b.world).toBe(other);
+      other.dispose();
+    });
+
+    it('creates a new one once the previous one has been removed', () => {
+      const first = world.getOrAddEntity('Skids', () => Service.create());
+      world.removeEntity(first, true);
+      const second = world.getOrAddEntity('Skids', () => Service.create());
+      expect(second).not.toBe(first);
+      expect(second.world).toBe(world);
+    });
+
+    it('throws for an existing entity of another class when a class is given, and returns it unchecked otherwise', () => {
+      const squatter = new GgEntityMock();
+      squatter.name = 'Skids';
+      world.addEntity(squatter);
+      const factory = jest.fn(() => Service.create());
+      expect(() => world.getOrAddEntity('Skids', factory, Service)).toThrow(/not an instance of the requested class/);
+      expect(world.getOrAddEntity('Skids', factory)).toBe(squatter);
+      expect(factory).not.toHaveBeenCalled();
+    });
+
+    it('throws for a factory result that is already in a world', () => {
+      const elsewhere = new GgEntityMock();
+      new MockWorld().addEntity(elsewhere);
+      expect(() => world.getOrAddEntity('Skids', () => elsewhere)).toThrow(/already in a world/);
+    });
+
+    it('disposes a created entity that could not be added, and rethrows', () => {
+      const taken = new GgEntityMock();
+      taken.name = 'Child';
+      world.addEntity(taken);
+      const created = new GgEntityMock();
+      const child = new GgEntityMock();
+      child.name = 'Child';
+      created.addChildren(child);
+      expect(() => world.getOrAddEntity('Skids', () => created)).toThrow(/already in use/);
+      expect(created.disposed).toBe(true);
+      expect(() => world.getEntityByName('Skids')).toThrow();
+    });
+  });
+
   describe('console commands', () => {
     describe('timescale', () => {
       it('reports the current time scale with no args', async () => {

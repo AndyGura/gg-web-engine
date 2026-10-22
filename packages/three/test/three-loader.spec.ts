@@ -1,4 +1,16 @@
-import { BoxGeometry, Mesh, MeshStandardMaterial, Object3D, Scene, Texture, TextureLoader } from 'three';
+import {
+  BoxGeometry,
+  CubeTexture,
+  CubeTextureLoader,
+  LinearFilter,
+  Mesh,
+  MeshStandardMaterial,
+  NearestFilter,
+  Object3D,
+  Scene,
+  Texture,
+  TextureLoader,
+} from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { ThreeDisplayObjectComponent, ThreeLoader, ThreeSceneComponent } from '../src';
 
@@ -113,15 +125,37 @@ describe('ThreeLoader', () => {
     const loadCube = jest.spyOn(loader, 'loadCubeTexture').mockResolvedValue('cube' as any);
     const blob = () => new Blob(['x']);
     await loader.cubeTextureFromData({ px: blob(), nx: blob(), py: blob(), ny: blob(), pz: blob(), nz: blob() });
-    expect(loadCube).toHaveBeenCalledWith({
-      px: 'blob:mock/0',
-      nx: 'blob:mock/1',
-      py: 'blob:mock/2',
-      ny: 'blob:mock/3',
-      pz: 'blob:mock/4',
-      nz: 'blob:mock/5',
-    });
+    expect(loadCube).toHaveBeenCalledWith(
+      {
+        px: 'blob:mock/0',
+        nx: 'blob:mock/1',
+        py: 'blob:mock/2',
+        ny: 'blob:mock/3',
+        pz: 'blob:mock/4',
+        nz: 'blob:mock/5',
+      },
+      {},
+    );
     expect(revoked).toHaveLength(6);
+  });
+
+  it('loadCubeTexture applies the filter the way loadTexture does, through the data path too', async () => {
+    jest.spyOn(CubeTextureLoader.prototype, 'loadAsync').mockImplementation(async () => new CubeTexture());
+    const loader = new ThreeLoader();
+    const faces = { px: 'px', nx: 'nx', py: 'py', ny: 'ny', pz: 'pz', nz: 'nz' };
+    const nearest = await loader.loadCubeTexture(faces, { filter: 'nearest' });
+    expect(nearest.magFilter).toBe(NearestFilter);
+    expect(nearest.minFilter).toBe(NearestFilter);
+    expect(nearest.colorSpace).toBe('srgb');
+    const linear = await loader.loadCubeTexture(faces, { filter: 'linear' });
+    expect(linear.magFilter).toBe(LinearFilter);
+    const blob = () => new Blob(['x']);
+    const fromData = await loader.cubeTextureFromData(
+      { px: blob(), nx: blob(), py: blob(), ny: blob(), pz: blob(), nz: blob() },
+      { filter: 'nearest' },
+    );
+    expect(fromData.magFilter).toBe(NearestFilter);
+    expect(fromData.minFilter).toBe(NearestFilter);
   });
 
   describe('prepare', () => {

@@ -30,4 +30,11 @@ export const MobileControlsIcons = {
   ),
   // an object flung forward
   throw: svg('<circle cx="17" cy="7" r="2.5"/><path d="M4 18c3-6 7-9 11-10M5 14l-1 4 4 1"/>'),
+  pause: svg('<path d="M9 5v14M15 5v14"/>'),
+  // a play triangle: what the pause button shows while the world is paused
+  resume: svg('<path d="M8 5l11 7-11 7z"/>'),
+  // four corners pointing outwards
+  fullscreen: svg('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
+  // four corners pointing inwards
+  exitFullscreen: svg('<path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>'),
 };

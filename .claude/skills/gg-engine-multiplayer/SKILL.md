@@ -1,6 +1,6 @@
 ---
 name: gg-engine-multiplayer
-description: Work on packages/multiplayer (the @gg-web-engine/multiplayer shared-world networking package - NetworkController, ownership/possession, WebRTC mesh transport, Firebase/BroadcastChannel signaling, zoning) or on the core networking contracts it drives (INetworkSyncable/INetworkInputDriven, RigidBodyCorrection/MoverCorrection, GgWorld.eventAuthority/commandGuard). Also covers making an entity class network-aware, adding possession to a game, and writing a new transport or signaling backend.
+description: Work on packages/multiplayer (the @gg-web-engine/multiplayer shared-world networking package - NetworkController, ownership/possession, WebRTC mesh transport, Firebase/BroadcastChannel signaling, zoning, the room directory/lobby and its backends) or on the core networking contracts it drives (INetworkSyncable/INetworkInputDriven, RigidBodyCorrection/MoverCorrection, GgWorld.eventAuthority/commandGuard). Also covers making an entity class network-aware, adding possession to a game, and writing a new transport, signaling or lobby backend.
 ---
 
 # Working on multiplayer
@@ -28,15 +28,20 @@ packages/core/src/base/network/                           RigidBodyCorrection, M
 packages/multiplayer/src/sync/   transport-agnostic: NetworkController (+ 2D/3D), wire types,
                                  ITransport, LoopbackHub/LoopbackTransport, VirtualScheduler,
                                  ClockSync, chunking, ownership strategies, LinkConditioner
-packages/multiplayer/src/p2p/    WebRtcMeshTransport, ISignalingChannel, FirebaseSignaling,
-                                 BroadcastChannelSignaling, zoning, room URL helpers
+packages/multiplayer/src/p2p/    WebRtcMeshTransport, ISignalingChannel, FirebaseSignaling (+ the
+                                 shared resolveFirebaseApp/signInToFirebase), BroadcastChannelSignaling,
+                                 zoning, room URL helpers
+packages/multiplayer/src/lobby/  room directory and lobby above signaling: ILobbyBackend,
+                                 RoomDirectory, Lobby, FirebaseLobbyBackend,
+                                 BroadcastChannelLobbyBackend
 packages/multiplayer/firebase/   deployable rules + optional sweep function (not in the npm package)
 packages/multiplayer/test/       sync unit tests, in-process harness (all 4 physics adapters),
-                                 p2p tests (fake RTCPeerConnection, fake Firebase)
+                                 p2p tests (fake RTCPeerConnection, fake Firebase), lobby tests
 ```
 
-`src/sync` must never import from `src/p2p` - it is the half a future dedicated-server package
-reuses.
+`src/sync` must never import from `src/p2p` or `src/lobby` - it is the half a future
+dedicated-server package reuses. `src/lobby` knows nothing of the controller: an app joins a room,
+then hands `lobby.roomId`/`lobby.localPeerId` to its transport.
 
 ## Core contracts (what an entity implements)
 
@@ -260,6 +265,57 @@ shared world for the other peers (the local player's input is still switched off
   changing what the client writes. The in-memory stub (`test/stubs/firebase.ts`) doesn't enforce rules,
   so a mismatch only shows up live, as `PERMISSION_DENIED` in the browser console.
 
+## Rooms and lobby (`src/lobby`)
+
+`RoomDirectory` (room list, create, join - one operation at a time, a fresh peer id per join) and
+`Lobby` (one room the local peer is in) are backend-agnostic; an `ILobbyBackend` only stores and
+enforces. Everything derived - host, readiness, the stale-match cleanup, `'lost'` detection - is
+computed by `Lobby` from the backend's `LobbyRoomSnapshot`s, so both backends behave the same.
+`NetworkController.waitForPeers(peersOrCount, timeoutMs)` is the session-side half: it resolves on
+open links (`peerInfos`), never on presence, and `false` on timeout or when the session ends.
+
+- **Host = senior member, computed, never elected or stored**: earliest `joinedAt` (backend time),
+  ties by peer id. Every peer sorts the same records the same way. `isHost` is also `false` while
+  `connected$` is: a peer cut off from the backend must not act as host. A stored "host" field
+  would need migration on every leave and crash; seniority migrates by itself.
+- **Admission must be atomic, and the rules can't count.** Firebase: a member counts only with a
+  `seats/{index}` node taken by `runTransaction` (index below capacity, its holder's member record
+  present). A member record without a seat is a join in progress or a refused one, and is never
+  listed - so the room never shows a 9th player for a moment. A check-after-write scheme (write the
+  record, then count and back out if over) shows that flicker and lets two equal-ranked joins both
+  in. BroadcastChannel has no transactions: a join announces a claim, listens for `settleMs`, and
+  goes in only if members plus claims that started earlier leave a free place.
+- **`onDisconnect().remove()` is registered before the node it removes is written** (the member
+  record, and on create the room's seat 0 too) - removing a node that doesn't exist is allowed by
+  the rules, so this works before the room exists. A tab closed in between otherwise leaves a ghost
+  member forever. The one exception is a seat taken by a transaction: its index is only known after
+  the commit, and arming removals for seats it might not get would delete somebody else's seat on
+  disconnect. A seat orphaned in that gap (its member record removed by its own `onDisconnect`) is
+  not counted, the rules let anyone remove it, and the next join does.
+- **Never cancel an `onDisconnect` on leave**: send the removals, leave the registrations armed
+  (harmless once the nodes are gone). Cancelling first leaves the member in the room forever when the
+  tab goes away before the removal is sent. `Lobby.leave()` closes locally first and sends the
+  removal before any `await`.
+- **A lost connection means the member is gone.** `Lobby` closes with `'lost'` when `connected$`
+  drops or its member record disappears, and still sends its own removal: a short drop the server
+  didn't notice would otherwise leave a ghost (the removal lands whenever the connection is back,
+  and only touches this peer's own, never-reused records).
+- **Build from `match.roster`, never from live members**: a join or leave racing `startMatch`
+  makes the member lists differ between peers. Seat creation is refused while `match` exists. A
+  member that slipped in between the host reading the members and writing the match is in the room
+  but not in the roster; when no roster member is left the host ends the match itself, or the room
+  would never admit anyone again.
+- **Rounds key everything that repeats** (ready, start, results), so a value from the previous race
+  is never read as the current one, and nothing has to be cleared between rounds. A new round's
+  result replaces the old one for that subject; the same round's first write wins (Firebase: a
+  transaction committing only on `null` or another round; BroadcastChannel: the earliest `(at, by)`
+  on every tab, so `writeResult` waits `settleMs` before answering).
+- **App values are JSON strings in Firebase**: the database drops `null`s and empty objects/arrays
+  and refuses `.`/`#`/`$`/`[`/`]`/`/` in keys, so `meta`, member `data`, `state` and result values
+  are stored stringified, and the rules cap their length. Result subjects are keys, hence
+  `[0-9A-Za-z_-]{1,64}`.
+- **A disposed backend completes `room$`**, which closes the lobby as `'left'`.
+
 ## Testing
 
 - **In-process harness** (`test/harness/harness.ts`): several `GgWorld`s joined by a `LoopbackHub` on
@@ -277,7 +333,17 @@ shared world for the other peers (the local player's input is still switched off
   installs each package standalone against the freshly published core, and the old adapter versions'
   peer ranges would conflict.
 - `firebase/*` is mapped to `test/stubs/firebase.ts`, an in-memory Realtime Database (with real-RTDB
-  pruning of empty nodes) - `FirebaseSignaling` is tested against it. `test/p2p/fakes.ts` has a fake
+  pruning of empty nodes) - `FirebaseSignaling` and `FirebaseLobbyBackend` are tested against it.
+  It has `get`, an atomic `runTransaction` (`state.denyTransactions` makes it fail like a refused
+  write), `serverTimestamp()` = `state.serverTime` (give two joins different times, or seniority
+  falls to the random peer ids), and `fakeFirebase.write(path, value)` for server-side values such
+  as `.info/connected` (`null` until written - a `Lobby` is never host then). `onDisconnect`
+  registrations belong to the uid current at the call: switch clients with `asNewClient()` only
+  between one client's completed operations.
+- jsdom has no `BroadcastChannel`; the lobby spec installs node's (`worker_threads`), which has the
+  browser's semantics (no delivery to the posting instance, delivery to other instances in the
+  process), so each "tab" is one backend instance. Use a fresh `channelName` per test and dispose
+  every backend, or its heartbeat interval keeps jest alive. `test/p2p/fakes.ts` has a fake
   `RTCPeerConnection` and an in-memory signaling hub for `WebRtcMeshTransport`.
 - **Real connection timing** is never tested automatically. `WebRtcMeshTransport.setupTimes` holds each
   link's setup time; with every peer on one machine it measured 71–680 ms. That is a best case, since
@@ -318,6 +384,13 @@ channel's `bufferedAmount` is above `unreliableBufferLimit` - checked once per m
 first frame, so the frames of one split state message aren't starved by each other. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
 relay, optional `discoveryDelayMs`. A server variant pairs a websocket `ITransport` with
 `AlwaysServerOwnership`.
+
+`ILobbyBackend`: `rooms$`/`room$` (snapshots listing admitted members only), `connected$`,
+`serverTimeOffset$`, `createRoom`/`joinRoom` (atomic within capacity, refused during a match,
+`LobbyJoinError`)/`leaveRoom`, `write` (a `LobbyWrite`: member data, ready, state, match, start),
+`writeResult` (first write of a round wins). Its doc lists the guarantees; see "Rooms and lobby"
+above for how the two built-in backends meet them. A server variant keeps the room in the server's
+memory and gets all of them for free.
 
 ## Keep this skill current
 

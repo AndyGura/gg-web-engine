@@ -285,6 +285,21 @@ pair:
   still synthesize both sides' events from that one report - see `MatterWorldComponent.
   handleCollisionStart` for the pattern (and its doc comment for a worked-out normal-direction
   gotcha specific to matter-js's own convention).
+- **One start and one end per body pair, not per collider pair.** An engine that reports contacts
+  per collider (a `COMPOUND` body flattened into one collider per part) reports a body touching
+  another with two parts as two starts, and a stop whenever one part lets go while the other still
+  touches. Count the touching collider pairs per partner and emit `onCollisionStart` only on 0 → 1
+  and `onCollisionEnd` only on → 0 (see `Rapier3dRigidBodyComponent.collidingWith`); never drop a
+  native start (fall back to approximate geometry when the engine has no manifold for it), or the
+  count goes out of step with the stops. Core's `RaycastVehicle3dEntity.impact$` relies on this to
+  fire once per hit. The 3D contract suite drops a two-box compound onto a floor and checks starts
+  and ends alternate.
+- **One component per native body.** A component built on another one's native body (a raycast
+  vehicle on its chassis) adds and removes that body itself and never adds the component it was
+  built from: both in the world would put two components for one body in `children` and
+  `added$`/`removed$`, and a trigger reacting to `removed$` would report the one without an entity.
+  The 3D contract suite's `raycast vehicle` block checks `added$`/`removed$` name only the vehicle
+  and that collision events on both sides name the vehicle.
 - **Self-collision guard.** A compound body's own sub-colliders can resolve to the *same* component
   on both sides of a reported pair - that must never reach `onCollisionStart`/`onCollisionEnd`, or
   a body would appear to collide with itself. Skip the pair whenever both sides resolve to the same

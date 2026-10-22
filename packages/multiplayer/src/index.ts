@@ -16,3 +16,8 @@ export * from './p2p/zoning';
 export * from './p2p/firebase-signaling';
 export * from './p2p/broadcast-channel-signaling';
 export * from './p2p/webrtc-mesh-transport';
+export * from './lobby/lobby-backend';
+export * from './lobby/lobby';
+export * from './lobby/room-directory';
+export * from './lobby/firebase-lobby-backend';
+export * from './lobby/broadcast-channel-lobby-backend';

@@ -34,13 +34,14 @@ const BLEND_MODE: Record<ParticleBlendMode2d, BLEND_MODES> = {
  * The pixi.js `IParticleSystem2dComponent`: a `ParticleContainer` whose `particleChildren` are
  * `capacity` pooled plain `IParticle` records, refilled from core's `ParticleRenderBuffers` on every
  * `setParticles` - position, scale (the particle's size in world units over the frame's size in
- * pixels), rotation, packed tint and opacity, and the atlas region as a sub-texture of the system's
+ * pixels), rotation, anchor (pixi's own `anchorX`/`anchorY`, the point at the position that the
+ * sprite turns around), packed tint and opacity, and the atlas region as a sub-texture of the system's
  * texture (one `Texture` per distinct region, created on demand and shared by every particle
  * showing it). Every property is dynamic, so the container re-uploads them each frame. The
  * container's own `tint`/`opacity` multiply the particles' (inherited, like any pixi container).
  *
- * pixi's `ParticleContainer` never computes bounds itself, so `getBoundings` reports whatever
- * `nativeSprite.boundsArea` was set to (an empty box by default).
+ * pixi's `ParticleContainer` never computes bounds itself, so `getBoundings`/`getLocalBoundings`
+ * report whatever `nativeSprite.boundsArea` was set to (an empty box by default).
  */
 export class PixiParticleSystemComponent
   extends PixiDisplayObjectComponent
@@ -126,6 +127,9 @@ export class PixiParticleSystemComponent
       p.scaleX = buffers.size[i * 2] / texture.orig.width;
       p.scaleY = buffers.size[i * 2 + 1] / texture.orig.height;
       p.rotation = buffers.rotation[i];
+      // the same fractions of the frame, top-left origin, as pixi's own anchor
+      p.anchorX = buffers.anchor[i * 2];
+      p.anchorY = buffers.anchor[i * 2 + 1];
       // pixi packs a particle's color as ABGR: alpha in the top byte, then blue, green, red
       const r = Math.round(buffers.color[c] * 255);
       const g = Math.round(buffers.color[c + 1] * 255);

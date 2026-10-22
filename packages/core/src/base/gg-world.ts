@@ -908,6 +908,63 @@ export abstract class GgWorld<
   }
 
   /**
+   * The entity named `name` in this world, created with `factory` and added on the first call - for
+   * one-per-world services several entities share (one skid-mark mesh for every car, one particle
+   * pool, a director), which every user gets with the same call instead of an app-side
+   * `WeakMap<world, entity>`. The name is the key: the created entity is renamed to `name` before
+   * it is added, whatever name `factory` gave it. Only what is in the world now counts - after the
+   * entity has been removed (e.g. with the level that brought it), the next call creates a new one.
+   * @param name - The world-unique name the entity is (or will be) registered under
+   * @param factory - Builds the entity when there is none named `name`; called at most once per
+   * call, never for an existing one. Must return an entity that is not in a world.
+   * @param type - The class the entity must be an instance of. With it, an existing entity of
+   * another class throws instead of being returned; without it the existing entity is returned as
+   * whatever it is, unchecked. Any class works, an abstract one or one with a private constructor
+   * included.
+   * @returns The existing entity, or the one `factory` built, now spawned in this world
+   * @throws if `type` is given and the existing entity named `name` is not an instance of it
+   * @throws if `factory` returns an entity that is already in a world, or adding it fails (a name
+   * inside its subtree is taken, say) - a created entity that could not be added is disposed
+   *
+   * @example
+   * ```ts
+   * class SkidMarks extends Entity3d {
+   *   static readonly entityTypeName: string = 'SkidMarks';
+   *   static of(world: Gg3dWorld): SkidMarks {
+   *     return world.getOrAddEntity('SkidMarks', () => new SkidMarks(), SkidMarks);
+   *   }
+   *   // ...
+   * }
+   *
+   * // from every car, however many there are:
+   * SkidMarks.of(world).addMark(wheelPosition);
+   * ```
+   */
+  public getOrAddEntity<T extends IEntity>(name: string, factory: () => T, type?: Function & { prototype: T }): T {
+    const existing = this.entitiesByName.get(name);
+    if (existing) {
+      if (type && !(existing instanceof type)) {
+        throw new Error(
+          `Entity "${name}" already exists in this world but is not an instance of the requested class - give the per-world entity a name no other entity uses`,
+        );
+      }
+      return existing as T;
+    }
+    const entity = factory();
+    if (entity.world) {
+      throw new Error(`getOrAddEntity("${name}"): the factory returned an entity that is already in a world`);
+    }
+    try {
+      entity.name = name;
+      this.addEntity(entity);
+    } catch (e) {
+      entity.dispose();
+      throw e;
+    }
+    return entity;
+  }
+
+  /**
    * Auto-bind `audioScene`'s listener the first time this world ends up with exactly one
    * renderer, so a single-camera app never has to call `setActiveListener` itself. Deliberately
    * does *not* guess once a second renderer shows up (e.g. a portal/minimap camera, or a second

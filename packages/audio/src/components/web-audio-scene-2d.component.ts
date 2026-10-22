@@ -1,4 +1,4 @@
-import { IAudioScene2dComponent, Point2 } from '@gg-web-engine/core';
+import { AudioOneShotDescriptor, IAudioScene2dComponent, playAudioOneShot, Point2 } from '@gg-web-engine/core';
 import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
 import { WebAudioSource2dComponent } from './web-audio-source-2d.component';
 import { WebAudioSource2dComponentFactory } from '../web-audio-factory';
@@ -19,6 +19,11 @@ export class WebAudioScene2dComponent
   constructor() {
     super();
     this.factory = new WebAudioSource2dComponentFactory(this);
+  }
+
+  /** See `IAudioSceneComponent.playOneShot` - a non-positional source from this scene's factory. */
+  public playOneShot(descriptor: AudioOneShotDescriptor<AudioBuffer>): WebAudioSource2dComponent {
+    return playAudioOneShot(this.factory, descriptor);
   }
 
   public update(_elapsed: number, _delta: number): void {

@@ -161,7 +161,18 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     }
   }
 
+  /**
+   * Set by the first `dispose()`. `Ammo.destroy` on an already-destroyed object doesn't throw in
+   * this build: it runs the native destructor again (a double free), so every `dispose()` in this
+   * package returns early once this is set.
+   */
+  protected nativeDisposed: boolean = false;
+
   dispose(): void {
+    if (this.nativeDisposed) {
+      return;
+    }
+    this.nativeDisposed = true;
     try {
       Ammo.destroy(this.nativeBody);
     } catch {

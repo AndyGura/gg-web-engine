@@ -50,7 +50,10 @@ export type ParticleRenderBuffers = {
   readonly dimensions: 2 | 3;
   /** Particles to draw. */
   count: number;
-  /** Sprite centers, `dimensions` floats per particle, in the space the system simulates in. */
+  /**
+   * Sprite positions, `dimensions` floats per particle, in the space the system simulates in: where
+   * the sprite's `anchor` point is drawn (its center unless an anchor says otherwise).
+   */
   readonly position: Float32Array;
   /** Sprite width and height in world units, 2 floats per particle. */
   readonly size: Float32Array;
@@ -63,6 +66,14 @@ export type ParticleRenderBuffers = {
    * `height`, normalized - see `ParticleFrame`. 4 floats per particle.
    */
   readonly uv: Float32Array;
+  /**
+   * The point of the sprite drawn at its `position` and turned around by its rotation: `x`, `y`
+   * in fractions of the sprite as its image shows it (`0, 0` the top-left corner, `0.5, 0.5` the
+   * center, `0.5, 1` the middle of the bottom edge) - the frame's `ParticleFrame.anchor`, else the
+   * system's `ParticleSimulationOptions.anchor`, which also says what "top" means in 2D and 3D.
+   * 2 floats per particle.
+   */
+  readonly anchor: Float32Array;
   /** `Particle.shaderData`, 4 floats per particle, for custom materials. */
   readonly extra: Float32Array;
 };
@@ -77,6 +88,7 @@ export function createParticleRenderBuffers(capacity: number, dimensions: 2 | 3)
     rotation: new Float32Array(capacity),
     color: new Float32Array(capacity * 4),
     uv: new Float32Array(capacity * 4),
+    anchor: new Float32Array(capacity * 2),
     extra: new Float32Array(capacity * 4),
   };
 }

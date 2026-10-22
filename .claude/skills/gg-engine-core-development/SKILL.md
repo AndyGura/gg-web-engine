@@ -16,7 +16,9 @@ ripple into every adapter and every app.
 ```
 src/base/    dimension-agnostic: IComponent, IEntity, clocks, math (Point2/3, Quaternion,
              Matrix4, Box, splines), inputs, GgWorld base class, body-options base,
-             assets/ (fetch with progress, the per-world asset cache), screens/ (ScreenManager)
+             assets/ (fetch with progress, the per-world asset cache), screens/ (ScreenManager),
+             audio/ (MusicPlayer, playAudioOneShot, the mobile audio preset - helpers written
+             against the audio scene/source contract only, so they work with any audio adapter)
 src/2d/      2D specialization: Gg2dWorld, Entity2d, 2D components/interfaces, 2D shapes
 src/3d/      3D specialization: Gg3dWorld, Entity3d, 3D components/interfaces, 3D shapes,
              loaders, controllers (camera/car/free-fly), GgCarEntity, MapGraph3dEntity
@@ -79,6 +81,18 @@ a message naming the fix. The pieces, all exported from the package root:
   entities to an uninitialized `MockWorld`, and the real failure is adapter-specific (a three/pixi
   display object would be dropped, Ammo/Rapier have no factory yet), so each adapter throws
   `notInitializedError` at that point instead.
+- **A canvas whose renderer was disposed.** Every adapter's renderer `dispose()` releases its
+  canvas's WebGL context (see `IRendererComponent.dispose`), so that canvas can't host another
+  renderer. `IRendererEntity.dispose` records `renderer.canvas` in a module-level `WeakSet`
+  (`base/components/rendering/canvas-reuse.ts`, `markCanvasReleased`), and both worlds'
+  `addRenderer` call `assertCanvasReusable(canvas)` before `createRenderer`, throwing a message
+  that names `replaceCanvas`. Both helpers are internal (`base/index.ts` exports only
+  `replaceCanvas` from that module); a renderer component disposed on its own, outside an entity,
+  is not recorded. `replaceCanvas` is `cloneNode(false)` plus `replaceWith`: the copy keeps
+  attributes and inline style, never listeners or a context. A per-renderer "keep the context"
+  dispose option was rejected: three's renderer would reuse a context with the first renderer's
+  creation attributes (antialias, alpha) whatever the next one asks for, along with whatever GPU
+  resources the old world never freed, and pixi's destroy loses the context unconditionally.
 - **Two core versions in one page.** `src/index.ts` calls `registerCoreVersion(VERSION)`, which
   records every loaded copy's version on `window.gg_core_versions` and `console.error`s when a
   different one is already there. Every adapter pins core exactly and lists it in `dependencies`,
@@ -298,10 +312,29 @@ completes afterward.
 
 `removeEntity(entity)` without `dispose` leaves an entity that `addEntity` accepts again (a network
 layer does this to hide an entity for a while). So whatever an entity class sets up in `onSpawned`
-must end in `onRemoved`: a `tick$` subscription made there is piped through
-`takeUntil(this._onRemoved$)`, as `GgCarEntity` and the character controller entities do, or each
-re-add stacks one more per-tick update on top of the previous ones. A subscription made in the
-constructor lives as long as the entity and needs nothing.
+must end in `onRemoved`, or each re-add stacks one more per-tick update on top of the previous ones.
+`IEntity`'s protected `whileSpawned(obs)` (`obs.pipe(takeUntil(this._onRemoved$))`) and
+`onTick((elapsed, delta) => ...)` (that over `tick$`, returning the `Subscription`) are the way to
+write it in new code, called after `super.onSpawned(world)`; the character controller entities and
+`CharacterAnimationController` use `onTick`. Most built-in classes still spell out
+`.pipe(takeUntil(this._onRemoved$))` - equivalent, and fine to convert when touching one. A
+subscription made in the constructor lives as long as the entity and needs neither.
+
+`_onRemoved$` fires at the end of `onRemoved`, after the children and components left the world;
+`dispose()` removes a spawned entity first, so it ends these subscriptions too. A spawn that fails
+inside `IEntity.onSpawned` rolls back without emitting it - nothing subscribed by then, since a
+subclass subscribes after `super.onSpawned` returned.
+
+### Per-world singletons: `GgWorld.getOrAddEntity`
+
+`getOrAddEntity(name, factory, type?)` keys a one-per-world entity on its world-unique name: it
+returns `entitiesByName.get(name)` when present (checked with `instanceof type` when `type` is
+given - typed `Function & { prototype: T }` rather than a constructor signature, so an abstract
+class or one with a private constructor passes), otherwise renames `factory()`'s result to `name`
+and `addEntity`s it. A factory result that is already in a world throws; one that fails to add (a
+name in its subtree is taken) is disposed before the error is rethrown, since nothing else holds
+it. Only spawned entities are in the index, so a removed singleton is replaced on the next call -
+unlike an app-side `WeakMap<world, entity>`, which keeps handing back an entity that left.
 
 ## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
 
@@ -656,6 +689,10 @@ shared function.
 For models the cache holds an original that never enters a scene and every load returns
 `clone()`s of it; `IDisplayObjectComponent.clone` documents the ownership rule that makes this
 safe (a copy never frees shared resources, the source does), and each visual adapter implements it.
+A copy that is changed per instance gets copies of its own through `IDisplayObject3dComponent
+.makeUnique`; the `unique` option of `loadModel`/`loadGgGlb` calls it on the returned copy and is
+stripped from the options before the cache key is built (in `acquireModel`, so a `preload` ref
+carrying it hits the same entry) - never pass it on to the adapter's `loadFromGlb`.
 Lifetime follows scopes: `loadLevel` creates one and releases it on the level group's `disposed$`,
 `createEntity` does the same per entity when it isn't given one, `MapGraph3dEntity` keeps one per
 chunk and cancels its chunk loads when it leaves the world (an abort controller per spawn; a chunk
@@ -953,8 +990,8 @@ behaviour, dimension-agnostic (`dimensions: 2 | 3`; vectors carry `z` only in 3D
 directly), a live list in spawn order, emission (`emit(count, init)`, `rate`, `bursts`), motion,
 aging, frame sequences, curves (`particle-curve.ts`), an optional `fixedTimeStep` with
 interpolation, and `writeRenderBuffers()` into `ParticleRenderBuffers` (`particle-render.ts`: flat
-`Float32Array`s sized for `capacity` - center, width/height, rotation, sRGB tint + opacity, atlas
-region, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/particle-system-3d
+`Float32Array`s sized for `capacity` - position, width/height, rotation, sRGB tint + opacity, atlas
+region, anchor, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/particle-system-3d
 .entity.ts`) owns one, ticks it, and hands the buffers to `IParticleSystem3dComponent.setParticles`
 (`3d/components/rendering/i-particle-system-3d.component.ts`, created by the 3D factory's
 `createParticleSystem`; `VisualTypeDocRepo3D.particleSystem`/`particleSystemExtraOpts`, the latter
@@ -993,6 +1030,14 @@ clockwise as seen by the viewer in 3D, the 2D world's own sign in 2D - what a 2D
 - **World vs local space**: in world space the component stays at the origin and particles carry
   world positions; in local space the entity copies the emitter transform onto the component
   every tick and `pointToSim`/`directionToSim` are the identity.
+- **The anchor is resolved in core, per particle**: `writeRenderBuffers` writes the drawn frame's
+  `ParticleFrame.anchor`, else `options.anchor`, else the center, into `buffers.anchor` - in
+  fractions of the sprite as its image shows it (`y` down, like atlas regions and `Text2dStyle
+  .anchor`), the same numbers in 2D and 3D, so an adapter never re-derives it and both dimensions
+  agree on what "the bottom" is (screen-down for a camera-facing 3D sprite, `-Z` for a vertical
+  billboard, `+y` in 2D). It lives with `frames` in the simulation options, not in the render
+  options, because it varies per particle (with the frame it shows); there is no per-`Particle`
+  anchor field - a particle needing its own pivot shows a frame that carries it.
 - **Back-to-front sorting is a core helper** (`sortParticlesBackToFront`, by depth along the view
   direction, ties in spawn order) that the adapter calls per camera at render time - the camera is
   only known there.
@@ -1029,6 +1074,47 @@ overrides instead of the getters. Units to keep straight when touching them:
 
 `test/3d/entities/gg-car.entity.spec.ts`'s `drivetrain` block pins each of these with a mocked
 vehicle (`totalForce()` sums the last engine force set per wheel).
+
+`RaycastVehicle3dEntity`'s wheel entities come from `protected createWheelEntity(options, index)`
+(`RVEntityWheelFullOptions` in, `RVEntityWheelEntity` - `{ entity, localRotation }` - or `null`
+out), called once per wheel from the constructor; the constructor names each result, pushes it into
+`wheels`/`wheelLocalRotation` and adds it as a child, so the naming, renaming and per-tick placement
+stay in one place whatever a subclass returns. Being a constructor-time hook, an override runs
+before the subclass's field initializers: its doc says so, and nothing the base passes it depends on
+subclass state.
+
+## `RaycastVehicle3dEntity`: impact and landing events from adapter-agnostic contracts
+
+`impact$`, `airborne$`/`landed$`/`isAirborne` are computed in the entity from what every 3D
+adapter already reports - the vehicle component's `onCollisionStart` and `isWheelTouchesGround`/
+`getWheelContact` - so no adapter implements them. What to keep when changing them:
+
+- **Velocities before the step come from the entity's own tick.** The entity ticks at
+  `OBJECTS_BINDING`, after `simulate()`; at the end of that tick it samples the chassis' linear and
+  angular velocity (`sampleVelocities`), which is what the next step starts from. Collision events
+  fire inside `simulate()`, so `reportImpact` reads that sample, never `CollisionEvent
+  .relativeVelocity` (every adapter reads it after the solver resolved the contact - a crash at 20
+  m/s reads as a few m/s). The other body's velocity is another vehicle's own sample, or the body's
+  current velocity (exact for static/kinematic bodies, post-step for a dynamic prop - documented on
+  `impact$`). `speed` is the approach along the normal at the contact point (`v + ω × r`), clamped
+  at 0. `resetTo` and `onSpawned` resample (`resetMotionTracking`).
+- **`mirrored` pairs the two reports of a vehicle-vehicle hit** through `_unmirroredImpacts`: the
+  first vehicle to report adds the other, the other's report finds itself there (and removes it).
+  Both reports come from one `simulate()`, before any post-physics tick, so the set is cleared every
+  tick. It assumes the adapter emits one start per body pair (see `gg-engine-physics-adapter`'s
+  collision-event invariants); a per-collider duplicate would report a hit twice.
+- **Airborne time is world time** (the tick's `delta` summed while no wheel touches), compared with a
+  1e-6 ms tolerance: 15 ticks of `1000 / 60` ms add up to just under 250, which would make the
+  default `airborneDelay` take a sixteenth tick at 60 FPS. A vehicle with no wheels is never
+  airborne. The landing speed is the sampled velocity against the mean ground normal of the
+  touching wheels' `getWheelContact` (`+Z` when none reports one).
+
+`test/3d/entities/gg-3d-raycast-vehicle.entity.spec.ts` covers these with a mocked vehicle
+component (emit on its `onCollisionStart` Subject, drive `tick$` by hand); the 3D contract suite's
+`raycast vehicle` → `RaycastVehicle3dEntity` block runs a head-on crash, a drop and a resting car on
+every backend. A contract test that spawns a car has to mind the drop to the ground: the wheel rays
+end `restLength + tyreRadius` below the chassis, and a car spawned higher than about 0.3 m above
+where they reach the ground falls longer than `airborneDelay` and is (correctly) airborne once.
 
 ## Collision groups can't express "these two specific bodies don't collide"
 
@@ -1504,10 +1590,39 @@ changing one:
   (`packages/mobile-controls/src/layouts/`) to be reachable on a phone.
 - `CarHandlingController` is registered both on its own and as the child of
   `GgCarHandlingController`; `carLayout` returns nothing for the child, so a controller that
-  nests another built-in controller needs the same guard.
+  nests another built-in controller needs the same guard. A bare `CarHandlingController` (on its
+  own, or the child of an app's entity that drives the handbrake and gearbox itself) has no
+  handbrake or gear keys in its options, so its handbrake/gear buttons press the keys of
+  `CarLayoutOptions.keys` (static, or a function of the controller re-run on every build) on the
+  controller's `keyboard`; a button without a key is left out. Core needs no accessor for this -
+  the keys are the app's, not the controller's.
+- Overlay-wide settings live on the overlay element, not in each placement: `inset` is written as
+  the unitless `--gg-mc-inset-<edge>` custom properties, and `applyControlPlacement` folds them into
+  every numeric edge (`calc(var(--gg-mc-unit) * (N + var(--gg-mc-inset-<edge>, 0)) + env(...))`),
+  so layout controls, `extra` and `addControls` controls all move, a stylesheet can set the inset
+  too, and a control outside an overlay reads 0. String placements and the look area's `0` edges
+  are untouched. A spec asserts on the inline style strings (jsdom keeps the `calc` as written).
 
 Pitfalls met building it:
 
+- **A touch grants user activation on the finger lifting, not on it going down.** The HTML spec's
+  activation-triggering events are `keydown`, `mousedown`, `pointerdown` of a *mouse*, `pointerup`
+  of any other pointer, and `touchend` - so `requestFullscreen()` (or audio unlock, orientation
+  lock) called from `TouchButton.onPress` (inside the touch's `pointerdown`) is refused on a phone
+  while working with a mouse. `TouchButton.onTap` runs inside the `pointerup` handler instead
+  (`onPointerEnd` gets the event; a `reset` passes `null`, a `pointercancel` is not a tap), and the
+  fullscreen button uses it. Listening to `click` is no alternative: the controls `preventDefault`
+  `touchstart`, which suppresses the synthesized click on touch.
+- `toggleFullscreen` must never throw: iPhone Safari has no element fullscreen at all
+  (`fullscreenEnabled`/`webkitFullscreenEnabled` absent or `false`, no `requestFullscreen`), older
+  Safari only has the `webkit`-prefixed methods, whose request returns `undefined` rather than a
+  promise and reports the result only through `webkitfullscreenchange`, and a request without a
+  gesture rejects. jsdom has no Fullscreen API; specs define the members on `document`/the element
+  with `Object.defineProperty(..., { configurable: true })` and delete them afterwards.
+- The pause button's default toggles `pauseWorld()`/`resumeWorld()` (not for `localPauseAllowed ===
+  false`), and the overlay stays shown in a paused world (its input is still on), so the same
+  button resumes. An app with a `ScreenManager` pause menu replaces it with `onPress`: the manager
+  only resumes on uncover what covering paused, so a world the button paused stays paused.
 - A control must call `stopPropagation` on its pointer events, not only capture the pointer: a
   `MouseInput` created without a `canvas` listens on `window`, and would otherwise turn the camera
   with the very finger that is on a stick.
@@ -1544,6 +1659,24 @@ Pitfalls met building it:
 - Device orientation at `beta` = 90 is a gimbal singularity; `TiltInput` works from the gravity
   direction within the screen plane instead of reading `gamma`/`beta` as a roll angle directly. Its
   screen-rotation handling is covered by specs only, not yet by a hardware test.
+
+## Renderer size and resolution are resolved by `IRendererEntity`
+
+`IRendererEntity.onSpawned` (`base/entities/i-renderer.entity.ts`) turns `RendererOptions.size`
+into `resizeRenderer` calls and an observable `forceResolution` into `setResolution` calls (values
+that are not a positive finite number are dropped, repeats skipped), both ended by `_onRemoved$`,
+so an adapter only implements the two methods and an entity removed and added again subscribes
+afresh. `'fullscreen'` and the function form follow `viewportSize$()`
+(`base/components/rendering/viewport.ts`): `measureViewport()` reads `window.visualViewport` times
+its `scale` (a pinch zoom must not shrink the canvas) and falls back to `innerWidth`/`innerHeight`
+where it is missing - jsdom has none, and a spec stubs one with an `EventTarget` carrying
+`width`/`height`/`scale` via `Object.defineProperty(window, 'visualViewport', { configurable: true
+})`. Each `orientationchange` measures twice, at once and `VIEWPORT_REMEASURE_DELAY` later, because
+an iOS home-screen app reports the pre-rotation size during the event; `distinctUntilChanged` makes
+the second measurement free when the first was already right. Observables are detected by shape
+(`subscribe` + `pipe`), not `instanceof`, since an app can carry a second copy of rxjs. Specs:
+`test/base/entities/i-renderer.entity.spec.ts`, `test/base/components/rendering/viewport.spec.ts`
+(fake timers).
 
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 

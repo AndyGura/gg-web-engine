@@ -778,6 +778,9 @@ export class AmmoCharacterControllerComponent
   }
 
   dispose(): void {
+    if (this.nativeDisposed) {
+      return;
+    }
     super.dispose();
     try {
       Ammo.destroy(this.nativeShape);

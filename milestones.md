@@ -203,9 +203,13 @@ Status
   the other two values are aliases of the default. Level JSON documents themselves are not cached.
   The same change added load progress and cancellation (`{ onProgress, signal }` on every loader,
   one combined progress per level, with decoding and GPU upload counted) and the `assets` hook of
-  `registerClass`. Covered by `packages/core/test/base/assets/*.spec.ts` and
-  `packages/core/test/3d/loader-assets.spec.ts`; documented in `gg-engine-app-development`
-  ("Loading assets") and `gg-engine-level-json`. Unbenchmarked.
+  `registerClass`. 2026-10-22: a copy that is changed per instance (recolored, re-textured, its
+  geometry edited) gets its own materials, geometry or textures through
+  `IDisplayObject3dComponent.makeUnique` or the `unique` option of `loadModel`/`loadGgGlb`, freed
+  with the copy and never touching the cached original. Covered by
+  `packages/core/test/base/assets/*.spec.ts`, `packages/core/test/3d/loader-assets.spec.ts` and
+  `packages/three/test/components/three-display-object-make-unique.spec.ts`; documented in
+  `gg-engine-app-development` ("Loading assets") and `gg-engine-level-json`. Unbenchmarked.
 - ✅ Single-entity build API + JSON round-trip serialization (2026-09-25): `LevelLoader.createEntity(entityJson)`
   builds one entity outside of a whole level document (dispatching to the same `registerClass`
   generators `loadLevel` uses), without parenting it under a group or adding it to the world - the
@@ -335,7 +339,11 @@ Status
   every adapter; `GgCarEntity` builds its air drag and rolling resistance on the former, and its
   gearbox (shift time, downshift hysteresis, per-gear efficiency), rev limiter and engine braking
   are tunable settings with subclass hooks, so a racing game no longer rewrites the chassis
-  velocity or reaches into the physics library for a handbrake.
+  velocity or reaches into the physics library for a handbrake. 2026-10-22: vehicle impact and
+  landing events (`RaycastVehicle3dEntity.impact$`/`airborne$`/`landed$`) are computed in core from
+  the collision events and wheel contacts every 3D adapter reports, with the approach speed taken
+  before the step that resolved the hit, so hit sounds, damage and camera shake need no
+  backend-specific velocity bookkeeping.
 - ✅ Cross-adapter contract tests (2026-10-15): `packages/core/test/contract/` holds one suite per
   dimension for physics (`describePhysics3dContract`/`describePhysics2dContract`) and one for
   rendering (`describeVisual3dContract`/`describeVisual2dContract`), and every adapter runs its
@@ -402,7 +410,10 @@ Status
   opt-in overlay of sticks, buttons, d-pads, look areas and tilt steering with built-in layouts for
   the car, character (3D/2D) and free camera controllers, customizable per control and replaceable
   per controller class. Core's part is an analog path into the existing inputs
-  (`DirectionInput.setAnalogDirection`/`direction$`, `MouseInput.emulateMove`).
+  (`DirectionInput.setAnalogDirection`/`direction$`, `MouseInput.emulateMove`). The overlay also
+  has a pedal-stick car scheme, handbrake/gear buttons for a bare `CarHandlingController` driven
+  by an app's own entity (`car.keys`), an edge `inset` in placement units, built-in pause and
+  fullscreen buttons (`toggleFullscreen`, standard and WebKit API) and a `visible$` gate.
 - ✅ Screens (0.0.78): `ScreenManager` + `Screen` (`packages/core/src/base/screens/`) run an app's
   menu → loading → game → pause flow as a stack of DOM layers. A covered screen's worlds get their
   input switched off (`GgWorld.inputEnabled`, the one switch every built-in input controller and
@@ -478,6 +489,15 @@ for it:
 - WebXR support.
 - Networking / multiplayer (deterministic or rollback-friendly sync) — this is a large enough
   undertaking that it would need its own design doc before any code, not a line item here.
+  State-sync (not deterministic) multiplayer exists as `@gg-web-engine/multiplayer`. ✅ Room
+  directory and lobby above its signaling: `RoomDirectory`/`Lobby` (`packages/multiplayer/src/lobby/`)
+  over an `ILobbyBackend` (Firebase Realtime Database with seat transactions and `onDisconnect`
+  cleanup, or BroadcastChannel for one browser) - room list, atomic capacity, senior-member host,
+  host-written shared state, roster locked at match start, ready barrier, start time on the
+  backend clock, results written once per round - plus `NetworkController.waitForPeers`. Covered
+  by `packages/multiplayer/test/lobby/lobby.spec.ts` and `controller-features.spec.ts`; documented
+  in the package README and `gg-engine-multiplayer`. Not done: password-protected or private
+  rooms, kicking a member, host-chosen roster subsets.
 - A WebGPU rendering adapter alongside `three`/`pixi`.
 - WASM spikes for physics/math hotspots.
 - Procedural content generation helpers.

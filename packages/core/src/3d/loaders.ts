@@ -1,8 +1,9 @@
 import { GgMeta, GgRigidBody } from './models/gg-meta';
 import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
 import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
-import { Point3 } from '../base';
+import { Point3, TextureOptions } from '../base';
 import { CubeTextureFaces, LoadTextureOptions } from './models/environment';
+import { UniqueResources3d } from './components/rendering/i-display-object-3d.component';
 
 /**
  * `.meta` format 1 (or no `formatVersion` at all - see `GgMeta.formatVersion`'s own doc) wrote
@@ -55,6 +56,21 @@ export interface LoadGlbOptions {
   offset?: Point3;
 }
 
+/**
+ * Options for `world.loader.loadModel`: the `LoadGlbOptions` the file is parsed with, plus what
+ * applies to the copy each call returns.
+ */
+export interface LoadModelOptions extends LoadGlbOptions {
+  /**
+   * Gives the returned copy its own copies of these resources (see
+   * `IDisplayObject3dComponent.makeUnique`), for a model that is changed per copy - recolored,
+   * re-textured, its geometry edited. Left out, the copy shares geometry, materials and textures
+   * with the cached original and every other copy of the file. Not part of the cache key: all
+   * loads of a file share one parsed original, whatever they ask for here.
+   */
+  unique?: UniqueResources3d;
+}
+
 export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
   loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<VTypeDoc['displayObject'] | null>;
 
@@ -78,9 +94,10 @@ export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocR
   /**
    * Loads a six-image cube-map sky for `IVisualScene3dComponent.setEnvironment`'s `background`/
    * `environmentMap`. Each face is named after the world direction it is seen in (see
-   * `CubeTextureFaces`).
+   * `CubeTextureFaces`). `options.filter` samples it the way `loadTexture`'s does (`'nearest'` for
+   * a pixel-art sky).
    */
-  loadCubeTexture(faces: CubeTextureFaces): Promise<VTypeDoc['texture']>;
+  loadCubeTexture(faces: CubeTextureFaces, options?: TextureOptions): Promise<VTypeDoc['texture']>;
 
   /**
    * Decodes a texture from an already-fetched image file - what `loadTexture` does after its own
@@ -92,7 +109,10 @@ export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocR
   textureFromData?(data: Blob, options?: LoadTextureOptions & { url?: string }): Promise<VTypeDoc['texture']>;
 
   /** The `loadCubeTexture` counterpart of `textureFromData`: one already-fetched image per face. */
-  cubeTextureFromData?(faces: Record<keyof CubeTextureFaces, Blob>): Promise<VTypeDoc['texture']>;
+  cubeTextureFromData?(
+    faces: Record<keyof CubeTextureFaces, Blob>,
+    options?: TextureOptions,
+  ): Promise<VTypeDoc['texture']>;
 
   /**
    * Finishes whatever of a loaded texture or display object would otherwise happen at its first

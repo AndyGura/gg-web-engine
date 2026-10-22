@@ -16,6 +16,10 @@ import {
   Pnt3,
   Point3,
   Qtrn,
+  RaycastVehicle3dEntity,
+  RaycastVehicleImpact,
+  RaycastVehicleLanding,
+  RVEntityTractionBias,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
 
@@ -315,6 +319,43 @@ export function describePhysics3dContract(
         simulate(2);
         expect(hitsA).toContain(b);
         expect(hitsB).toContain(a);
+      });
+
+      it('fires onCollisionStart once per body pair, for a compound body landing on several parts', () => {
+        const floor = staticBox({ x: 0, y: 0, z: -0.5 }, { x: 20, y: 20, z: 1 });
+        const body = add(
+          world.factory.createRigidBody(
+            {
+              shape: {
+                shape: 'COMPOUND',
+                children: [
+                  { position: { x: -1, y: 0, z: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } } },
+                  { position: { x: 1, y: 0, z: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } } },
+                ],
+              },
+              body: { bodyType: 'dynamic', mass: 1, restitution: 0, canSleep: false },
+            },
+            { position: { x: 0, y: 0, z: 1 } },
+          ),
+        );
+        const starts: unknown[] = [];
+        const ends: unknown[] = [];
+        body.onCollisionStart.subscribe(e => starts.push(e.otherBody));
+        body.onCollisionEnd.subscribe(other => ends.push(other));
+        const floorStarts: unknown[] = [];
+        floor.onCollisionStart.subscribe(e => floorStarts.push(e.otherBody));
+        const sequence: string[] = [];
+        body.onCollisionStart.subscribe(() => sequence.push('start'));
+        body.onCollisionEnd.subscribe(() => sequence.push('end'));
+        simulate(2);
+        // resting on both boxes. It may bounce off and land again, but every start is the body
+        // pair beginning to touch: never a second start (one per box) before the pair let go
+        expect(body.position.z).toBeCloseTo(0.5, 1);
+        expect(sequence.length % 2).toBe(1);
+        sequence.forEach((event, i) => expect(event).toBe(i % 2 === 0 ? 'start' : 'end'));
+        [...starts, ...ends].forEach(other => expect(other).toBe(floor));
+        expect(floorStarts.length).toBe(starts.length);
+        floorStarts.forEach(other => expect(other).toBe(body));
       });
 
       it('lets bodies in groups that do not interact pass through each other', () => {
@@ -647,6 +688,119 @@ export function describePhysics3dContract(
           expect(vehicle.isWheelTouchesGround(i)).toBe(false);
           expect(vehicle.getWheelContact(i)).toBeNull();
         }
+      });
+
+      it('is the one component of its chassis body in the world and in its collision events', () => {
+        const added: unknown[] = [];
+        const removed: unknown[] = [];
+        world.added$.subscribe(c => added.push(c));
+        world.removed$.subscribe(c => removed.push(c));
+        const vehicle = car({ x: 0, y: 0, z: 1 });
+        expect(added).toEqual([vehicle]);
+        expect(world.children.filter(c => c !== vehicle).length).toBe(1); // the floor
+        const hits: unknown[] = [];
+        vehicle.onCollisionStart.subscribe(e => hits.push(e.otherBody));
+        const dropped = ball({ x: 0, y: 0, z: 3 }, 1, 0.3);
+        const ballHits: unknown[] = [];
+        dropped.onCollisionStart.subscribe(e => ballHits.push(e.otherBody));
+        simulate(1);
+        expect(hits).toContain(dropped);
+        expect(ballHits).toContain(vehicle);
+        vehicle.removeFromWorld(ggWorld);
+        expect(removed).toEqual([vehicle]);
+      });
+
+      describe('RaycastVehicle3dEntity', () => {
+        // an entity of a car without meshes, ticked by hand after every step, as a world would
+        const vehicles: RaycastVehicle3dEntity[] = [];
+        let time = 0;
+        const step = (seconds: number, onStep?: () => void) => {
+          for (let i = 0; i < Math.round(seconds * 60); i++) {
+            onStep?.();
+            world.simulate(STEP_MS);
+            time += STEP_MS;
+            vehicles.forEach(v => v.tick$.next([time, STEP_MS]));
+          }
+        };
+        const spawn = (position: Point3, rotation = Qtrn.O): RaycastVehicle3dEntity => {
+          const chassis = world.factory.createRigidBody(
+            {
+              shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              body: { bodyType: 'dynamic', mass: CAR_MASS, canSleep: false },
+            },
+            { position, rotation },
+          );
+          const entity = new RaycastVehicle3dEntity(
+            {
+              tractionBias: RVEntityTractionBias.RWD,
+              suspension: { stiffness: 30, damping: 2.3, compression: 4.4, restLength: 0.3 },
+              wheelOptions: WHEEL_POSITIONS.map(p => ({ isFront: p.y > 0, isLeft: p.x < 0, position: p })),
+              sharedWheelOptions: { tyreRadius: 0.35, tyreWidth: 0.25, frictionSlip: 1.2, maxTravel: 0.3 },
+            },
+            null,
+            world.factory.createRaycastVehicle(chassis),
+          );
+          entity.onSpawned(ggWorld);
+          vehicles.push(entity);
+          return entity;
+        };
+
+        beforeEach(() => {
+          vehicles.length = 0;
+        });
+
+        it('reports a hit of two vehicles once on each, with their approach speed, one of them mirrored', () => {
+          const a = spawn({ x: 0, y: -6, z: 1 });
+          const b = spawn({ x: 0, y: 6, z: 1 });
+          const hitsA: RaycastVehicleImpact[] = [];
+          const hitsB: RaycastVehicleImpact[] = [];
+          a.impact$.subscribe(x => hitsA.push(x));
+          b.impact$.subscribe(x => hitsB.push(x));
+          step(1);
+          a.vehicleComponent.linearVelocity = { x: 0, y: 8, z: 0 };
+          b.vehicleComponent.linearVelocity = { x: 0, y: -8, z: 0 };
+          step(1);
+          const hitA = hitsA.find(x => x.entity === b)!;
+          const hitB = hitsB.find(x => x.entity === a)!;
+          expect(hitA).toBeDefined();
+          expect(hitB).toBeDefined();
+          // the closing speed before the hit, not what is left of it after the bounce
+          expect(hitA.speed).toBeGreaterThan(14);
+          expect(hitA.speed).toBeLessThan(16.5);
+          expect(hitB.speed).toBeCloseTo(hitA.speed, 5);
+          expect(hitA.normal.y).toBeGreaterThan(0.9);
+          expect(hitA.otherBody).toBe(b.vehicleComponent);
+          expect(hitA.mirrored).not.toBe(hitB.mirrored);
+        });
+
+        it('reports going airborne and the landing with the speed it came down at', () => {
+          const car = spawn({ x: 0, y: 0, z: 3 });
+          let airborneAt: number | null = null;
+          const landings: RaycastVehicleLanding[] = [];
+          car.airborne$.subscribe(() => (airborneAt = time));
+          car.landed$.subscribe(x => landings.push(x));
+          step(2);
+          expect(airborneAt).not.toBeNull();
+          expect(landings.length).toBe(1);
+          expect(car.isAirborne).toBe(false);
+          // the wheel rays end 0.65 m below the chassis: a 2.35 m fall
+          const fallSpeed = Math.sqrt(2 * 9.8 * 2.35);
+          expect(landings[0].speed).toBeGreaterThan(fallSpeed * 0.85);
+          expect(landings[0].speed).toBeLessThan(fallSpeed * 1.1);
+          const fallTime = Math.sqrt((2 * 2.35) / 9.8) * 1000;
+          expect(landings[0].airTime).toBeGreaterThan(fallTime * 0.85);
+          expect(landings[0].airTime).toBeLessThan(fallTime * 1.15);
+        });
+
+        it('does not count a car resting on its wheels as airborne', () => {
+          // the wheel rays end 5 cm above the ground: a drop shorter than airborneDelay
+          const car = spawn({ x: 0, y: 0, z: 0.7 });
+          let airborne = 0;
+          car.airborne$.subscribe(() => airborne++);
+          step(3);
+          expect(airborne).toBe(0);
+          expect(car.isAirborne).toBe(false);
+        });
       });
     });
 

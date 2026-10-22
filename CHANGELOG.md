@@ -29,6 +29,198 @@ where one exists.
 
 ## [Unreleased]
 
+
+### Added
+- 2D cameras have an `origin` (`Camera2dOrigin`: `'center'`, the default, or `'top-left'`).
+  With `'top-left'` the camera's `position` is the view's top-left corner, and the view zooms and
+  rotates around it, so a camera at `{ x: 0, y: 0 }` makes world coordinates canvas pixels (y
+  down). This is for a HUD or menu drawn by a physics-less `Gg2dWorld` on a transparent renderer
+  over another canvas. It can be changed at any time; pixi reads it on every frame.
+- Pixi: `PixiRendererComponent.initialized$` emits once pixi's asynchronous `Application.init`
+  has finished, also to a later subscriber, and completes without emitting when the renderer is
+  disposed first. `initialized` reads the same as a flag. Wait for it before using
+  `application.renderer` directly.
+- `RendererOptions.forceResolution` takes an `Observable<number>` as well as a number: every value
+  it emits while the renderer is in a world is applied in place through the new
+  `IRendererComponent.setResolution(resolution)`, keeping the CSS size - for a game's resolution or
+  quality setting. Three resizes the post-processing composer of a `ThreeComposerRendererComponent`
+  along with the renderer; Pixi applies a change made before its async init once init is done.
+  Until the observable's first value the device resolution is used.
+- `measureViewport()` and `viewportSize$(remeasureDelay?)`: the page's visible area as a
+  `'fullscreen'` renderer measures it, for app code laying out its own DOM around the game.
+- `IDisplayObject3dComponent.makeUnique(resources?)`: gives a display object its own copies of the
+  materials (`'materials'`, the default), also the geometry (`'meshes'`) or also the textures
+  (`'all'`, `UniqueResources3d`) it shares with other copies of the same model, so one copy can be
+  recolored, re-textured or have its geometry edited without changing the others. A resource used
+  several times within the object maps to one copy, calling it again with the same or a lower
+  level does nothing, and `dispose()` frees exactly the copies it made, never the cached original's
+  resources - disposing the original does not touch them either. On three, a skinned mesh keeps its
+  skinning attributes, morph targets and skeleton binding, and `resourceOwnership` gains a
+  `'materials'` level (`ThreeResourceOwnership`).
+- `unique` option of `world.loader.loadModel` (`LoadModelOptions`) and `world.loader.loadGgGlb`
+  (`LoadOptions`, props included): calls `makeUnique` on the returned copies. It is not part of the
+  cache key, so unique and shared loads of one file still parse it once.
+- Mobile controls: `car.pedals: 'stick'` replaces the accelerate and brake buttons of the car layout
+  with one analog stick (`'pedal-stick'`, up for throttle, down for brake).
+- Mobile controls: `car.keys` (`{ handbrake?, gearUp?, gearDown? }`, or a function of the
+  controller called each time the layout is built) gives a bare `CarHandlingController` handbrake
+  and gear buttons pressing those keys on its `keyboard`, for a game whose own entity drives the
+  vehicle's handbrake and gearbox. `GgCarHandlingController`'s buttons keep pressing its own keys.
+- Mobile controls: `MobileControlsOptions.inset` (and `MobileControls.inset`) moves every control
+  placed by numbers away from or towards the overlay's edges, in placement units, per edge or for
+  all four; also settable from CSS as `--gg-mc-inset-left`/`-right`/`-top`/`-bottom`.
+- Mobile controls: `pauseButton` and `fullscreenButton` options (`MobileControls.pauseButton`/
+  `fullscreenButton`). The pause button pauses the world and resumes it on the next press (never a
+  world whose `localPauseAllowed` is `false`), or runs the app's `onPress` instead; the fullscreen
+  button toggles fullscreen of the overlay's container and is hidden where fullscreen is not
+  available. New icons `pause`, `resume`, `fullscreen`, `exitFullscreen` in `MobileControlsIcons`.
+- Mobile controls: `toggleFullscreen(element?)`, `isFullscreenAvailable(element?)`,
+  `fullscreenElement()`, `isFullscreen()` and `fullscreen$()`, covering the standard and the
+  WebKit-prefixed Fullscreen API; `toggleFullscreen` never throws or rejects and resolves `false`
+  where fullscreen is unavailable (an iPhone) or refused.
+- Mobile controls: `TouchButton.onTap(callback)`, called inside the `pointerup` of the finger
+  lifting (not on a reset or a cancelled pointer) - the moment a browser grants a touch the user
+  gesture that fullscreen and similar APIs need.
+- Mobile controls: `MobileControlsOptions.visible$` gates the overlay by an observable (hidden until
+  it first emits `true`), releasing everything held when it turns `false`.
+- Mobile controls: `mergeControlPlacement(defaults, custom)`, the edge-by-edge placement merge the
+  built-in layouts apply to `placements`.
+- Particle sprite anchors: `ParticleSimulationOptions.anchor` (live) is the point of every sprite
+  that sits at the particle's position and that a rotating sprite turns around, in fractions of the
+  sprite as its image shows it (`{ x: 0.5, y: 0.5 }`, the center, by default; `{ x: 0.5, y: 1 }`
+  stands smoke, dust, grass or a flame on its base). `ParticleFrame.anchor` overrides it per atlas
+  frame, so sprites with different pivots share one atlas and a frame sequence can move the pivot;
+  `ParticleFrames.fromPixels` takes a region's anchor in pixels. Drawn by `@gg-web-engine/three`
+  (camera-facing and vertical billboards) and `@gg-web-engine/pixi`. `ParticleRenderBuffers` has a
+  new `anchor` array (2 floats per particle) that a rendering adapter's particle system reads.
+- `@gg-web-engine/three`: `extendThreeParticleVertexShader(material, { declarations?, mainEnd? })`
+  inserts an app's own GLSL into the particle material's vertex shader at the stable markers of
+  `THREE_PARTICLE_VERTEX_HOOKS` (file scope, and the end of `main()` with `gl_Position`, `mvPosition`
+  and `corner` in scope), for use from the `material` option instead of matching the shader's text.
+- `IAudioSourceComponent.fadeTo(volume, durationMs): Promise<boolean>`: a timed volume fade (menu
+  music fading out, a crossfade) on the audio clock. `volume` reads back the target at once; the
+  fade holds while the world is paused or audio is not yet allowed to start, keeps running through
+  `stop()`/`play()` and while the source is virtual, and resolves `true` when it reaches the
+  target or `false` when a `volume` write, another `fadeTo` or `dispose()` takes over. The voice
+  budget ranks a fading source by the level it is heard at.
+- `IAudioSceneComponent.playOneShot(descriptor)`: plays a clip once, non-positional, on a bus, and
+  disposes the source when it ends - for UI sounds on a scene with no world or entity.
+  `AudioOneShotDescriptor` is its descriptor type and `playAudioOneShot(factory, descriptor)`
+  implements it over any adapter's factory.
+- `MusicPlayer` (core, works with any audio adapter and needs no world): plays a playlist on the
+  `"music"` bus with crossfades on `play`/`next`/`stop`, optional shuffle that never repeats a
+  track back to back, repeat, per-track volume and loop region, and `nowPlaying$`. A track that
+  fails to load is skipped.
+- `MOBILE_AUDIO_DEFAULTS` and `applyMobileAudioDefaults(scene, mobile?)`: on a touch device
+  (`MouseInput.isTouchDevice()` unless the app passes its own answer), a 16-voice budget and
+  `'equalpower'` panning for new 3D sources.
+- `RaycastVehicle3dEntity.impact$`: one `RaycastVehicleImpact` each time the chassis begins touching
+  another rigid body, with the other body and its entity, contact point and normal, the adapter's
+  impulse, and `speed`, the approach speed along the normal from the velocities before the step
+  that resolved the hit (the chassis spin at the contact point included, and the other vehicle's
+  own pre-step velocity for a hit between two raycast vehicles). A hit between two vehicles is
+  reported by both with the same speed, the second one flagged `mirrored`, so a pair-wide effect
+  (one crash sound) skips it while per-car damage takes both. Works on Ammo and Rapier.
+- `RaycastVehicle3dEntity.airborne$`, `landed$` and `isAirborne`: the vehicle is airborne once
+  every wheel has been off the ground for `airborneDelay` ms of world time (default 250, so a bump
+  doesn't count); `landed$` reports the speed the chassis came down at along the ground normal and
+  the time spent in the air. `resetTo` ends the airborne state without a landing.
+- `IEntity.whileSpawned(source)` and `IEntity.onTick(handler)` (protected): an observable that ends
+  the next time the entity is removed from its world, and a `tick$` subscription built on it. Called
+  from `onSpawned`, they subscribe once per spawn however often the entity is removed and added
+  again - the `tick$.pipe(takeUntil(this._onRemoved$)).subscribe(...)` pattern in one call.
+- `GgWorld.getOrAddEntity(name, factory, type?)`: the entity named `name` in the world, built by
+  `factory`, named and added on the first call - a per-world singleton (one skid-mark mesh, one
+  particle pool shared by every car) without an app-side `WeakMap<world, entity>`. With `type`, an
+  existing entity of another class throws instead of being returned.
+- `loadCubeTexture` takes `filter` (`'linear'`/`'nearest'`), like `loadTexture`: on
+  `world.loader.loadCubeTexture(faces, { filter })` (cached per faces and filter), on the 3D
+  loader interface (`loadCubeTexture`/`cubeTextureFromData`, optional parameter) and in
+  `@gg-web-engine/three`. A `cubeTexture` `AssetRef` takes `options` for `preload`.
+- `IDisplayObjectComponent.getLocalBoundings()`: bounds of a display object and its children in
+  the object's own frame (as if its position were the origin, rotation identity and scale 1), for
+  measuring a model along its own axes (a car's footprint) once it has been turned. Implemented by
+  `@gg-web-engine/three` and `@gg-web-engine/pixi`; nested children hidden with `visible = false`
+  are left out.
+- `RaycastVehicle3dEntity.createWheelEntity(options, index)` (protected): builds the entity
+  shown at each wheel (the default clones `display.displayObject`), for a subclass supplying its
+  own wheel entities - the vehicle names, adopts and moves them as before. `RVEntityWheelFullOptions`
+  and `RVEntityWheelEntity` type its parameter and result.
+- `replaceCanvas(canvas)`: puts a blank copy of a canvas (same id, classes, attributes, inline
+  style) in its place in the page and returns it. A disposed renderer releases its canvas's WebGL
+  context for good, so an app that keeps one `<canvas>` for world after world calls this before
+  adding the next world's renderer.
+- Multiplayer: a room directory and lobby above signaling. `RoomDirectory` lists rooms (`rooms$`:
+  name, capacity, member count, metadata, `started`, `joinable`) and creates or joins one, one
+  operation at a time with a fresh peer id per join; the `Lobby` it returns has the members
+  (`members$`), the host (`host$`/`isHost$`: the senior member, the next one when it leaves), the
+  host-written shared state (`state$`/`setState`), each member's own data (`setMemberData`), a match
+  that locks the roster and closes the room to joins (`startMatch`/`endMatch`/`match$`), a ready
+  barrier (`setReady`/`readiness`/`waitForReady`), a start time on the backend's clock
+  (`serverNow`/`scheduleStart`/`startsAt$`), results written once per round (`writeResult`/
+  `results$`) and `closed$` (`'left'`/`'lost'`). Backends: `FirebaseLobbyBackend` (Realtime Database
+  under `gg-lobby`, capacity enforced by seat transactions, members removed on disconnect - deploy
+  the updated `firebase/database.rules.json`) and `BroadcastChannelLobbyBackend` (tabs of one
+  browser); `ILobbyBackend` for others.
+- `NetworkController.waitForPeers(peersOrCount, timeoutMs)`: resolves `true` once the links to the
+  given peers (or that many) are open, `false` on timeout or when the session ends.
+- `resolveFirebaseApp`/`signInToFirebase` and `FirebaseConnectionOptions`, shared by
+  `FirebaseSignaling` and `FirebaseLobbyBackend`; App Check is initialized once per Firebase app.
+
+### Changed
+- **Breaking** (custom 2D visual adapters only): `ICamera2dComponent` has a new required `origin`
+  property, which the adapter's renderer must honor. Apps using `@gg-web-engine/pixi` need no
+  change.
+- **Breaking** (custom visual adapters only): `IRendererComponent` has a new abstract method,
+  `setResolution(resolution)`. A third-party renderer component no longer compiles until it adds
+  one; start from the protected `initialResolution` instead of reading `forceResolution`, which can
+  now be an observable. Apps using `@gg-web-engine/three` or `@gg-web-engine/pixi` need no change.
+- A `'fullscreen'` renderer (and the function form of `size`) measures the page through
+  `window.visualViewport` where available (falling back to `innerWidth`/`innerHeight`), ignores a
+  pinch zoom, and measures again 300 ms after an `orientationchange`, so an iOS home-screen app no
+  longer keeps the size from before a rotation.
+- **Breaking** (custom visual adapters only): `IDisplayObject3dComponent` (and so
+  `ICamera3dComponent`) has a new required method, `makeUnique(resources?)`. A third-party 3D
+  display object implementation no longer compiles until it adds one (a no-op is correct for an
+  object that never shares resources). Apps using `@gg-web-engine/three` need no change.
+- Mobile controls: over a stick (`steering: 'stick'` for the gear buttons, `pedals: 'stick'` for
+  the handbrake) the car layout's small buttons sit at `bottom: 20` instead of 16, clear of the
+  stick.
+- **Breaking** (custom audio adapters only): `IAudioSourceComponent` has a new required method,
+  `fadeTo`, and `IAudioSceneComponent` a new required method, `playOneShot`. A third-party audio
+  adapter no longer compiles until it adds both; `playOneShot` can delegate to
+  `playAudioOneShot(this.factory, descriptor)`. Apps using `@gg-web-engine/audio` need no change.
+- `@gg-web-engine/ammo`: `AmmoRaycastVehicleComponent` adds and removes its chassis' native body
+  itself, so the vehicle is the one component of that body in the world - `children`,
+  `added$`/`removed$`, collision and trigger events only ever name the vehicle. The `chassisBody`
+  component it was created from is never added to the world any more (forces applied to it are
+  ignored); use the vehicle component instead.
+- **Breaking** (custom visual adapters only): `IDisplayObjectComponent` has a new required method,
+  `getLocalBoundings()`. A third-party rendering adapter no longer compiles until its display
+  objects implement it. Apps using `@gg-web-engine/three` or `@gg-web-engine/pixi` need no change.
+- `addRenderer` (2D and 3D worlds) throws, naming `replaceCanvas`, when given a canvas whose
+  previous renderer was disposed (removed with `dispose`, or with its world). Such a canvas has no
+  usable WebGL context left; before, the new renderer failed later in an adapter-specific way.
+- `@gg-web-engine/pixi`: disposing a renderer leaves a canvas the app passed in its place in the
+  page (pixi still releases its WebGL context); only a canvas pixi created itself is removed.
+
+### Fixed
+- Pixi: a number `forceResolution` other than 1 no longer changes the canvas's size on the page;
+  the canvas keeps the renderer's CSS size at any resolution (`autoDensity` is always on, as it was
+  without `forceResolution`).
+- Ammo: a rigid body removed or disposed from an `onCollisionStart` subscriber no longer makes the
+  rest of that step's collision events (the other body's own event among them) read freed native
+  memory, which gave garbage contact data and could corrupt the WASM heap.
+- Ammo: `Trigger3dEntity.onEntityLeft` emitted `null` instead of the vehicle entity for a raycast
+  vehicle (a `GgCarEntity`'s) removed from the world while inside the trigger.
+- Ammo: disposing a body, trigger, character controller or raycast vehicle component a second time
+  (directly, or after `removeFromWorld(world, true)`) freed its native objects again; it does nothing.
+- Ammo: every raycast vehicle leaked a native `btVehicleTuning`; vehicles share one.
+- `@gg-web-engine/rapier3d`: a `COMPOUND` body touching another body with several of its parts got
+  one `onCollisionStart` per part, and an `onCollisionEnd` whenever one part let go while another
+  still touched. Both now fire once per body pair (`Rapier3dRigidBodyComponent.collidingWith` maps
+  each partner to its number of touching collider pairs).
+
 ## [0.0.85] - 2026-10-21
 
 ### Added

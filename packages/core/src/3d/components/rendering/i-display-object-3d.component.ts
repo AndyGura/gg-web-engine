@@ -1,6 +1,18 @@
 import { IDisplayObjectComponent, Point3, Point4, RenderLayer } from '../../../base';
 import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 
+/**
+ * Which of a display object's resources `IDisplayObject3dComponent.makeUnique` gives it its own
+ * copies of. Each level includes the one before it:
+ * - `'materials'`: the materials of every mesh in the object (the usual need: a color, an opacity
+ *   or a texture slot changed for one copy of a model only). Geometry and textures stay shared.
+ * - `'meshes'`: the geometry as well (vertex data edited per copy, e.g. a mesh re-pivoted or
+ *   deformed by hand). Textures stay shared.
+ * - `'all'`: the textures too (texture settings - wrapping, filtering, offset/repeat - changed per
+ *   copy). The image data itself may still be shared underneath.
+ */
+export type UniqueResources3d = 'materials' | 'meshes' | 'all';
+
 export interface IDisplayObject3dComponent<
   VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
 > extends IDisplayObjectComponent<Point3, Point4, VTypeDoc> {
@@ -55,6 +67,27 @@ export interface IDisplayObject3dComponent<
    * `isRenderLayerEnabled` on the result, purely because those three methods didn't exist on the
    * base interface's own declared return type. */
   clone(): IDisplayObject3dComponent<VTypeDoc>;
+
+  /**
+   * Gives this object its own copies of the resources `resources` names (see
+   * `UniqueResources3d`), in place of any it shares with other objects - so changing them changes
+   * this object only. A model from `world.loader` is a `clone()` of a cached original and shares
+   * its geometry, materials and textures with every other copy of the same file: recoloring one
+   * copy's material recolors them all, until this is called on it (or the load is made with the
+   * `unique` option, which calls it on the returned copy).
+   *
+   * A resource used several times within the object (one material on several meshes) maps to one
+   * copy, so the object keeps its own internal sharing. From then on this
+   * object owns the copies: `dispose()` frees them, and still never frees what it continues to
+   * share, while disposing the source of a clone (the cached original) never touches the copies.
+   * Resources this object already owns are kept as they are, so calling it again with the same or
+   * a lower level does nothing, and raising the level copies only what is still shared. Children
+   * added with `addChild` are part of the object and get copies too. Call it before handing out
+   * `clone()`s of this object if those should get the copies: a clone shares whatever its source
+   * has at the time.
+   * @param resources - What to copy; `'materials'` when omitted
+   */
+  makeUnique(resources?: UniqueResources3d): void;
 
   /** Narrows `IDisplayObjectComponent.popChild()`'s return type the same way `clone()` above does,
    * and for the same reason - a child popped off a 3D display object is itself a 3D display object. */

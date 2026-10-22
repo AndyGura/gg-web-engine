@@ -23,25 +23,60 @@ already had a working `dispose()` for its own native body - it just was never wi
 `removeFromWorld`), and by giving `AmmoCharacterControllerComponent` its own `dispose()` override that
 additionally frees `nativeShape` (the capsule shape `AmmoBodyComponent.dispose()` alone can't reach,
 since Bullet shapes aren't owned by the collision object referencing them).
-`AmmoRaycastVehicleComponent` had the same class of gap independently:
-`nativeVehicle`/`vehicleTuning`/`raycaster`/`wheelDirectionCS0`/`wheelAxleCS` had no `dispose()` at all
-and were never freed on removal, `dispose` or not - fixed the same way. Its `nativeBody` is shared
-with the `chassisBody` passed into its constructor (same native handle, not a copy); only the
-vehicle's own `removeFromWorld`/`dispose()` frees it - never pass `dispose: true` down into
-`chassisBody.removeFromWorld` too, or the shared handle gets double-freed.
+`AmmoRaycastVehicleComponent.dispose()` frees `nativeVehicle`/`raycaster`/`wheelDirectionCS0`/
+`wheelAxleCS` and then, through `super.dispose()`, `nativeBody`. That `nativeBody` is shared with the
+`chassisBody` passed into its constructor (same native handle, not a copy); only the vehicle's own
+`removeFromWorld`/`dispose()` frees it - never dispose `chassisBody` as well, or the shared handle
+gets double-freed.
 
-Every Ammo component's `dispose()` now runs behind `IEntity.dispose()`'s own idempotency guard (a
-`_disposed` flag, `dispose()` a no-op on a second call - see `gg-engine-core-development`'s own note
-on this), but that guard only protects a component reached through its owning entity's `dispose()`.
-`AmmoRaycastVehicleComponent.dispose()` still guards each of its five handles individually with its
-own `try { Ammo.destroy(handle) } catch {}` (matching every other Ammo component's own dispose()) for
-a second, independent reason: called a second time by any other path (not just a re-entrant
-`entity.dispose()`), the first `Ammo.destroy()` on an already-freed handle throws "Cannot destroy
-object. (Did you create it yourself?)" and skips freeing the rest - a real, reproduced bug (found via
-a `Trigger`'s own overlap-tracking reacting to the same removed body twice - see "Every
-`AmmoTriggerComponent`..." below), not a hypothetical one. Any future Ammo component with more than
-one native handle to free in `dispose()` should guard each handle independently the same way, rather
-than relying solely on the entity-level idempotency guard.
+
+**The vehicle is the one component of that native body in the world.** Its `addToWorld`/
+`removeFromWorld` go through `AmmoRigidBodyComponent`'s own (add/remove the native rigid body with
+the vehicle's own collision masks, emit `added$`/`removed$` for the vehicle), plus the action and
+`raycastVehicles` bookkeeping; `chassisBody` is never added to the world. The constructor copies
+`chassisBody`'s collision groups and body type/ccd/`canSleep` onto the vehicle, and the vehicle's
+group setters keep `chassisBody` and the wheel raycaster's group/mask in step (`refreshCG` is
+`AmmoRigidBodyComponent`'s). Don't route the vehicle's add/remove through
+`chassisBody.addToWorld`/`removeFromWorld`: that emits `added$`/`removed$` for `chassisBody` as well,
+putting two components for one native body in `children`, and on removal
+`AmmoTriggerComponent`'s `removed$` reaction matches the pointer through `chassisBody` first and
+reports `onEntityLeft` with it - a component whose `entity` is `null` (only the vehicle gets
+`entity`), so `Trigger3dEntity` never sees the car leave. Collision events resolve the pointer
+through `nativeBodyReverseMap`, where the vehicle registers last, so they always name the vehicle.
+Regressions: the 3D contract suite's "is the one component of its chassis body" and
+`ammo-trigger-player-vehicle-integration.spec.ts`'s removal case.
+
+**`Ammo.destroy` on an already-destroyed object does not throw in this build: it runs the native
+destructor again** (a double free, `Module.destroy` only checks that the object has a `__destroy__`).
+It throws "Cannot destroy object. (Did you create it yourself?)" only for a class the IDL binds with
+`NoDelete` (no destructor binding at all, e.g. `btVehicleTuning`) - such an object can never be
+freed from JS, so `AmmoRaycastVehicleComponent.vehicleTuning` is one module-wide instance shared by
+every vehicle (Bullet only reads it in the `btRaycastVehicle` constructor and `addWheel`, which copies
+its values into the wheel; it keeps no reference). Neither a use-after-free nor a double free is
+visible: an embind call on a freed object reads or writes freed WASM memory and returns, and the heap
+corruption surfaces later, elsewhere (`Aborted(OOM)`, "memory access out of bounds", garbage
+transforms). So `IEntity.dispose()`'s own idempotency guard (see `gg-engine-core-development`) is not
+the only layer: `AmmoBodyComponent.dispose()` sets `nativeDisposed` and returns early once it is set,
+and every subclass that frees handles of its own before or after `super.dispose()`
+(`AmmoRaycastVehicleComponent`, `AmmoCharacterControllerComponent`) checks it first - a component
+can be disposed directly, or by `removeFromWorld(world, true)` and then again by its entity. Each
+handle is still destroyed in its own `try`/`catch`, so a `NoDelete` object slipping into a dispose
+list doesn't stop the handles after it from being freed - but that `catch` is also what hid the
+never-freed `btVehicleTuning` for a long time, so don't read a silent `catch` there as "freed".
+
+A test catches both bugs by wrapping `Ammo.destroy` (`jest.spyOn(Ammo, 'destroy')`): record a second
+destroy of the same wrapper object instead of passing it on, and after the real destroy shadow every
+method of the destroyed wrapper (walk its prototype chain, `Object.defineProperty` an own property per
+method) with one that records the call and throws - see `ammo-car-disposal.spec.ts`'s
+`watchNativeFrees`. It only sees calls through the same wrapper object a component holds, which is
+how components keep their handles. That spec is the regression coverage for disposing a `GgCarEntity`
+(a raycast-vehicle subclass with its own child entities, wheel meshes, children ticking off the car
+before and after the physics step): disposing while spawned, after `removeEntity`, with
+`removeEntity(car, true)`, from the car's own `onRemoved$`, twice, during a tick (from a world entity
+and from a child, before and after the physics step), from the car's own `tick$`, from its own
+collision event, inside a trigger, and through `world.dispose()`; respawning many cars next to one
+that stays; and after each, a fresh car settling at the same height and driving. None of these
+crashes or leaks a vehicle handle.
 
 ## Several `AmmoWorldComponent`s in one process share one Ammo module instance
 
@@ -698,11 +733,17 @@ synchronously from `removeFromWorld`, *before* that body's own `dispose()` runs 
 comparison time.
 
 **`onEntityLeft` itself is deliberately never emitted synchronously from this reaction** - only
-`queueMicrotask(() => this.onLeft$.next(component))`, after the stale entry is already deleted
-synchronously. It carries the removed component itself, not its pointer: a body removed with
-`dispose` is already gone from `nativeBodyReverseMap` when the microtask runs, so a pointer would
-resolve to `null`, and core's `ITriggerComponent.onEntityLeft` contract (every adapter) is to report
-the removed body. `onLeft$` therefore carries either a pointer (from `checkOverlaps()`) or a component. Emitting synchronously was the first version of this fix, and it caused a real,
+`queueMicrotask(() => this.onLeft$.next(left))`, after the stale entry is already deleted
+synchronously. It carries a component, not its pointer: a body removed with `dispose` is already
+gone from `nativeBodyReverseMap` when the microtask runs, so a pointer would resolve to `null`, and
+core's `ITriggerComponent.onEntityLeft` contract (every adapter) is to report the removed body.
+`left` is resolved through `nativeBodyReverseMap` synchronously, in the `removed$` handler (the
+handle is still live there), falling back to the removed component itself, so `onEntityLeft` names
+the same component `onEntityEntered` reported for that pointer (pointer -> map), whichever component
+sharing the native body carried `removed$` - a component without an entity would make
+`Trigger3dEntity.onEntityLeft` emit `null`. Regression: `ammo-car-disposal.spec.ts`'s "inside a
+trigger". `onLeft$`
+therefore carries either a pointer (from `checkOverlaps()`) or a component. Emitting synchronously was the first version of this fix, and it caused a real,
 reproduced regression: `world.removed$` can fire from deep inside another component's own in-progress
 lifecycle operation - found via `CharacterController3dEntity.recreateCapsule()` (called by the
 `isCrouching` setter), which removes the *old* `characterController` with `dispose: true` partway
@@ -854,6 +895,14 @@ second reverse-map needed). A `Map<string, [AmmoRigidBodyComponent, AmmoRigidBod
 by a sorted `"${lowerPtr}:${higherPtr}"` string, diffed frame to frame, is what turns "which pairs
 have contacts this tick" into "started"/"stopped" events - present now but not last frame = start,
 present last frame but not now = end.
+
+**Every start event of a `simulate()` call is built before the first one is emitted.** A subscriber
+may remove or dispose a body (a car disposed from its own `onCollisionStart`): `removeRigidBody`
+cleans the body's broadphase pairs, which releases its contact manifolds, and `dispose()` frees the
+body - building the reciprocal event (or any later pair's) after that reads a freed `btManifoldPoint`
+and the freed body's velocity, which returns garbage instead of throwing. `buildCollisionStart`
+reads everything native; the emit loop that follows reads nothing native. Regression:
+`ammo-car-disposal.spec.ts`'s "from its own collision event".
 
 **A manifold existing is not the same as two bodies touching** - Bullet keeps a manifold alive for a
 mere broad-phase AABB overlap with zero narrow-phase contact points, so gating on

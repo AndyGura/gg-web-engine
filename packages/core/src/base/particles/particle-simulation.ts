@@ -7,6 +7,9 @@ import { createParticleRenderBuffers, ParticleRenderBuffers } from './particle-r
 /** Tolerance for comparing accumulated step times, so `n` steps of `1/30` reach a lifetime of `n/30`. */
 const TIME_EPSILON = 1e-7;
 
+/** The default sprite anchor: the sprite's center. */
+const CENTER_ANCHOR: Point2 = { x: 0.5, y: 0.5 };
+
 /**
  * Where particles spawn: maps points and directions given in the emitter's own frame into the space
  * the particles live in. The entity owning a simulation provides it (from its position, rotation,
@@ -102,6 +105,23 @@ export type ParticleSimulationOptions<D extends Point2 | Point3 = Point3, T = an
   tint?: number;
   /** Live. The regions of the texture particles can show, indexed by `Particle.frame`. Default: the whole texture. */
   frames?: readonly ParticleFrame[];
+  /**
+   * Live. The point of each sprite that sits at the particle's position, and that a rotating sprite
+   * turns around, in fractions of the sprite as its image shows it: `x` from `0` (left edge) to `1`
+   * (right edge), `y` from `0` (top edge) to `1` (bottom edge). `{ x: 0.5, y: 0.5 }` (default) is the
+   * center, `{ x: 0.5, y: 1 }` the middle of the bottom edge - smoke, dust, grass or a flame
+   * standing on its point - and `{ x: 0.5, y: 0 }` the middle of the top edge, hanging from it.
+   * Values outside `0..1` put the point outside the sprite.
+   *
+   * Top and bottom are those of the drawn sprite: in 3D a camera-facing sprite shows its image
+   * upright on screen (before its `Particle.rotation`), so the bottom edge is the one towards the
+   * bottom of the screen, and a `billboard: 'vertical'` sprite stands upright in the world, its bottom
+   * edge towards `-Z`. In 2D the image's top edge is towards `-y`, as for any sprite in the y-down
+   * 2D world, so the bottom edge is the one towards `+y`.
+   *
+   * A frame's own `ParticleFrame.anchor` overrides this for the particles showing that frame.
+   */
+  anchor?: Point2;
   /** Default `Particle.frameSequence`. */
   frameSequence?: readonly number[] | null;
   /** Default `Particle.frameDuration`. */
@@ -431,6 +451,7 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
       !Array.isArray(sizeCurve) &&
       'x' in sizeCurve;
     const opacityCurve = this.options.opacityOverLife;
+    const defaultAnchor = this.options.anchor ?? CENTER_ANCHOR;
     let n = 0;
     for (const p of this.live) {
       if (!p.alive) {
@@ -470,6 +491,9 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
       b.uv[c + 1] = frame.y;
       b.uv[c + 2] = frame.width;
       b.uv[c + 3] = frame.height;
+      const anchor = frame.anchor ?? defaultAnchor;
+      b.anchor[n * 2] = anchor.x;
+      b.anchor[n * 2 + 1] = anchor.y;
       b.extra[c] = p.shaderData[0];
       b.extra[c + 1] = p.shaderData[1];
       b.extra[c + 2] = p.shaderData[2];

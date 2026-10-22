@@ -13,6 +13,10 @@ const state = {
   uidCounter: 0,
   pushCounter: 0,
   apps: [] as any[],
+  /** what `serverTimestamp()` resolves to */
+  serverTime: 12345,
+  /** make every `runTransaction` fail like a write the rules refuse */
+  denyTransactions: false,
 };
 
 export const fakeFirebase = {
@@ -22,6 +26,12 @@ export const fakeFirebase = {
     state.listeners = [];
     state.disconnects = [];
     state.apps = [];
+    state.serverTime = 12345;
+    state.denyTransactions = false;
+  },
+  /** write a value as the server would (e.g. `.info/connected`) */
+  write(path: string, value: any) {
+    writePath(path, value);
   },
   /** switch the "current client" the next signInAnonymously/onDisconnect calls belong to */
   asNewClient(): string {
@@ -143,7 +153,20 @@ export const initializeAppCheck = (_app: any, options: any) => ({ options });
 // --- firebase/database
 export const getDatabase = () => ({});
 export const ref = (_db: any, path = '') => ({ path });
-export const serverTimestamp = () => 12345;
+export const serverTimestamp = () => state.serverTime;
+export const get = async (r: { path: string }) => snapshot(r.path, readPath(r.path));
+/** atomic in-process: read, apply, write, like a transaction that never has to retry */
+export const runTransaction = async (r: { path: string }, fn: (current: any) => unknown) => {
+  if (state.denyTransactions) {
+    throw new Error('PERMISSION_DENIED');
+  }
+  const result = fn(readPath(r.path));
+  if (result === undefined) {
+    return { committed: false, snapshot: snapshot(r.path, readPath(r.path)) };
+  }
+  writePath(r.path, result);
+  return { committed: true, snapshot: snapshot(r.path, readPath(r.path)) };
+};
 export const set = async (r: { path: string }, value: any) => writePath(r.path, value);
 export const update = async (r: { path: string }, value: any) => {
   for (const [k, v] of Object.entries(value)) {
@@ -151,7 +174,9 @@ export const update = async (r: { path: string }, value: any) => {
   }
 };
 export const remove = async (r: { path: string }) => writePath(r.path, null);
-export const push = (r: { path: string }) => ({ path: `${r.path}/p${(state.pushCounter++).toString().padStart(6, '0')}` });
+export const push = (r: { path: string }) => ({
+  path: `${r.path}/p${(state.pushCounter++).toString().padStart(6, '0')}`,
+});
 export const onDisconnect = (r: { path: string }) => {
   const uid = state.currentUid;
   return {

@@ -131,6 +131,36 @@ const horn = world.audioScene!.factory.createSource({ clip: hornClip, panningMod
 horn.panningModel = 'equalpower'; // also writable at runtime
 ```
 
+`applyMobileAudioDefaults(world.audioScene!)` (from core) does both mobile settings at once on a
+touch device - `'equalpower'` and a 16-voice budget (`MOBILE_AUDIO_DEFAULTS`) - and nothing
+elsewhere; its second argument overrides the touch detection.
+
+### Fades, UI sounds and music
+
+```typescript
+import { MusicPlayer } from '@gg-web-engine/core';
+
+// a timed fade on the audio clock (pauses with the world); `volume` reads 0 at once
+if (await theme.fadeTo(0, 800)) {
+  theme.stop(); // only if nothing faded it back in meanwhile
+}
+
+// a sound with no place in the world, on a scene that needs no world at all
+const menuAudio = new WebAudioScene3dComponent();
+await menuAudio.init();
+menuAudio.playOneShot({ clip: await menuAudio.factory.loadClip('click.ogg'), bus: 'ui' });
+
+// music: crossfades, shuffle without repeats, a "now playing" feed, on the "music" bus
+const music = new MusicPlayer(menuAudio);
+music.nowPlaying$.subscribe(track => showNowPlaying(track));
+music.play([{ url: 'track1.ogg' }, { url: 'track2.ogg' }], { shuffle: true, crossfadeMs: 1500 });
+```
+
+`fadeTo` is a linear ramp on the source's gain, scheduled on the `AudioContext` clock: it holds
+while the context is suspended, continues through `stop()`/`play()`, and a virtual source picks it
+up where it has got to when heard again. It resolves `false` when a `volume` write, another
+`fadeTo` or `dispose()` took over. `MusicPlayer` decodes each track whole before playing it.
+
 See the root repo's audio design write-up and the `gg-engine-audio-adapter` skill for the full
 architecture (static/attached/one-shot sources, the listener-selection rules for multi-renderer
 worlds, and why positional-audio jitter on a fast/near-listener source is fixed here rather than

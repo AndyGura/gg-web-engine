@@ -2,6 +2,16 @@ import { IComponent } from '../i-component';
 import { AudioTypeDocRepo } from '../../gg-world';
 import { IPositionable } from '../../interfaces/i-positionable';
 import { AudioReverbSettings, ResolvedAudioReverbSettings } from '../../models/audio-reverb';
+import { AudioSourceDescriptor } from './i-audio-source.component';
+
+/**
+ * Settings for {@link IAudioSceneComponent.playOneShot}: an `AudioSourceDescriptor` without what a
+ * one-shot fixes itself - it never loops, always starts at once and is never positional.
+ */
+export type AudioOneShotDescriptor<Clip = unknown> = Omit<
+  AudioSourceDescriptor<Clip>,
+  'loop' | 'loopStart' | 'loopEnd' | 'autoplay' | 'spatial'
+>;
 
 /**
  * How many sources of one audio scene are playing, and how many of those are heard - see
@@ -135,6 +145,18 @@ export interface IAudioSceneComponent<
   readonly voiceCounts: AudioVoiceCounts;
 
   setActiveListener(target: IPositionable<D, R> | null): void;
+
+  /**
+   * Plays a clip once, non-positional, on `descriptor.bus` (`"sfx"` by default), and disposes the
+   * source the moment it ends - for sounds that belong to no place in a world: a menu click, a UI
+   * confirmation, a stinger. Needs no world and no entity, so it works on a scene that is not part
+   * of a world at all (an app-wide scene for the menus). The source counts against `maxVoices` like
+   * any other (give UI sounds a high `priority` under a budget). Returns the source, which nothing
+   * needs to keep: `dispose()` on it cuts the sound short. For a one-shot at a position in a world,
+   * use `AudioSource(2d|3d)Entity.playOneShot`. `playAudioOneShot` implements this over any
+   * adapter's factory.
+   */
+  playOneShot(descriptor: AudioOneShotDescriptor<ATypeDoc['clip']>): ATypeDoc['source'];
 
   /**
    * Freezes (`true`) or continues (`false`) everything this scene plays, every source keeping its

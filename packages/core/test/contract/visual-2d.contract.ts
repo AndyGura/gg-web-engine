@@ -115,6 +115,43 @@ export function describeVisual2dContract(backend: string, createFactory: () => I
       expect(Math.abs(max.y - min.y - 30)).toBeLessThan(3);
     });
 
+    it('measures local boundings in its own frame, whatever its transform', () => {
+      const box = factory.createBox({ x: 10, y: 20 }, { color: 0xffffff });
+      box.position = { x: 100, y: 200 };
+      box.rotation = 0.7;
+      box.scale = { x: 2, y: 3 };
+      const { min, max } = box.getLocalBoundings();
+      // a renderer may pad the bounds by a pixel or so
+      expect((min.x + max.x) / 2).toBeCloseTo(0, 0);
+      expect((min.y + max.y) / 2).toBeCloseTo(0, 0);
+      expect(Math.abs(max.x - min.x - 10)).toBeLessThan(2);
+      expect(Math.abs(max.y - min.y - 20)).toBeLessThan(2);
+    });
+
+    it('counts children of local boundings with their own transforms, leaving hidden ones out', () => {
+      const parent = factory.createPrimitive(
+        {
+          shape: 'COMPOUND',
+          children: [{ position: { x: 0, y: 0 }, shape: { shape: 'BOX', dimensions: { x: 10, y: 10 } } }],
+        },
+        { color: 0xffffff },
+      );
+      parent.position = { x: 50, y: 50 };
+      parent.rotation = 1;
+      const child = factory.createBox({ x: 10, y: 10 }, { color: 0xffffff });
+      child.position = { x: 0, y: 30 };
+      parent.addChild(child);
+      const hidden = factory.createBox({ x: 10, y: 10 }, { color: 0xffffff });
+      hidden.position = { x: 0, y: -100 };
+      hidden.visible = false;
+      parent.addChild(hidden);
+      const { min, max } = parent.getLocalBoundings();
+      expect(Math.abs(min.x + 5)).toBeLessThan(2);
+      expect(Math.abs(max.x - 5)).toBeLessThan(2);
+      expect(Math.abs(min.y + 5)).toBeLessThan(2);
+      expect(Math.abs(max.y - 35)).toBeLessThan(2);
+    });
+
     it('clones into an independent object with the same transform', () => {
       const box = factory.createBox({ x: 10, y: 20 }, { color: 0xffffff });
       box.position = { x: 10, y: 20 };
@@ -143,6 +180,14 @@ export function describeVisual2dContract(backend: string, createFactory: () => I
     it('creates text and a camera', () => {
       expect(factory.createText('hello', { fontSize: 16 } as any)).toBeTruthy();
       expect(factory.createCamera()).toBeTruthy();
+    });
+
+    it('creates a camera centered on its position at zoom 1, whose origin can be the top-left corner', () => {
+      const camera = factory.createCamera();
+      expect(camera.zoom).toBe(1);
+      expect(camera.origin).toBe('center');
+      camera.origin = 'top-left';
+      expect(camera.origin).toBe('top-left');
     });
   });
 }

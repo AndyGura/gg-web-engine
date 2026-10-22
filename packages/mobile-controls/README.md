@@ -26,7 +26,7 @@ controller is active, swapping them as controllers are activated, deactivated, s
 | Controller | Controls |
 |---|---|
 | `GgCarHandlingController` | steering, accelerate, brake, handbrake, gears when the driver has to shift |
-| `CarHandlingController` (on its own) | steering, accelerate, brake |
+| `CarHandlingController` (on its own) | steering, accelerate, brake; handbrake and gears for the keys in `car.keys` |
 | `PlayerCharacterController` | move stick, look by dragging, jump, run, crouch, switch view |
 | `PlayerCharacterController2d` | left/right, jump, run, crouch |
 | `FreeCameraController` | move stick, look by dragging, up, down, boost |
@@ -45,8 +45,9 @@ Every built-in layout has variants:
 
 ```typescript
 new MobileControls({
-  // 'buttons' (default) | 'stick' | 'tilt' - tilt steers by turning the device like a wheel
-  car: { steering: 'tilt', gears: false },
+  // steering: 'buttons' (default) | 'stick' | 'tilt' - tilt steers by turning the device like a wheel
+  // pedals: 'buttons' (default) | 'stick' - one analog stick, up for throttle, down for brake
+  car: { steering: 'tilt', pedals: 'stick', gears: false },
   // movement: 'stick' (default, appears under the thumb) | 'dpad'
   // look: 'drag' (default) | 'stick' (a second stick) | false
   character: { movement: 'dpad', look: 'drag', lookSensitivity: 4 },
@@ -74,15 +75,79 @@ new MobileControls({
 });
 ```
 
-Controls that belong to no controller stay on screen all the time:
+`inset` moves every control placed by numbers - the built-in layouts' and your own - away from the
+overlay's edges, in the same units (negative: towards them). It is how a game pulls the driving
+controls closer to the sides of a wide phone without restating every placement:
+
+```typescript
+new MobileControls({ inset: { left: -2, right: -2 } }); // or one number for all four edges
+```
+
+It sets `--gg-mc-inset-left`/`-right`/`-top`/`-bottom` on the overlay, so a stylesheet (a media query
+for small screens, say) can set them as well.
+
+### Pause and fullscreen buttons
+```typescript
+new MobileControls({
+  pauseButton: true, // top left; pauses the world, and resumes it on the next press
+  fullscreenButton: true, // top right; hidden where fullscreen is not available (an iPhone)
+});
+```
+
+Both take `{ placement, icon, label }` too. The pause button's default (`world.pauseWorld()`, never
+for a world whose `localPauseAllowed` is `false`, and `resumeWorld()` while paused) suits a game
+without a pause menu. A game with one opens it instead - `pauseButton: { onPress: () =>
+screens.push(new PauseScreen()) }`: a `ScreenManager` pauses the world under the menu and resumes it
+when the menu closes, which it would not do for a world the button had paused. The fullscreen button
+shows the overlay's `container` fullscreen (or the whole page), or `fullscreenButton: { element }`.
+`toggleFullscreen(element?)`, `isFullscreenAvailable(element?)` and `fullscreen$()` are exported for a
+button of your own: they cover the WebKit-prefixed API of older Safari and never throw.
+
+Entering fullscreen needs a user gesture, and for a touch a browser grants one when the finger lifts,
+not when it goes down - so call `toggleFullscreen` from `TouchButton.onTap` (the finger lifting on
+the button), not from `onPress`. The same goes for anything else a browser allows only in reaction to
+the user.
+
+Other controls that belong to no controller stay on screen all the time:
 
 ```typescript
 const controls = new MobileControls();
 controls.addControls(
-  new TouchButton({ id: 'pause', content: 'II', placement: { left: 4, top: 4 } }).onPress(() => togglePause()),
+  new TouchButton({ id: 'map', content: 'M', placement: { left: 13, top: 4 } }).onPress(() => toggleMap()),
 );
 world.addEntity(controls);
 ```
+
+### Showing the overlay only when it is wanted
+`visible$` gates the overlay by an observable of your own, e.g. "the player is in a car and no menu
+is open". While it last emitted `false` (and until it first emits) the overlay is off the screen,
+and turning it off releases everything held, so no key stays pressed:
+
+```typescript
+new MobileControls({ visible$: combineLatest([inCar$, menuOpen$]).pipe(map(([car, menu]) => car && !menu)) });
+```
+
+A world whose input is switched off (`world.inputEnabled`, what a `ScreenManager` does to a covered
+screen) takes the overlay off the screen without any of this.
+
+### A car controller of your own
+A game whose own entity drives the vehicle - its handbrake and gearbox included - while a bare
+`CarHandlingController` child does the steering and the pedals gets the matching buttons through
+`car.keys`: they press those keys on the `CarHandlingController`'s `keyboard`, where the app's
+entity listens for them.
+
+```typescript
+new MobileControls({
+  car: {
+    // or a function of the controller, called each time the layout is built - which happens again
+    // on the controller's own setKeys, or on controls.refresh() after the game's keys change
+    keys: { handbrake: 'Space', gearUp: 'KeyE', gearDown: 'KeyQ' },
+  },
+});
+```
+
+A button whose key is left out is not shown; `handbrake: false`/`gears: false` turn them off as for
+`GgCarHandlingController`, whose buttons always press its own `handbrakeKey`/`gearUpDownKeys`.
 
 A single control is hidden and shown with `control.visible` (an action not available right now) and
 moved with `control.place({...})`. `controls.visible = false` hides everything (a menu, a cutscene) and releases whatever was held.

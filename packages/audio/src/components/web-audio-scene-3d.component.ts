@@ -1,10 +1,12 @@
 import {
   AUDIO_LISTENER_AXES,
+  AudioOneShotDescriptor,
   AudioListenerBasis,
   AudioPanningModel,
   defaultAudioListenerBasis,
   IAudioScene3dComponent,
   IPositionable,
+  playAudioOneShot,
   Pnt3,
   Point3,
   Point4,
@@ -12,6 +14,7 @@ import {
 import { DEFAULT_RAMP_TAU, rampParam, setParamNow } from '../utils/ramp';
 import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
 import { WebAudioSource3dComponentFactory } from '../web-audio-factory';
+import { WebAudioSource3dComponent } from './web-audio-source-3d.component';
 
 /**
  * 3D `IAudioSceneComponent`: every source gets a real `PannerNode` (native distance/cone
@@ -43,6 +46,11 @@ export class WebAudioScene3dComponent
   constructor() {
     super();
     this.factory = new WebAudioSource3dComponentFactory(this);
+  }
+
+  /** See `IAudioSceneComponent.playOneShot` - a non-positional source from this scene's factory. */
+  public playOneShot(descriptor: AudioOneShotDescriptor<AudioBuffer>): WebAudioSource3dComponent {
+    return playAudioOneShot(this.factory, descriptor);
   }
 
   public update(_elapsed: number, _delta: number): void {

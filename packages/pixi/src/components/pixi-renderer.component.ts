@@ -3,16 +3,43 @@ import { Application, ApplicationOptions, Sprite, Texture } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiCameraComponent } from './pixi-camera.component';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
-import { Subject, take } from 'rxjs';
+import { AsyncSubject, Observable, take } from 'rxjs';
 import { PixiPhysicsDebugView } from './pixi-physics-debug-view';
 
 export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly application: Application;
-  private initialized: boolean = false;
+  private _initialized: boolean = false;
   /** Set by a `dispose()` that came before pixi's async `init` finished; init then destroys. */
   private disposed: boolean = false;
-  private onInitialized$: Subject<void> = new Subject();
+  /** Emits once pixi's init has finished, also to late subscribers; completes empty on an earlier dispose. */
+  private readonly onInitialized$: AsyncSubject<void> = new AsyncSubject();
   protected world: PixiGgWorld | null = null;
+
+  /**
+   * `true` once pixi's asynchronous `Application.init` has finished: from then on `application`'s
+   * `renderer`, `canvas` and event system exist. Never `true` for a renderer disposed before that.
+   */
+  public get initialized(): boolean {
+    return this._initialized;
+  }
+
+  /**
+   * Emits once and completes when pixi's asynchronous `Application.init` has finished - right away
+   * for a subscriber that comes later. Completes without emitting when the renderer is disposed
+   * before that. Wait for it before using `application.renderer` (its event system, a render
+   * texture, a bitmap font installed against it). Drawing and resizing don't need it: a `render()`
+   * or `resizeRenderer()` before init runs once init is done.
+   *
+   * @example
+   * ```ts
+   * const renderer = world.addRenderer(camera, canvas, { transparent: true });
+   * await firstValueFrom(renderer.renderer.initialized$);
+   * renderer.renderer.application.renderer.events.cursorStyles.default = 'none';
+   * ```
+   */
+  public get initialized$(): Observable<void> {
+    return this.onInitialized$.asObservable();
+  }
 
   private debugView: PixiPhysicsDebugView | null = null;
   /** Screen-fixed sprite showing the scene's background texture, when it has one. */
@@ -57,8 +84,9 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       .init({
         canvas,
         backgroundAlpha: this.rendererOptions.transparent ? 0 : 1,
-        autoDensity: this.rendererOptions.forceResolution === undefined,
-        resolution: this.rendererOptions.forceResolution || devicePixelRatio,
+        // the canvas keeps its CSS size whatever the resolution
+        autoDensity: true,
+        resolution: this.initialResolution,
         width: 0,
         height: 0,
         backgroundColor: this.rendererOptions.background,
@@ -74,26 +102,39 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
         (this.application as any)._ticker = null!;
         if (this.disposed) {
           // disposed while initializing: what init just created (a GL context) is freed now
-          this.application.destroy(true, true);
+          this.application.destroy(this.nativeDestroyOptions, true);
           return;
         }
-        this.initialized = true;
+        this._initialized = true;
         this.onInitialized$.next();
         this.onInitialized$.complete();
       });
   }
 
   resizeRenderer(newSize: Point2): void {
-    if (this.initialized) {
+    if (this._initialized) {
       this.application.renderer.resize(newSize.x, newSize.y);
     } else {
       this.onInitialized$.pipe(take(1)).subscribe(() => this.resizeRenderer(newSize));
     }
   }
 
+  /**
+   * Sets the native renderer's resolution, resizing its drawing buffer and keeping its size in CSS
+   * pixels. Before pixi's async init has finished, the change is applied once it has.
+   */
+  setResolution(resolution: number): void {
+    if (this.initialized) {
+      const renderer = this.application.renderer;
+      renderer.resize(renderer.width, renderer.height, resolution);
+    } else {
+      this.onInitialized$.pipe(take(1)).subscribe(() => this.setResolution(resolution));
+    }
+  }
+
   /** The native renderer's texture system once the renderer is initialized, `null` before. */
   public get nativeTextureSystem(): unknown {
-    return this.initialized ? (this.application.renderer as any).texture : null;
+    return this._initialized ? (this.application.renderer as any).texture : null;
   }
 
   addToWorld(world: PixiGgWorld): void {
@@ -120,17 +161,21 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   }
 
   render(): void {
-    if (this.initialized) {
+    if (this._initialized) {
       if (this.debugView) {
         this.debugView.sync();
       }
       const width = this.application.renderer.width;
       const height = this.application.renderer.height;
-      const centerOffsetX = width / 2;
-      const centerOffsetY = height / 2;
+      // the screen point the camera position is drawn at, which the view zooms and rotates around
+      const topLeft = this.camera.origin === 'top-left';
+      const originX = topLeft ? 0 : width / 2;
+      const originY = topLeft ? 0 : height / 2;
 
       this.applyBackground(width, height);
-      const halfExtent = Math.hypot(width, height) / 2 / this.camera.zoom;
+      // a square around the camera position covering the whole view at any rotation: from the
+      // view's center that is half its diagonal, from a corner the whole diagonal
+      const halfExtent = Math.hypot(width, height) / (topLeft ? 1 : 2) / this.camera.zoom;
       for (const layer of this.scene.parallaxLayers) {
         layer.updateView(this.camera.position, { x: halfExtent, y: halfExtent });
       }
@@ -144,8 +189,8 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
         container.pivot.x = this.camera.position.x;
         container.pivot.y = this.camera.position.y;
         container.rotation = -this.camera.rotation;
-        container.position.x = centerOffsetX;
-        container.position.y = centerOffsetY;
+        container.position.x = originX;
+        container.position.y = originY;
       }
       this.application.render();
     } else {
@@ -198,6 +243,20 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     background.alpha = this.initialClear.alpha;
   }
 
+  /**
+   * A canvas the app passed in stays in the page (its layout is the app's), only a canvas pixi
+   * created itself is removed. Either way pixi loses the WebGL context on destroy, so the canvas
+   * can't host another renderer.
+   */
+  private get nativeDestroyOptions(): { removeView: boolean } {
+    return { removeView: !this.canvas };
+  }
+
+  /**
+   * Destroys the pixi application and with it the WebGL context of its canvas, right away instead
+   * of at garbage collection (a page gets only about 16 contexts). The canvas can't host another
+   * renderer afterwards: core's `replaceCanvas` puts a blank copy in its place for the next one.
+   */
   dispose(): void {
     if (this.disposed) {
       return;
@@ -208,8 +267,8 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     this.backgroundSprite = null;
     // nothing waiting for init (a deferred render or resize) runs any more
     this.onInitialized$.complete();
-    if (this.initialized) {
-      this.application.destroy(true, true);
+    if (this._initialized) {
+      this.application.destroy(this.nativeDestroyOptions, true);
     }
     // otherwise pixi's Application can't be destroyed before its init resolves (its plugins
     // aren't set up yet), so the init callback does it

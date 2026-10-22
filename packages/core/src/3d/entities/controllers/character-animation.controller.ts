@@ -1,4 +1,3 @@
-import { takeUntil } from 'rxjs';
 import { IEntity, Pnt3, TickOrder } from '../../../base';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../gg-3d-world';
 import { CharacterController3dEntity } from '../character-controller-3d.entity';
@@ -127,7 +126,7 @@ export class CharacterAnimationController<TypeDoc extends Gg3dWorldTypeDocRepo =
 
   onSpawned(world: Gg3dWorld<TypeDoc>): void {
     super.onSpawned(world);
-    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([, delta]) => this.update(delta / 1000));
+    this.onTick((_, delta) => this.update(delta / 1000));
   }
 
   /**

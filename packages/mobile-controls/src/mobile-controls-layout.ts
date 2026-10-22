@@ -40,6 +40,23 @@ export type LayoutCustomization<T extends IEntity, Id extends string> = {
 };
 
 /**
+ * Merges a placement an app gives over a control's default one, edge by edge: an edge the app gives
+ * takes over from the opposite default edge (`{ right: 4 }` over `{ left: 4, top: 4 }` moves the
+ * control to the right instead of stretching it between both sides).
+ */
+export function mergeControlPlacement(defaults: ControlPlacement, custom?: ControlPlacement): ControlPlacement {
+  if (!custom) {
+    return defaults;
+  }
+  const merged = { ...defaults, ...custom };
+  if (custom.left !== undefined && custom.right === undefined) delete merged.right;
+  if (custom.right !== undefined && custom.left === undefined) delete merged.left;
+  if (custom.top !== undefined && custom.bottom === undefined) delete merged.bottom;
+  if (custom.bottom !== undefined && custom.top === undefined) delete merged.top;
+  return merged;
+}
+
+/**
  * Applies a `LayoutCustomization` while a built-in layout is put together.
  */
 export class LayoutBuilder<T extends IEntity, Id extends string> {
@@ -53,17 +70,7 @@ export class LayoutBuilder<T extends IEntity, Id extends string> {
   }
 
   placement(id: Id, defaults: ControlPlacement): ControlPlacement {
-    const custom = this.customization.placements?.[id];
-    if (!custom) {
-      return defaults;
-    }
-    // an edge given by the app takes over from the opposite default one instead of stretching between
-    const merged = { ...defaults, ...custom };
-    if (custom.left !== undefined && custom.right === undefined) delete merged.right;
-    if (custom.right !== undefined && custom.left === undefined) delete merged.left;
-    if (custom.top !== undefined && custom.bottom === undefined) delete merged.bottom;
-    if (custom.bottom !== undefined && custom.top === undefined) delete merged.top;
-    return merged;
+    return mergeControlPlacement(defaults, this.customization.placements?.[id]);
   }
 
   icon(id: Id, defaults: string): string | Node {

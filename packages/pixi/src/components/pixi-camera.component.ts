@@ -1,4 +1,4 @@
-import { ICamera2dComponent, Point2 } from '@gg-web-engine/core';
+import { Camera2dOrigin, ICamera2dComponent, Point2 } from '@gg-web-engine/core';
 import { Container } from 'pixi.js';
 import { PixiDisplayObjectComponent } from './pixi-display-object.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
@@ -8,6 +8,9 @@ export class PixiCameraComponent
   implements ICamera2dComponent<PixiVisualTypeDocRepo2D>
 {
   public zoom: number = 1;
+
+  /** See `ICamera2dComponent.origin`; `PixiRendererComponent.render` reads it on every frame. */
+  public origin: Camera2dOrigin = 'center';
 
   constructor() {
     super(new Container());

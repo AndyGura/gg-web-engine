@@ -166,6 +166,23 @@ export class PixiDisplayObjectComponent
     };
   }
 
+  /**
+   * `Container.getLocalBounds()` - the subtree in the container's own frame, leaving out hidden
+   * children - scaled by `baseScale`, since a sized sprite's built size is its native scale, which
+   * the native local bounds leave out along with the rest of the container's own transform.
+   */
+  getLocalBoundings(): GgBox2d {
+    const bounds = this.nativeSprite.getLocalBounds();
+    const x1 = bounds.minX * this.baseScale.x;
+    const x2 = bounds.maxX * this.baseScale.x;
+    const y1 = bounds.minY * this.baseScale.y;
+    const y2 = bounds.maxY * this.baseScale.y;
+    return {
+      min: { x: Math.min(x1, x2), y: Math.min(y1, y2) },
+      max: { x: Math.max(x1, x2), y: Math.max(y1, y2) },
+    };
+  }
+
   clone(): PixiDisplayObjectComponent {
     return new PixiDisplayObjectComponent(cloneContainer(this.nativeSprite), this.materialOptions, this.baseScale);
   }

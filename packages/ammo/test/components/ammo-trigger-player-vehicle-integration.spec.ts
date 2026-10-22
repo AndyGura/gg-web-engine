@@ -122,4 +122,25 @@ describe('AmmoTriggerComponent x player/vehicle', () => {
     expect(entered).toBe(vehicle);
     expect(exited).toBe(vehicle);
   });
+
+  it('fires onEntityLeft with the vehicle when a vehicle inside it is removed from the world', async () => {
+    world.gravity = { x: 0, y: 0, z: 0 };
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 20, y: 20, z: 20 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const vehicle = createVehicle(factory, { x: 0, y: 0, z: 0 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    const entered: unknown[] = [];
+    const left: unknown[] = [];
+    trigger.onEntityEntered.subscribe(obj => entered.push(obj));
+    trigger.onEntityLeft.subscribe(obj => left.push(obj));
+    world.simulate(20);
+    trigger.checkOverlaps();
+    expect(entered).toEqual([vehicle]);
+
+    vehicle.removeFromWorld({ physicsWorld: world } as any);
+    // a removal's `onEntityLeft` is delivered on a microtask
+    await Promise.resolve();
+    // the vehicle, never its chassis component (which shares the native body but has no entity)
+    expect(left).toEqual([vehicle]);
+  });
 });

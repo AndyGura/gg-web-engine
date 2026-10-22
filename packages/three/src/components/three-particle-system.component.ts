@@ -4,6 +4,7 @@ import {
   ParticleRenderBuffers,
   ParticleSystem3dRenderOptions,
   sortParticlesBackToFront,
+  UniqueResources3d,
 } from '@gg-web-engine/core';
 import {
   AdditiveBlending,
@@ -55,12 +56,31 @@ export type ThreeParticleSystemExtraOpts = {
 };
 
 /**
+ * The two places of `THREE_PARTICLE_VERTEX_SHADER` where `extendThreeParticleVertexShader` inserts
+ * an app's own code: these marker lines stay in the built-in shader, so code inserted before them
+ * keeps working when the rest of the shader changes.
+ * - `declarations`: at file scope, after the built-in attributes, uniforms and varyings - for the
+ *   app's own `uniform`s, `varying`s and functions.
+ * - `mainEnd`: the end of `main()`, after `gl_Position`, the varyings and fog are written. In scope:
+ *   every attribute, `corner` (the vertex's rotated offset from the anchor in world units, in the
+ *   sprite's plane), `mvPosition` (the vertex in view space) and three.js's built-in uniforms
+ *   (`projectionMatrix`, `viewMatrix`, `modelMatrix`, `cameraPosition`, ...).
+ */
+export const THREE_PARTICLE_VERTEX_HOOKS = {
+  declarations: '// gg:particle-vertex-declarations',
+  mainEnd: '// gg:particle-vertex-main-end',
+} as const;
+
+/**
  * The built-in particle vertex shader: expands each instance of the unit quad (`position.xy` in
- * `-0.5..0.5`, `uv` in `0..1`) into a sprite of `particleSize` world units around `particleCenter`,
- * rotated by `particleRotation` in its own plane and facing the camera (or, with the
- * `GG_BILLBOARD_VERTICAL` define, turning around world `Z` only). Passes `vUv` (the atlas region,
- * `particleUv`, flipped for the texture's `flipY` through the `uFlipY` uniform), `vColor`
- * (`particleColor`: sRGB tint and opacity) and `vExtra` (`particleExtra`) on, and supports fog.
+ * `-0.5..0.5`, `uv` in `0..1`) into a sprite of `particleSize` world units whose `particleAnchor`
+ * point (fractions of the sprite as its image shows it, `0.5, 0.5` the center, `0.5, 1` the middle of
+ * the bottom edge) is at `particleCenter`, rotated around that point by `particleRotation` in its
+ * own plane and facing the camera (or, with the `GG_BILLBOARD_VERTICAL` define, turning around
+ * world `Z` only). Passes `vUv` (the atlas region, `particleUv`, flipped for the texture's `flipY`
+ * through the `uFlipY` uniform), `vColor` (`particleColor`: sRGB tint and opacity) and `vExtra`
+ * (`particleExtra`) on, and supports fog. Extend it with `extendThreeParticleVertexShader` rather
+ * than by editing its text.
  */
 export const THREE_PARTICLE_VERTEX_SHADER = /* glsl */ `
 #include <fog_pars_vertex>
@@ -69,13 +89,16 @@ attribute vec2 particleSize;
 attribute float particleRotation;
 attribute vec4 particleColor;
 attribute vec4 particleUv;
+attribute vec2 particleAnchor;
 attribute vec4 particleExtra;
 uniform float uFlipY;
 varying vec2 vUv;
 varying vec4 vColor;
 varying vec4 vExtra;
+${THREE_PARTICLE_VERTEX_HOOKS.declarations}
 void main() {
-  vec2 corner = position.xy * particleSize;
+  // the quad's y is up, the anchor's (image coordinates) down: (0.5, 0.5) leaves the quad centered
+  vec2 corner = (position.xy + vec2(0.5 - particleAnchor.x, particleAnchor.y - 0.5)) * particleSize;
   float c = cos(particleRotation);
   float s = sin(particleRotation);
   corner = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
@@ -96,8 +119,57 @@ void main() {
   vColor = particleColor;
   vExtra = particleExtra;
 #include <fog_vertex>
+  ${THREE_PARTICLE_VERTEX_HOOKS.mainEnd}
 }
 `;
+
+/**
+ * Inserts an app's own GLSL into a particle material's vertex shader at the stable
+ * `THREE_PARTICLE_VERTEX_HOOKS` - the way to adjust the built-in shader (an extra screen-space
+ * offset, a wobble) from the `material` option without matching its text. The markers stay, so
+ * several calls add up. Sets `needsUpdate`; returns `material`. Throws if `material.vertexShader`
+ * lacks a marker it would insert at (a shader not built from `THREE_PARTICLE_VERTEX_SHADER`).
+ *
+ * @example
+ * ```ts
+ * // every sprite drawn 20 px higher on screen whatever its distance, on a canvas 1080 px tall
+ * // (clip space spans 2 units from the bottom of the canvas to its top)
+ * const lift = { value: (2 * 20) / 1080 };
+ * world.addParticleSystem(
+ *   {
+ *     capacity: 64,
+ *     material: m => {
+ *       m.uniforms.uLift = lift;
+ *       return extendThreeParticleVertexShader(m, {
+ *         declarations: 'uniform float uLift;',
+ *         mainEnd: 'gl_Position.y += uLift * gl_Position.w;',
+ *       });
+ *     },
+ *   },
+ *   { lifetime: 1 },
+ * );
+ * ```
+ */
+export function extendThreeParticleVertexShader(
+  material: ShaderMaterial,
+  code: { declarations?: string; mainEnd?: string },
+): ShaderMaterial {
+  let shader = material.vertexShader;
+  for (const hook of ['declarations', 'mainEnd'] as const) {
+    const inserted = code[hook];
+    if (inserted === undefined) {
+      continue;
+    }
+    const marker = THREE_PARTICLE_VERTEX_HOOKS[hook];
+    if (!shader.includes(marker)) {
+      throw new Error(`The particle vertex shader has no "${marker}" line to insert code at`);
+    }
+    shader = shader.replace(marker, () => `${inserted}\n${marker}`);
+  }
+  material.vertexShader = shader;
+  material.needsUpdate = true;
+  return material;
+}
 
 /**
  * The built-in particle fragment shader: texture (`GG_USE_MAP`) times tint, alpha from the texture
@@ -222,7 +294,8 @@ const QUAD_INDEX = [0, 1, 2, 0, 2, 3];
  * camera unless `sort: false`):
  * - `particleCenter` (vec3), `particleSize` (vec2, world units), `particleRotation` (float, radians),
  * - `particleColor` (vec4: sRGB tint and opacity), `particleUv` (vec4: atlas region `x, y, width,
- *   height`, top-left origin), `particleExtra` (vec4: `Particle.shaderData`).
+ *   height`, top-left origin), `particleAnchor` (vec2: the point of the sprite at `particleCenter`,
+ *   in fractions of the sprite, `y` down), `particleExtra` (vec4: `Particle.shaderData`).
  *
  * The mesh is never frustum-culled, casts no shadows and is ignored by three.js raycasting. Sorting
  * runs in the scene's `onBeforeRender` (see `ThreeSceneComponent.beforeRenderHooks`): an app must
@@ -248,6 +321,7 @@ export class ThreeParticleSystemComponent
     rotation: InstancedBufferAttribute;
     color: InstancedBufferAttribute;
     uv: InstancedBufferAttribute;
+    anchor: InstancedBufferAttribute;
     extra: InstancedBufferAttribute;
   };
   private buffers: ParticleRenderBuffers | null = null;
@@ -281,6 +355,7 @@ export class ThreeParticleSystemComponent
       rotation: attribute('particleRotation', 1),
       color: attribute('particleColor', 4),
       uv: attribute('particleUv', 4),
+      anchor: attribute('particleAnchor', 2),
       extra: attribute('particleExtra', 4),
     };
     geometry.instanceCount = 0;
@@ -396,6 +471,7 @@ export class ThreeParticleSystemComponent
     const rotation = a.rotation.array as Float32Array;
     const color = a.color.array as Float32Array;
     const uv = a.uv.array as Float32Array;
+    const anchor = a.anchor.array as Float32Array;
     const extra = a.extra.array as Float32Array;
     if (!order) {
       center.set(b.position.subarray(0, n * 3));
@@ -403,6 +479,7 @@ export class ThreeParticleSystemComponent
       rotation.set(b.rotation.subarray(0, n));
       color.set(b.color.subarray(0, n * 4));
       uv.set(b.uv.subarray(0, n * 4));
+      anchor.set(b.anchor.subarray(0, n * 2));
       extra.set(b.extra.subarray(0, n * 4));
     } else {
       for (let i = 0; i < n; i++) {
@@ -412,6 +489,8 @@ export class ThreeParticleSystemComponent
         center[i * 3 + 2] = b.position[j * 3 + 2];
         size[i * 2] = b.size[j * 2];
         size[i * 2 + 1] = b.size[j * 2 + 1];
+        anchor[i * 2] = b.anchor[j * 2];
+        anchor[i * 2 + 1] = b.anchor[j * 2 + 1];
         rotation[i] = b.rotation[j];
         for (let k = 0; k < 4; k++) {
           color[i * 4 + k] = b.color[j * 4 + k];
@@ -456,6 +535,9 @@ export class ThreeParticleSystemComponent
   popChild(): null {
     return null;
   }
+
+  /** Does nothing: a particle system's geometry and material are always its own (see `clone()`). */
+  makeUnique(_resources?: UniqueResources3d): void {}
 
   dispose(): void {
     if (this.world) {

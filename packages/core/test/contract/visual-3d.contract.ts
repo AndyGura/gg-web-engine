@@ -148,6 +148,35 @@ export function describeVisual3dContract(
       expect(s.z).toBeCloseTo(4, 1);
     });
 
+    it('measures local boundings in its own frame, whatever its transform', () => {
+      const box = factory.createBox({ x: 1, y: 2, z: 3 });
+      box.position = { x: 10, y: -5, z: 2 };
+      box.rotation = Qtrn.fromEuler({ x: 0.4, y: 0.3, z: Math.PI / 4 });
+      box.scale = { x: 2, y: 2, z: 2 };
+      const { min, max } = box.getLocalBoundings();
+      expect(min).toEqual({ x: expect.closeTo(-0.5), y: expect.closeTo(-1), z: expect.closeTo(-1.5) });
+      expect(max).toEqual({ x: expect.closeTo(0.5), y: expect.closeTo(1), z: expect.closeTo(1.5) });
+      // the world box of the turned object is bigger
+      expect(size(box).x).toBeGreaterThan(2.5);
+    });
+
+    it('counts children of local boundings with their own transforms, leaving hidden ones out', () => {
+      const parent = factory.createBox({ x: 1, y: 1, z: 1 });
+      parent.position = { x: 3, y: 3, z: 3 };
+      parent.rotation = Qtrn.fromAngle({ x: 0, y: 0, z: 1 }, 1);
+      const child = factory.createBox({ x: 1, y: 1, z: 1 });
+      child.position = { x: 0, y: 2, z: 0 };
+      child.scale = { x: 1, y: 1, z: 2 };
+      parent.addChild(child);
+      const hidden = factory.createBox({ x: 1, y: 1, z: 1 });
+      hidden.position = { x: 0, y: 0, z: 10 };
+      hidden.visible = false;
+      parent.addChild(hidden);
+      const { min, max } = parent.getLocalBoundings();
+      expect(min).toEqual({ x: expect.closeTo(-0.5), y: expect.closeTo(-0.5), z: expect.closeTo(-1) });
+      expect(max).toEqual({ x: expect.closeTo(0.5), y: expect.closeTo(2.5), z: expect.closeTo(1) });
+    });
+
     it('clones into an independent object with the same transform', () => {
       const box = factory.createBox({ x: 1, y: 2, z: 3 });
       box.position = { x: 1, y: 2, z: 3 };
@@ -159,6 +188,20 @@ export function describeVisual3dContract(
       copy.position = { x: 9, y: 9, z: 9 };
       expect(box.position.x).toBeCloseTo(1);
       expect(size(copy).z).toBeCloseTo(6, 1);
+    });
+
+    it('makes a clone unique without changing its transform or size, any number of times', () => {
+      const box = factory.createBox({ x: 1, y: 2, z: 3 });
+      const copy = box.clone();
+      copy.position = { x: 4, y: 5, z: 6 };
+      copy.makeUnique();
+      copy.makeUnique('meshes');
+      copy.makeUnique('all');
+      copy.makeUnique('materials');
+      expect(copy.position).toEqual({ x: expect.closeTo(4), y: expect.closeTo(5), z: expect.closeTo(6) });
+      expect(size(copy).z).toBeCloseTo(3, 1);
+      copy.dispose();
+      expect(size(box).z).toBeCloseTo(3, 1);
     });
 
     it('nests children by name: addChild, popChild, removeChild', () => {

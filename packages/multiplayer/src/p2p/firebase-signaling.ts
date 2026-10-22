@@ -35,18 +35,59 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseOptions | null = {
   appId: '1:431308664646:web:2469a4d3e62cdef8603f47',
 };
 
-export interface FirebaseSignalingOptions {
+/** How the Firebase-backed classes (`FirebaseSignaling`, `FirebaseLobbyBackend`) reach a project. */
+export interface FirebaseConnectionOptions {
   /** Firebase web config; defaults to {@link DEFAULT_FIREBASE_CONFIG} */
   config?: FirebaseOptions;
   /** reuse an already-initialized Firebase app instead of `config` */
   app?: FirebaseApp;
   /** reCAPTCHA v3 site key; when given, App Check is initialized (recommended in production) */
   appCheckSiteKey?: string;
+}
+
+export interface FirebaseSignalingOptions extends FirebaseConnectionOptions {
   /** database path all rooms live under. Default `'gg-rooms'`. */
   rootPath?: string;
 }
 
 const APP_NAME = 'gg-web-engine-multiplayer';
+const appCheckInitialized = new WeakSet<object>();
+
+/**
+ * The Firebase app `options` name, or the package's own one made from `config`, with App Check
+ * initialized if asked - once per app, so a signaling channel and a lobby backend can share it.
+ * @param who class name for the error message
+ */
+export function resolveFirebaseApp(options: FirebaseConnectionOptions, who: string): FirebaseApp {
+  let app: FirebaseApp;
+  if (options.app) {
+    app = options.app;
+  } else {
+    const config = options.config ?? DEFAULT_FIREBASE_CONFIG;
+    if (!config) {
+      throw new Error(
+        `${who}: no Firebase config - pass \`config\` (see the @gg-web-engine/multiplayer README), ` +
+          'or use the BroadcastChannel variant for same-browser local testing',
+      );
+    }
+    app = getApps().some(a => a.name === APP_NAME) ? getApp(APP_NAME) : initializeApp(config, APP_NAME);
+  }
+  if (options.appCheckSiteKey && !appCheckInitialized.has(app)) {
+    appCheckInitialized.add(app);
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(options.appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  }
+  return app;
+}
+
+/** The uid of `app`'s signed-in user, signing in anonymously when nobody is. */
+export async function signInToFirebase(app: FirebaseApp): Promise<string> {
+  const auth = getAuth(app);
+  const credential = auth.currentUser ? { user: auth.currentUser } : await signInAnonymously(auth);
+  return credential.user.uid;
+}
 
 /**
  * `ISignalingChannel` on Firebase Realtime Database. Every peer signs in anonymously; data layout
@@ -76,24 +117,7 @@ export class FirebaseSignaling implements ISignalingChannel {
   private readonly _presence$ = new BehaviorSubject<ReadonlyArray<PresenceEntry>>([]);
 
   constructor(options: FirebaseSignalingOptions = {}) {
-    if (options.app) {
-      this.app = options.app;
-    } else {
-      const config = options.config ?? DEFAULT_FIREBASE_CONFIG;
-      if (!config) {
-        throw new Error(
-          'FirebaseSignaling: no Firebase config - pass `config` (see the @gg-web-engine/multiplayer README), ' +
-            'or use BroadcastChannelSignaling for same-browser local testing',
-        );
-      }
-      this.app = getApps().some(a => a.name === APP_NAME) ? getApp(APP_NAME) : initializeApp(config, APP_NAME);
-    }
-    if (options.appCheckSiteKey) {
-      initializeAppCheck(this.app, {
-        provider: new ReCaptchaV3Provider(options.appCheckSiteKey),
-        isTokenAutoRefreshEnabled: true,
-      });
-    }
+    this.app = resolveFirebaseApp(options, 'FirebaseSignaling');
     this.db = getDatabase(this.app);
     this.rootPath = options.rootPath ?? 'gg-rooms';
   }
@@ -201,9 +225,7 @@ export class FirebaseSignaling implements ISignalingChannel {
     if (this.uid) {
       return this.uid;
     }
-    const auth = getAuth(this.app);
-    const credential = auth.currentUser ? { user: auth.currentUser } : await signInAnonymously(auth);
-    this.uid = credential.user.uid;
+    this.uid = await signInToFirebase(this.app);
     return this.uid;
   }
 }
