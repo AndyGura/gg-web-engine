@@ -167,6 +167,48 @@ while the context is suspended, continues through `stop()`/`play()`, and a virtu
 up where it has got to when heard again. It resolves `false` when a `volume` write, another
 `fadeTo` or `dispose()` took over. `MusicPlayer` decodes each track whole before playing it.
 
+### Sharing one AudioContext between a menu scene and its worlds
+
+An app with a long-lived menu scene (above) can build every world's scene on that scene's
+`AudioContext` instead of a new one:
+
+```typescript
+const menuAudio = new WebAudioScene3dComponent(); // owns the context, for the app's lifetime
+await menuAudio.init(); // unlocks it on the first user gesture
+
+// later, for each race / level
+const world = new Gg3dWorld({
+  visualScene: /* ... */,
+  physicsWorld: /* ... */,
+  audioScene: new WebAudioScene3dComponent({ context: menuAudio.context }),
+});
+world.audioScene!.ownsContext; // false
+```
+
+Why: browsers start an `AudioContext` only after a user gesture, and iOS lets a new context start
+on its own only if it is created within a moment of a tap. A world created at the end of a level
+load gets a context that stays silent until the player taps again (holding an on-screen control
+does not count), while the menu's context, unlocked once, keeps running. On iOS, suspending
+(pause) and closing (world disposal) a second context also disturbed the first one's audio. On the
+shared context no new context ever needs permission, and nothing is suspended or closed under the
+menu.
+
+A scene given a `context` does not own it:
+
+- `dispose()` disposes its sources and disconnects the nodes it created, and never closes the
+  context; the owner's nodes and sources are untouched. Dispose the owner last.
+- `setPaused` (the world pausing) leaves the context running and pauses only that scene's sources:
+  they stop where they are and continue from there on resume; a source played while paused starts
+  on resume; timed fades (`fadeTo`) hold, as they do on a suspended context.
+- It binds no autoplay gesture listeners - the owner unlocks the context.
+- The owner still manages the context for everyone: its own `setPaused` suspends it and its
+  `dispose()` closes it, silencing every scene on it. A menu scene with no world is never paused.
+- Master volume, buses, bus parents, reverbs and the voice budget are its own; apply the app's audio
+  settings to each new world's scene as usual. Both master gains feed the context's output.
+- The context has one native `listener`. A 3D scene writes it only while it has an active listener
+  and is updated by a world, so a world's scene (its camera) and a world-less menu scene (no
+  positional sources) never compete; don't give two updated scenes on one context a listener each.
+
 See the root repo's audio design write-up and the `gg-engine-audio-adapter` skill for the full
 architecture (static/attached/one-shot sources, the listener-selection rules for multi-renderer
 worlds, and why positional-audio jitter on a fast/near-listener source is fixed here rather than

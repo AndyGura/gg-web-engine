@@ -36,9 +36,8 @@ of app code; if so, that is where it belongs. When a game had to subclass a scen
 `getBusNode` to get something, that is the signal worth looking at - work out the generic concept
 it is missing rather than upstreaming the game's workaround.
 
-Sharing one `AudioContext` between several scenes is deliberately not supported: a context has a
-single native `listener`, which every 3D scene writes its camera into each frame, and `setPaused`
-suspends the whole context, which would silence every other world sharing it.
+Several scenes can share one `AudioContext` (`packages/audio`: the `context` constructor option) -
+see "Sharing one AudioContext" below for what that changes and why an app needs it.
 
 ## Decide dimensionality, same as any other adapter
 
@@ -84,8 +83,9 @@ map both values to its own panner, but must keep the property readable/writable.
   has no `decodeClip`.
 - **`setPaused(paused)`** on the scene: `GgWorld` calls it whenever its clock pauses or resumes.
   It has to freeze every source in place and continue from there. `packages/audio` suspends and
-  resumes the whole `AudioContext`, which does that for free, including sources scheduled but not
-  yet audible; nothing is tracked per source. Two things to keep: the autoplay-gesture handler must
+  resumes the whole `AudioContext` when the scene owns it, which does that for free, including
+  sources scheduled but not yet audible; nothing is tracked per source. A scene on a shared context
+  pauses its own sources instead - see "Sharing one AudioContext" below. Two things to keep: the autoplay-gesture handler must
   not resume a context that is paused this way (it returns early while paused, and
   `setPaused(false)` does the resume - or, if that call comes outside a gesture and the browser
   refuses, the next gesture after it), and `suspend()`/`resume()` reject on a closed context or one
@@ -304,6 +304,46 @@ implements it as follows; a new adapter should keep the observable behavior:
   then follows the rest of it - linear ramps chain cleanly from an anchor, while a linear ramp
   after a `setTargetAtTime` event starts from a point browsers disagree on.
 
+## Sharing one AudioContext (`ownsContext`)
+
+`new WebAudioScene3dComponent({ context })` (2D likewise; `WebAudioSceneOptions`) builds the scene's
+whole graph - master gain, buses, reverbs, every source's nodes - on an existing context, which it
+does not own (`ownsContext` is `false`). Why (nfs-web on iPhone, 0.0.86): an app keeps one menu
+scene for its lifetime, unlocked by the first tap; every race created a world whose scene created a
+new context, and iOS lets a new context start on its own only within ~2 s of a tap. Races load
+longer, so race audio stayed silent until a tap-like gesture (holding a touch control does not
+count). Suspending (pause) and closing (race end) the world's context also disturbed the menu
+context's audio there. On the menu's context nothing new ever needs permission, and nothing is
+suspended or closed under the menu. What a non-owning scene does differently:
+
+- **`dispose()`** never closes the context. It disconnects what it created (master gain, bus gains,
+  reverb chains) and, besides the world-registered sources, disposes every source of its own still
+  playing or fading (`voices`, `fadingSources`): closing the context is what silenced those on an
+  owning scene - a `MusicPlayer` track or pooled voice is never in `sources`, and a looping one
+  would otherwise play on into a disconnected graph. The owner's nodes are never touched.
+- **`setPaused`** must not suspend the shared context. The scene's `clock` (what every source
+  timestamp is measured on: playhead anchor, fade start/end, `fadeEndsAt`, `demotedAt`) stands
+  still at the pause (`pausedAt`), while `context.currentTime` runs on. `holdForScenePause` (each
+  source playing or fading) stops heard voices' buffer sources (chain left connected), turns a
+  voice fading out to virtual at once, and clears the fade's end check; `holdsSources` is `true`
+  meanwhile. `releaseFromScenePause(shift)` moves every clock timestamp on by the paused time - so
+  outside a pause `clock === context.currentTime` again and all existing scheduling code (which
+  passes fade times straight to `linearRampToValueAtTime`) stays right - restores the gain
+  (`restoreGain`: `setParamNow` to `heardVolume()` plus the rest of the fade; the gain's automation
+  ran on with the context clock while nothing played into it), starts a new buffer source from the
+  playhead, and re-arms the fade check. While held, nothing timed on the clock may be scheduled on
+  an `AudioParam` (the two clocks differ): `play()` registers the voice and wires the chain but
+  starts the buffer on release, `fadeTo` only records the fade, `demote` goes straight to virtual,
+  `promote` wires up and leaves `gainSilenced` for the release, `watchFade` doesn't re-arm. Pause
+  and resume are hard stops/starts, like `suspend()`/`resume()`.
+- **No gesture listeners** (`init()` returns early): the owner unlocks the context, and a resume from
+  this scene could undo the owner's own pause.
+- **The listener is per context.** A 3D scene writes it only from `update()` while it has an active
+  listener; non-owning scenes do too. Two updated scenes with listeners on one context would fight
+  every frame - the app gives the listener to one (a world-less menu scene never writes it).
+- Buses, master volume, reverbs and the voice budget stay per scene; both master gains feed
+  `context.destination`.
+
 ## Pooling for high-frequency one-shots
 
 `AudioSourcePool<D,R>` (`utils/audio-source-pool.ts`) is a fixed-size, LRU-stealing pool of
@@ -353,7 +393,7 @@ and a new adapter should keep the same observable behavior:
   and the budget isn't exceeded. A world-driven scene is left alone: `updateVoices()` (the
   `update()` path) sets `voicesUpdatedByWorld`, and a timer tick that finds it set only clears it
   and re-arms (so a world that stops ticking is taken over a tick later). `setPaused(true)` clears
-  the timer, `setPaused(false)` re-arms it, `dispose()` clears it for good. Don't instead promote
+  the timer, `setPaused(false)` re-arms it, `dispose()` clears it for good (on a shared context too). Don't instead promote
   from `voiceStopped`: it runs inside `rankVoices` (a promoted one-shot that already ran out ends
   there) and would change when a world-driven scene hands voices over.
 - **Going virtual** (`demote`): ramp the gain to 0, and once `VIRTUAL_FADE_SECONDS` (5 ramp time
@@ -448,6 +488,9 @@ context neither `'running'` nor `'closed'`, while the scene is not paused, calls
 into the destination within the gesture. `dispose()` removes the listeners (`resumeListener`).
 An app with its own "click to start" screen can still call `world.audioScene.context.resume()`
 from that click; the listeners then find the context running and do nothing.
+A scene on a shared context (`ownsContext` false) binds none: its owner does this. That is also the
+app-level fix for a world created long after the last gesture (iOS starts a new context on its own
+only within ~2 s of a tap): build the world's scene on the menu scene's running context.
 
 Pitfalls this design exists for (found with nfs-web on iPhone, 0.0.86 - every sound of a world
 created during a race load stayed silent until WebKit happened to start the context on its own):
@@ -537,7 +580,11 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   fake `AudioParam` keeps the automation timeline and computes the value at any time, run with and
   without `cancelAndHoldAtTime` - sample it only from the current time on, since a cancellation
   rewrites the timeline's past, which the real audio thread had already rendered) and
-  `test/components/web-audio-listener.spec.ts` (the listener's basis, and
+  `test/components/web-audio-shared-context.spec.ts` (an owning and a non-owning 3D scene on one fake
+context: dispose never closes it or touches the owner's nodes, per-scene pause keeps playheads
+across the paused time, plays and fades started while paused, the voice budget while paused, the
+shared listener) and
+`test/components/web-audio-listener.spec.ts` (the listener's basis, and
   its easing: its fake `AudioParam` follows `setTargetAtTime`/`setValueAtTime` as the browser does,
   so a test samples what the audio thread renders between ticks and asserts forward/up never go
   degenerate across turns, snap turns and listener switches; plus the legacy-listener easing).

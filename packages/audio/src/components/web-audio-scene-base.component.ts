@@ -36,6 +36,25 @@ export const RESUME_GESTURE_EVENTS: readonly string[] = ['pointerdown', 'pointer
 /** Capture phase, so an element stopping its events' propagation cannot hide a gesture. */
 const RESUME_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true, passive: true };
 
+/** Options of `WebAudioScene3dComponent`/`WebAudioScene2dComponent`. */
+export type WebAudioSceneOptions = {
+  /**
+   * An existing `AudioContext` to build the scene on - typically the one of an app's long-lived
+   * menu scene, shared with every world the app creates later. Without it the scene creates a
+   * context of its own. A scene given a context does not own it (`ownsContext` is `false`): its
+   * `dispose()` never closes the context, `setPaused` pauses only this scene's own sources instead
+   * of suspending the context, and it binds no autoplay gesture listeners (the owner unlocks the
+   * context). Everything else - master volume, buses and their hierarchy, bus reverbs, the voice
+   * budget - is per scene, independent of any other scene on the same context. The context's
+   * `listener` is shared too: see `WebAudioScene3dComponent`. Why share at all: on iOS a context
+   * starts on its own only when it is created within a moment of a user gesture, so a world created
+   * at the end of a long load would stay silent until the next tap, while a context the app
+   * unlocked once keeps running; and suspending or closing a second context disturbed the first
+   * one's audio there.
+   */
+  context?: AudioContext;
+};
+
 /** A convolver and the gain of its output - one bus reverb as rendered. */
 type ReverbChain = {
   convolver: ConvolverNode;
@@ -66,15 +85,17 @@ type WebAudioBus = {
 };
 
 /**
- * Shared implementation behind `WebAudioScene3dComponent`/`WebAudioScene2dComponent`: owns the
- * `AudioContext`, the master/bus gain graph (bus reverbs included), clip loading+caching, the
- * currently active listener reference, and the voice budget (`maxVoices`). Dimension-specific
- * listener orientation math lives in the two subclasses' `update()` overrides, which end with
- * `updateVoices()` and `updateReverbs()`. While voices are virtual and no world calls `update()`, a
- * timer does the voice bookkeeping instead (`VOICE_UPKEEP_INTERVAL_MS`).
+ * Shared implementation behind `WebAudioScene3dComponent`/`WebAudioScene2dComponent`: the
+ * `AudioContext` (its own, or a shared one - see `WebAudioSceneOptions.context`), the master/bus
+ * gain graph (bus reverbs included), clip loading+caching, the currently active listener
+ * reference, and the voice budget (`maxVoices`). Dimension-specific listener orientation math lives
+ * in the two subclasses' `update()` overrides, which end with `updateVoices()` and
+ * `updateReverbs()`. While voices are virtual and no world calls `update()`, a timer does the voice
+ * bookkeeping instead (`VOICE_UPKEEP_INTERVAL_MS`).
  */
 export abstract class WebAudioSceneComponentBase<D, R> {
   public readonly context: AudioContext;
+  private readonly _ownsContext: boolean;
   protected readonly masterGain: GainNode;
   private readonly buses = new Map<string, WebAudioBus>();
   /** Reverb chains fading out (wet level ramping to 0), disconnected by `updateReverbs()` once
@@ -91,6 +112,12 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   /** Every source of this scene that is playing (`isPlaying`), whether or not it was added to a
    * world (an `AudioSourcePool` voice never is) - what the voice budget ranks. */
   private readonly voices = new Set<WebAudioSourceComponentBase<D, R>>();
+  /** Every source of this scene with a timed fade (`fadeTo`) in progress, playing or not - held and
+   * released with the voices by `setPaused` on a scene that does not own its context. */
+  private readonly fadingSources = new Set<WebAudioSourceComponentBase<D, R>>();
+  /** Context time at which a scene that does not own its context was paused (`setPaused(true)`);
+   * `null` while it runs, and always for a scene owning its context. See `clock`. */
+  private pausedAt: number | null = null;
   private _maxVoices = Infinity;
   /** The self-driven voice bookkeeping timer, armed while any voice is virtual (or the budget is
    * exceeded) and the scene is neither paused nor disposed - see `VOICE_UPKEEP_INTERVAL_MS`. */
@@ -108,10 +135,40 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   /** The one-sample silent buffer played by `unlockFromGesture()`, built on first use. */
   private silentBuffer: AudioBuffer | null = null;
 
-  protected constructor() {
-    this.context = new AudioContext();
+  protected constructor(options: WebAudioSceneOptions = {}) {
+    this._ownsContext = !options.context;
+    this.context = options.context ?? new AudioContext();
     this.masterGain = this.context.createGain();
     this.masterGain.connect(this.context.destination);
+  }
+
+  /**
+   * Whether this scene created its `AudioContext` (no `context` option) and so manages it: closes
+   * it on `dispose()`, suspends it while paused and resumes it on user gestures. `false` for a scene
+   * built on a shared context - see `WebAudioSceneOptions.context`.
+   */
+  public get ownsContext(): boolean {
+    return this._ownsContext;
+  }
+
+  /**
+   * @internal The time this scene's sources measure playheads, timed fades and voice fade-outs
+   * against: `context.currentTime`, except while a scene that does not own its context is paused,
+   * when it stands still at the moment of the pause - the shared context's clock runs on, so
+   * `setPaused(false)` moves those sources' timestamps on by the paused time (a suspended context
+   * stops `currentTime` itself, so a scene owning its context needs none of this).
+   */
+  public get clock(): number {
+    return this.pausedAt ?? this.context.currentTime;
+  }
+
+  /**
+   * @internal Whether this scene holds its sources (a paused scene that does not own its context):
+   * no buffer source plays, a `play()` waits for `setPaused(false)`, and gain automation that would
+   * be timed on the clock is left for then.
+   */
+  public get holdsSources(): boolean {
+    return this.pausedAt !== null;
   }
 
   /**
@@ -128,10 +185,12 @@ export abstract class WebAudioSceneComponentBase<D, R> {
    * activation for audio (iOS ignores `pointerdown` but accepts `pointerup`/`touchend`/`click`/
    * `keydown`). A gesture finding the context running costs one state check. An app with its own
    * "click to start" screen can still call `world.audioScene.context.resume()` from that click.
-   * Without a `window` (SSR, node) nothing is armed.
+   * Without a `window` (SSR, node) nothing is armed. A scene that does not own its context
+   * (`WebAudioSceneOptions.context`) arms nothing either: unlocking the context is its owner's
+   * job, and a gesture resuming it could undo the owner's own pause.
    */
   public async init(): Promise<void> {
-    if (typeof window === 'undefined' || this.resumeListener || this.disposed) {
+    if (typeof window === 'undefined' || !this._ownsContext || this.resumeListener || this.disposed) {
       return;
     }
     const resume = () => {
@@ -441,6 +500,16 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     return this.rankVoices(source);
   }
 
+  /** @internal called by a source when a timed fade (`fadeTo`) starts. */
+  public fadeStarted(source: WebAudioSourceComponentBase<D, R>): void {
+    this.fadingSources.add(source);
+  }
+
+  /** @internal called by a source when its timed fade ends, reached or interrupted. */
+  public fadeEnded(source: WebAudioSourceComponentBase<D, R>): void {
+    this.fadingSources.delete(source);
+  }
+
   /** @internal called by a source once it stops playing (pause/stop/end/dispose). The voice it
    * frees goes to the best virtual source on the next voice bookkeeping pass: the next `update()`,
    * or within `VOICE_UPKEEP_INTERVAL_MS` on a scene no world updates. */
@@ -550,9 +619,19 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   private paused: boolean = false;
 
   /**
-   * Suspends the whole `AudioContext` while paused: every source, including ones scheduled but not
-   * yet audible, stops where it is and continues from there - nothing has to be tracked per source.
-   * The self-driven voice bookkeeping stops meanwhile too.
+   * A scene owning its context suspends the whole `AudioContext` while paused: every source,
+   * including ones scheduled but not yet audible, stops where it is and continues from there -
+   * nothing has to be tracked per source.
+   *
+   * A scene on a shared context (`WebAudioSceneOptions.context`) leaves the context running - other
+   * scenes play on it - and pauses only its own sources instead: every playing one stops its buffer
+   * source and keeps its playhead (`clock` stands still), and starts a new one from there on
+   * resume, at the level it was heard at; a voice fading out to go virtual becomes virtual at once.
+   * A `play()` meanwhile counts as playing (`isPlaying`, the voice budget) but is heard only from
+   * the resume on. Timed fades (`fadeTo`) hold where they are and continue on resume, their
+   * promises too, as on a suspended context; virtual one-shots don't run out meanwhile.
+   *
+   * Either way the self-driven voice bookkeeping stops meanwhile too.
    */
   public setPaused(paused: boolean): void {
     if (this.paused === paused) {
@@ -561,13 +640,36 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     this.paused = paused;
     if (paused) {
       this.disarmVoiceUpkeep();
-    } else {
+    }
+    if (!this._ownsContext) {
+      if (paused) {
+        this.pausedAt = this.context.currentTime;
+        for (const source of this.timedSources()) {
+          source.holdForScenePause();
+        }
+      } else {
+        const shift = Math.max(0, this.context.currentTime - (this.pausedAt ?? this.context.currentTime));
+        this.pausedAt = null;
+        for (const source of this.timedSources()) {
+          source.releaseFromScenePause(shift);
+        }
+      }
+    }
+    if (!paused) {
       this.armVoiceUpkeep();
+    }
+    if (!this._ownsContext) {
+      return;
     }
     const change = paused ? this.context.suspend() : this.context.resume();
     change.catch(() => {
       /* closed, or not yet allowed to start by the browser - nothing to do either way */
     });
+  }
+
+  /** The sources whose state runs on `clock`: the playing ones and the ones with a timed fade. */
+  private timedSources(): WebAudioSourceComponentBase<D, R>[] {
+    return [...new Set([...this.voices, ...this.fadingSources])];
   }
 
   /** Decodes an already-fetched audio file - what `loadClip` does after its own fetch. */
@@ -602,15 +704,26 @@ export abstract class WebAudioSceneComponentBase<D, R> {
 
   public abstract update(elapsed: number, delta: number): void;
 
+  /**
+   * Disposes the sources added to a world, disconnects every node the scene created (bus gains,
+   * reverb chains, the master gain) and removes its gesture listeners and timers. A scene owning its
+   * context then closes it, which silences every other source of the scene too. A scene on a shared
+   * context leaves the context open and disposes every source of its own still playing or fading
+   * as well - closing is what stopped those otherwise; nothing of another scene on the context is
+   * touched.
+   */
   public dispose(): void {
     this.disposed = true;
     this.disarmVoiceUpkeep();
     this.removeResumeListeners();
-    for (const source of [...this.sources]) {
+    const sources = this._ownsContext ? [...this.sources] : [...this.sources, ...this.timedSources()];
+    for (const source of new Set(sources)) {
       source.dispose();
     }
     this.sources.clear();
     this.voices.clear();
+    this.fadingSources.clear();
+    this.pausedAt = null;
     for (const { bus, chain } of this.releasingReverbs) {
       this.disconnectReverbChain(bus, chain);
     }
@@ -624,6 +737,10 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     }
     this.buses.clear();
     this.masterGain.disconnect();
+    this.silentBuffer = null;
+    if (!this._ownsContext) {
+      return;
+    }
     this.context.close().catch(() => {
       /* already closed/closing - fine */
     });

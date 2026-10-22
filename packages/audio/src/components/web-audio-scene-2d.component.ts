@@ -1,5 +1,5 @@
 import { AudioOneShotDescriptor, IAudioScene2dComponent, playAudioOneShot, Point2 } from '@gg-web-engine/core';
-import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
+import { WebAudioSceneComponentBase, WebAudioSceneOptions } from './web-audio-scene-base.component';
 import { WebAudioSource2dComponent } from './web-audio-source-2d.component';
 import { WebAudioSource2dComponentFactory } from '../web-audio-factory';
 
@@ -16,8 +16,12 @@ export class WebAudioScene2dComponent
 
   public readonly factory: WebAudioSource2dComponentFactory;
 
-  constructor() {
-    super();
+  /**
+   * @param options `context`: an existing `AudioContext` to build the scene on instead of creating
+   * one - see `WebAudioSceneOptions`.
+   */
+  constructor(options: WebAudioSceneOptions = {}) {
+    super(options);
     this.factory = new WebAudioSource2dComponentFactory(this);
   }
 

@@ -29,6 +29,19 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- audio: an audio scene can run on an existing `AudioContext`:
+  `new WebAudioScene3dComponent({ context })` (and `WebAudioScene2dComponent`) builds the scene's
+  graph on it without owning it (`ownsContext` is `false`). Such a scene never closes the context
+  on `dispose()` (it disposes its own sources and disconnects its own nodes), binds no autoplay
+  gesture listeners, and on `setPaused` pauses only its own sources instead of suspending the
+  context: playing sources stop where they are and continue on resume, a source played while
+  paused starts on resume, and timed fades hold. Volumes, buses, reverbs and the voice budget stay
+  per scene. Meant for building every world's scene on an app's long-lived menu scene's context:
+  iOS starts a new context on its own only shortly after a tap, so a world created after a long
+  load stayed silent until the next tap, and suspending or closing a second context disturbed the
+  first one's audio there.
+
 ### Fixed
 - audio: a voice budget (`maxVoices`, also set by `applyMobileAudioDefaults` on touch devices) now
   works on a scene no world updates, such as a menu scene with `MusicPlayer` and `playOneShot`.

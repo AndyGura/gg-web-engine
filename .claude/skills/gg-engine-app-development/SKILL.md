@@ -591,8 +591,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   carries the environment reverb, `music`/`ui` beside it - separate volume sliders per category, one
   shared tunnel echo. Set it up once at load (moving a playing bus can click). `getBusVolume` reads
   a bus's own volume, `getEffectiveBusVolume` (Web Audio scenes) the product with its parents'.
-  Console: `audio_bus_parent BUS [PARENT|master]`. A world's audio scene owns its own
-  `AudioContext`: apply the app's audio settings to each new world's scene when creating it.
+  Console: `audio_bus_parent BUS [PARENT|master]`. Each world's audio scene has its own
+  volumes, buses and budget (even on a shared context): apply the app's audio settings to each new
+  world's scene when creating it.
   **Fades**: `source.fadeTo(volume, ms)` is a timed fade on the audio clock (it pauses with the
   world; `volume` reads the target at once); it resolves `true` when done, `false` when a `volume`
   write, another `fadeTo` or `dispose()` took over - so `if (await s.fadeTo(0, 500)) s.stop();`
@@ -600,7 +601,14 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   **Sounds outside the world** (menu clicks, UI): `audioScene.playOneShot({ clip, bus: 'ui',
   volume })` - non-positional, disposes itself at the end, needs no world or entity. For menus that
   have no world, create a scene of its own (`new WebAudioScene3dComponent()`, `await
-  scene.init()`) and keep it for the app's lifetime. **Music**: `new MusicPlayer(scene, { bus?,
+  scene.init()`) and keep it for the app's lifetime. **Share that scene's `AudioContext` with every
+  world** (`new WebAudioScene3dComponent({ context: menuScene.context })`, 2D likewise): browsers
+  start a context only after a gesture, and iOS starts a new one on its own only within ~2 s of a
+  tap, so a world created after a long load stays silent until the next tap, while the menu's
+  context, unlocked once, keeps running. Such a scene doesn't own the context (`ownsContext`
+  false): its `dispose()` doesn't close it, its pause (the world's) pauses only its own sources, and
+  it binds no unlock listeners. Dispose the menu scene last, and leave the 3D listener to the
+  world's scene (a menu scene no world updates never writes it). **Music**: `new MusicPlayer(scene, { bus?,
   crossfadeMs?, loadClip? })` (core) plays `MusicTrack`s (`{ url, volume?, loop?, loopStart?,
   loopEnd? }`, extend it with your own fields such as a title): `play(trackOrList, { crossfadeMs,
   shuffle, repeat })` crossfades from what is playing, `next()`, `stop(fadeMs?)`, `nowPlaying$`
