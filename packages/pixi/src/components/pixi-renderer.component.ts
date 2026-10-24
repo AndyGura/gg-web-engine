@@ -1,5 +1,6 @@
 import { IRenderer2dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
 import { Application, ApplicationOptions, Sprite, Texture } from 'pixi.js';
+import type { WebGLRenderer } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiCameraComponent } from './pixi-camera.component';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
@@ -162,6 +163,12 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
 
   render(): void {
     if (this._initialized) {
+      // no drawing while the WebGL context is lost (three.js skips it too): pixi would compile its
+      // programs without uniforms then, and the uniform sync functions it keeps across the context
+      // restore throw on every later frame. A WebGPU renderer has no `gl`.
+      if ((this.application.renderer as WebGLRenderer).gl?.isContextLost()) {
+        return;
+      }
       if (this.debugView) {
         this.debugView.sync();
       }

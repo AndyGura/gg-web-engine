@@ -14,7 +14,7 @@ jest.mock('pixi.js', () => {
     ticker = { stop: jest.fn(), destroy: jest.fn() };
     options: any = null;
     // pixi's renderer.resize keeps the resolution when none is given
-    renderer = {
+    renderer: any = {
       width: 0,
       height: 0,
       resolution: 1,
@@ -143,6 +143,57 @@ describe('PixiRendererComponent', () => {
     expect(pixi.applications.every(app => app.destroyed)).toBe(true);
     expect(pixi.applications.every(app => app.destroy.mock.calls.length === 1)).toBe(true);
     expect(scene.renderers.size).toBe(0);
+  });
+
+  describe('lost WebGL context', () => {
+    const drawnScene = (): any => ({
+      renderers: new Set(),
+      nativeContainer: { pivot: {}, scale: {}, position: {} },
+      parallaxLayers: [],
+      environment: {},
+    });
+
+    const initializedWithGl = async (contextLost: boolean) => {
+      const renderer = new PixiRendererComponent(drawnScene(), { position: { x: 0, y: 0 }, zoom: 1 } as any);
+      const app = pixi.applications[0];
+      app.renderer.gl = { isContextLost: jest.fn(() => contextLost) };
+      pixi.resolveInit();
+      await flush();
+      return { renderer, app };
+    };
+
+    it('skips drawing while the context is lost', async () => {
+      const { renderer, app } = await initializedWithGl(true);
+      renderer.render();
+      expect(app.render).not.toHaveBeenCalled();
+      renderer.dispose();
+    });
+
+    it('draws while the context is not lost', async () => {
+      const { renderer, app } = await initializedWithGl(false);
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
+
+    it('draws again once the context is restored', async () => {
+      const { renderer, app } = await initializedWithGl(true);
+      renderer.render();
+      app.renderer.gl.isContextLost.mockReturnValue(false);
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
+
+    it('keeps drawing with a renderer that has no WebGL context (WebGPU)', async () => {
+      const renderer = new PixiRendererComponent(drawnScene(), { position: { x: 0, y: 0 }, zoom: 1 } as any);
+      const app = pixi.applications[0];
+      pixi.resolveInit();
+      await flush();
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
   });
 
   describe('resolution', () => {

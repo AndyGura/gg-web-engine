@@ -29,6 +29,14 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- pixi: a renderer no longer draws while its WebGL context is lost (`render()` returns early, a
+  WebGPU renderer keeps drawing). Drawing then compiled pixi's shader programs without uniforms
+  ("Could not retrieve shader source (WebGL context may be lost)"), and once the context came back
+  the uniform sync functions pixi keeps across the restore threw on every frame (`Cannot read
+  properties of undefined (reading 'value')` / `(reading 'location')`), seen on Opera Mobile for
+  Android.
+
 ## [0.0.87] - 2026-10-22
 
 ### Added

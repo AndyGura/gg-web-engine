@@ -1,6 +1,6 @@
 ---
 name: gg-engine-visual-adapter-pixi
-description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, the replaying initialized$, the camera origin in render(), scale relative to a sized sprite's built size, and the jest setup (a babel-jest transform loads the real ESM-only pixi.js; unit specs still mock it). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, the replaying initialized$, the camera origin in render(), no drawing while the WebGL context is lost, scale relative to a sized sprite's built size, and the jest setup (a babel-jest transform loads the real ESM-only pixi.js; unit specs still mock it). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
 ---
 
 # packages/pixi implementation notes
@@ -173,6 +173,17 @@ renderer.height, r)`: pixi v8's three-argument `resize` keeps the screen size, r
 source at the new resolution and emits the renderer's `resolutionChange` runner. Before init it
 waits on `onInitialized$` like `resizeRenderer`, in call order, and is dropped by a `dispose()`
 before init.
+
+**Lost WebGL context.** `render()` returns before touching anything while
+`(application.renderer as WebGLRenderer).gl?.isContextLost()` (a WebGPU renderer has no `gl` and
+keeps drawing), as three.js does. pixi's `GlContextSystem` calls `preventDefault` on
+`webglcontextlost` and on `webglcontextrestored` emits `contextChange`, which empties
+`GlShaderSystem`'s program data, but `GlUniformGroupSystem` keeps its generated uniform sync
+functions (keyed by uniform group signature + program key). A render while the context is lost
+compiles the programs with `getProgramParameter(ACTIVE_UNIFORMS)` null, so their program data has
+no uniforms ("Could not retrieve shader source", "Could not initialize shader"), and the cached
+sync functions then throw on every frame (`Cannot read properties of undefined (reading 'value')`
+/ `'location'`). Seen in production on Opera Mobile, Android 10, pixi 8.22.
 
 ## Camera origin
 
