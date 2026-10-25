@@ -475,6 +475,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `KeyboardInput.isBindable(code)` (false for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and
   media keys). Saving the bindings, and what to do when two actions get the same key, is the
   app's.
+- **Both opposite keys held**: up and down (or left and right) held together cancel each other
+  out by default. `oppositeKeys` makes one of them win per axis - `new DirectionInput(keyboard,
+  'arrows', { oppositeKeys: { upDown: 'down' } })`, or the same option on `CarHandlingController`/
+  `GgCarHandlingController` for a brake that overrides the throttle; `directionInput.oppositeKeys
+  = {...}` changes it while the game runs. Keys only: gamepad and touch directions are summed.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's

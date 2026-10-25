@@ -65,6 +65,35 @@ describe('CarHandlingController', () => {
     expect(outputs).toHaveLength(1);
   });
 
+  describe('oppositeKeys', () => {
+    it('cancels throttle and brake held together by default', async () => {
+      const { world, keyboard, controller } = await setup();
+      const outputs: any[] = [];
+      controller.output$.subscribe(o => outputs.push(o));
+      keyboard.emulateKeyDown('ArrowUp');
+      keyboard.emulateKeyDown('ArrowDown');
+      tick(world, 0, 16);
+      expect(outputs[0].upDown).toBe(0);
+    });
+
+    it('brakes with both pedal keys held given upDown: down, and steers by the winner given leftRight', async () => {
+      const { world, keyboard, controller } = await setup({ oppositeKeys: { upDown: 'down', leftRight: 'right' } });
+      const outputs: any[] = [];
+      controller.output$.subscribe(o => outputs.push(o));
+      keyboard.emulateKeyDown('ArrowUp');
+      keyboard.emulateKeyDown('ArrowDown');
+      keyboard.emulateKeyDown('ArrowLeft');
+      keyboard.emulateKeyDown('ArrowRight');
+      tick(world, 0, 16);
+      // leftRight is positive to the left
+      expect(outputs[0]).toEqual({ upDown: -1, leftRight: -1 });
+      keyboard.emulateKeyUp('ArrowDown');
+      tick(world, 16, 16);
+      expect(outputs[1].upDown).toBe(1);
+      expect(controller.directionsInput.oppositeKeys).toEqual({ upDown: 'down', leftRight: 'right' });
+    });
+  });
+
   describe('gamepad', () => {
     let pads: ReturnType<typeof stubGamepads>;
     beforeEach(() => (pads = stubGamepads()));
