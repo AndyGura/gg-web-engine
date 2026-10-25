@@ -78,6 +78,20 @@ describe('TouchStick', () => {
     keyboard.stop();
   });
 
+  it('feeds a bound direction input again when it restarts while the stick is held', () => {
+    const input = new DirectionInput();
+    input.start();
+    const stick = fixedStick().bindDirection(input);
+    pointer(stick.element, 'pointerdown', 125, 75);
+    input.stop();
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    input.start();
+    expect(input.direction).toEqual({ x: 0.5, y: 0.5 });
+    pointer(stick.element, 'pointerup');
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    input.stop();
+  });
+
   it('holds bound keys past the threshold', () => {
     const keyboard = new KeyboardInput();
     keyboard.start();

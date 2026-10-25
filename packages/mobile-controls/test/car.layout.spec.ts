@@ -68,6 +68,55 @@ describe('car layout', () => {
     expect(car.directionsInput.direction).toEqual({ x: -1, y: 0 });
   });
 
+  it('holds the directions with the pedal and steering buttons, so both held follow oppositeKeys', () => {
+    const car = new CarHandlingController(world.keyboardInput, {
+      keymap: 'arrows',
+      maxSteerDeltaPerSecond: 12,
+      oppositeKeys: { upDown: 'down', leftRight: 'right' },
+    });
+    world.addEntity(car);
+    const controls = spawn({});
+    const log = keyLog('ArrowUp', 'ArrowDown');
+    pointer(control(controls, 'accelerate'), 'pointerdown', 0, 0, 1);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: 1 });
+    pointer(control(controls, 'brake'), 'pointerdown', 0, 0, 2);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: -1 });
+    pointer(control(controls, 'brake'), 'pointerup', 0, 0, 2);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: 1 });
+    pointer(control(controls, 'accelerate'), 'pointerup', 0, 0, 1);
+    pointer(control(controls, 'steer-left'), 'pointerdown', 0, 0, 3);
+    pointer(control(controls, 'steer-right'), 'pointerdown', 0, 0, 4);
+    expect(car.directionsInput.direction).toEqual({ x: 1, y: 0 });
+    pointer(control(controls, 'steer-left'), 'pointerup', 0, 0, 3);
+    pointer(control(controls, 'steer-right'), 'pointerup', 0, 0, 4);
+    // no key is pressed on the keyboard
+    expect(log).toEqual([]);
+
+    // with the throttle key of the keyboard, whatever the keymap
+    car.directionsInput.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
+    world.keyboardInput.emulateKeyDown('KeyI');
+    pointer(control(controls, 'brake'), 'pointerdown', 0, 0, 5);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: -1 });
+    pointer(control(controls, 'brake'), 'pointerup', 0, 0, 5);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: 1 });
+    world.keyboardInput.emulateKeyUp('KeyI');
+  });
+
+  it('holds the directions with the pedal buttons of a controller without keys, or with the keyboard stopped', () => {
+    const car = new CarHandlingController(world.keyboardInput, {
+      keymap: null,
+      maxSteerDeltaPerSecond: 12,
+      oppositeKeys: { upDown: 'down' },
+    });
+    world.addEntity(car);
+    world.keyboardInput.stop();
+    const controls = spawn({});
+    pointer(control(controls, 'accelerate'), 'pointerdown', 0, 0, 1);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: 1 });
+    pointer(control(controls, 'brake'), 'pointerdown', 0, 0, 2);
+    expect(car.directionsInput.direction).toEqual({ x: 0, y: -1 });
+  });
+
   it('puts the small buttons above a stick higher than above the buttons', () => {
     world.addEntity(new GgCarHandlingController(world.keyboardInput, null));
     const buttons = spawn({ gears: true });

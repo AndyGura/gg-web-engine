@@ -483,7 +483,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   out by default. `oppositeKeys` makes one of them win per axis - `new DirectionInput(keyboard,
   'arrows', { oppositeKeys: { upDown: 'down' } })`, or the same option on `CarHandlingController`/
   `GgCarHandlingController` for a brake that overrides the throttle; `directionInput.oppositeKeys
-  = {...}` changes it while the game runs. Keys only: gamepad and touch directions are summed.
+  = {...}` changes it while the game runs. It decides the keys together with directions held
+  through `directionInput.pressDirection('down', holder)`/`releaseDirection` - what an on-screen
+  button does (`TouchButton.bindDirection(input, 'down')`, the mobile layouts' pedal, steering and
+  move buttons) - in any mix; analog directions (gamepad sticks and triggers, touch sticks, tilt)
+  are summed.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's
@@ -948,7 +952,8 @@ world.addEntity(new MobileControls()); // shown on touch-first devices only; ena
   every layout.
 - An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
   To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
-  and analog sources combined) rather than `output$` (keys only).
+  and analog sources combined) rather than `output$`, which only reports the held directions -
+  keys and on-screen buttons - not sticks, tilt or a gamepad.
 - An app that embeds the canvas in a page, or uses the Fullscreen API, passes a positioned wrapper
   element as `container`; otherwise the overlay covers the viewport.
 

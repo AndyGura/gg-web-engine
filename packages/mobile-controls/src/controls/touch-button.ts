@@ -1,6 +1,6 @@
 import { BehaviorSubject, Observable, skip, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, filter } from 'rxjs/operators';
-import { AnalogDirection, DirectionInput, KeyboardInput } from '@gg-web-engine/core';
+import { AnalogDirection, DirectionInput, DirectionName, KeyboardInput } from '@gg-web-engine/core';
 import { TouchControl, TouchControlOptions } from './touch-control';
 
 export type TouchButtonOptions = TouchControlOptions & {
@@ -89,10 +89,28 @@ export class TouchButton extends TouchControl {
   }
 
   /**
-   * Makes the button push `input` in a direction while pressed, e.g. `{ x: -1 }` for "left".
+   * Makes the button push `input` in a direction while pressed. A direction name (`'left'`) holds
+   * that direction the way its key would (`DirectionInput.pressDirection`), so the button and the
+   * keys follow the input's `oppositeKeys` together: a brake button held with the throttle button
+   * brakes when `oppositeKeys` says `{ upDown: 'down' }`. An `AnalogDirection` (`{ x: -0.5 }`) is
+   * an analog contribution instead, summed with everything else. A button held while `input` stops
+   * and starts again (a menu switching the world's input off and on) pushes it again on the start,
+   * since stopping released it.
    */
-  public bindDirection(input: DirectionInput, value: AnalogDirection): this {
-    this.changes$.subscribe(pressed => input.setAnalogDirection(this, pressed ? value : null));
+  public bindDirection(input: DirectionInput, direction: DirectionName | AnalogDirection): this {
+    const apply =
+      typeof direction === 'string'
+        ? (pressed: boolean) =>
+            pressed ? input.pressDirection(direction, this) : input.releaseDirection(direction, this)
+        : (pressed: boolean) => input.setAnalogDirection(this, pressed ? direction : null);
+    this.changes$.subscribe(apply);
+    input.running$
+      .pipe(
+        skip(1),
+        filter(running => running && this.pressed),
+        takeUntil(this.disposed$),
+      )
+      .subscribe(() => apply(true));
     return this;
   }
 

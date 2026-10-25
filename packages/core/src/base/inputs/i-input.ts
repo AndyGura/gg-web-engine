@@ -1,4 +1,5 @@
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 
 /**
  * An abstract class that provides basic implementation for Input class.
@@ -11,9 +12,9 @@ import { Subject } from 'rxjs';
  */
 export abstract class IInput<TStartParams extends any[] = [], TStopParams extends any[] = []> {
   /**
-   * A private boolean that represents the running state of the process.
+   * The running state of the input.
    */
-  private _running: boolean = false;
+  private readonly _running$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   /**
    * A protected subject that emits a void value when the process is stopped.
    * Subclasses, when subscribing to something using rxjs, have to add pipe takeUntil(this.stop$),
@@ -24,7 +25,15 @@ export abstract class IInput<TStartParams extends any[] = [], TStopParams extend
    * A public getter that returns the running state of the Input.
    */
   public get running(): boolean {
-    return this._running;
+    return this._running$.getValue();
+  }
+  /**
+   * Emits the running state on subscription and then every time the input starts or stops - after
+   * `start` has set the input up, and after `stop` has released what it held. Something that feeds
+   * the input on its own (an on-screen button held down) can apply its state again on a start.
+   */
+  public get running$(): Observable<boolean> {
+    return this._running$.pipe(distinctUntilChanged());
   }
   /**
    * A method that starts the input. Do not override it
@@ -36,7 +45,7 @@ export abstract class IInput<TStartParams extends any[] = [], TStopParams extend
       return;
     }
     this.startInternal(...args);
-    this._running = true;
+    this._running$.next(true);
   }
   /**
    * A method that stops the input. Do not override it
@@ -48,7 +57,7 @@ export abstract class IInput<TStartParams extends any[] = [], TStopParams extend
     }
     this.stop$.next();
     this.stopInternal(...args);
-    this._running = false;
+    this._running$.next(false);
   }
   /**
    * An abstract method that starts the input.

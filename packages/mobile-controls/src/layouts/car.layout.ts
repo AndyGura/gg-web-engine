@@ -40,7 +40,10 @@ export type CarLayoutOptions = LayoutCustomization<CarLayoutController, CarLayou
   tilt?: Partial<TiltInputOptions>;
   /**
    * The pedals: `'buttons'` (default) - an accelerate and a brake button, `'stick'` - an analog stick
-   * moving up (throttle) and down (brake), for a car whose controller takes a partial pedal.
+   * moving up (throttle) and down (brake), for a car whose controller takes a partial pedal. The
+   * buttons hold the up and down directions of the controller's direction input the way its keys
+   * do, so both held follow its `oppositeKeys`; the stick is an analog direction, summed. The
+   * steering buttons likewise hold left and right.
    */
   pedals?: 'buttons' | 'stick';
   /**
@@ -98,7 +101,7 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
           label: 'Steer left',
           content: b.icon('steer-left', MobileControlsIcons.left),
           placement: b.placement('steer-left', { left: 4, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { x: -1 }),
+        }).bindDirection(direction, 'left'),
       );
       b.add('steer-right', () =>
         new TouchButton({
@@ -106,7 +109,7 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
           label: 'Steer right',
           content: b.icon('steer-right', MobileControlsIcons.right),
           placement: b.placement('steer-right', { left: 16, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { x: 1 }),
+        }).bindDirection(direction, 'right'),
       );
     } else if (steering === 'stick') {
       b.add('steer-stick', () =>
@@ -134,7 +137,7 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
           label: 'Accelerate',
           content: b.icon('accelerate', MobileControlsIcons.accelerate),
           placement: b.placement('accelerate', { right: 4, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { y: 1 }),
+        }).bindDirection(direction, 'up'),
       );
       b.add('brake', () =>
         new TouchButton({
@@ -142,7 +145,7 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
           label: 'Brake',
           content: b.icon('brake', MobileControlsIcons.brake),
           placement: b.placement('brake', { right: 16, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { y: -1 }),
+        }).bindDirection(direction, 'down'),
       );
     }
     const handbrakeKey = ggCar ? ggCar.options.handbrakeKey : keys.handbrake;

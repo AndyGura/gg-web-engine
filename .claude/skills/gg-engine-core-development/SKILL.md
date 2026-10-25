@@ -1301,10 +1301,15 @@ The input classes in `base/inputs/` are the single entry point for every input d
 keyboard and mouse they are named after. Anything else feeds them:
 
 - `KeyboardInput.emulateKeyDown`/`emulateKeyUp(code)` - a discrete action.
+- `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` - a held direction
+  (`'up'`/`'down'`/`'left'`/`'right'`), for anything either pushed or not (an on-screen button).
+  It counts as one more key: held while any key or holder holds it, part of `output$`, and
+  resolved by `oppositeKeys` together with the keys.
 - `DirectionInput.setAnalogDirection(source, { x?, y? } | null)` - an analog direction. Each
   `source` (any value, normally the calling object) holds one contribution; `direction$`/`direction`
-  is the keys plus every contribution, each axis clamped to [-1, 1] (`x` right, `y` up/forward), so
-  several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
+  is the held directions plus every contribution, each axis clamped to [-1, 1] (`x` right, `y`
+  up/forward), so several sources compose (a tilt sensor on `x`, a pedal stick on `y`). Not part of
+  `output$`, and summed whatever `oppositeKeys` says.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
 **Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
@@ -1366,13 +1371,26 @@ so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardI
 controller's `setKeys` forwards whatever `keymap` it is given, and a controls menu applying a whole
 key set mid-game must not drop a held direction key. A direction with no codes binds `of(false)`,
 never `bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit
-at all. Unbinding emits `{}` on `output$` and zeroes the keys' share of `direction$`; on a stop the
-analog contributions are cleared first, so `direction$` goes straight to zero instead of reporting
-the contributions alone on the way. `DirectionInput.oppositeKeys` (constructor `options` or the
-live setter) decides an axis whose two keys are both held: `'cancel'` (default) or the winning
-direction, for `output$` and `direction$` alike. The bound subscription keeps the raw held states
-(`heldKeys`) so the setter can re-resolve them at once without rebinding; it applies to keys only -
-analog contributions (gamepad pedals, touch) are summed whatever it says. A new
+at all. `output$` (a `DirectionHeldOutput` - pressed directions included, so not keyboard-only;
+`DirectionKeyboardOutput` is its deprecated alias) emits only when the resolved output changes:
+every state change goes through `applyHeld`, which compares what is held now with the last
+emitted value (`reportedOutput`), so a second key or holder of a held direction, the throttle under
+a winning brake, a start with nothing held, a rebind keeping the same result and a stop with
+nothing resolved emit nothing. `applyHeld` reports `heldOutput` as it stands after `direction$`
+was updated, not the value it computed, because a `direction$` subscriber may press or release a
+direction re-entrantly, and that nested call has already reported the newer value. Unbinding
+drops the keys from the held directions and reports the change; on a stop the analog
+contributions and pressed directions are cleared first, so `direction$` and `output$` go straight
+to zero instead of reporting those alone on the way. `pressDirection` ignores (with `warnOnce`) a
+name outside the four directions - a JS caller or level data isn't type-checked. `DirectionInput.oppositeKeys` (constructor `options` or the live
+setter) decides an axis whose two directions are both held, by keys or pressed directions in any
+mix: `'cancel'` (default) or the winning direction, for `output$` and `direction$` alike. Held
+states are kept raw - the keys' (`heldKeys`, from the bound subscription) and the pressed
+directions' holders (`pressedDirections`) - and resolved together (`held()`/`applyHeld`), so the
+setter re-resolves them at once without rebinding and a rebind keeps the pressed directions.
+Analog contributions (gamepad sticks and triggers, touch sticks, tilt) are summed whatever it says:
+a gamepad's triggers held together sum on purpose, and one analog source can't push both ways of an
+axis anyway. A new
 `KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
 held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
 `loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import
@@ -1600,6 +1618,17 @@ changing one:
   `CarLayoutOptions.keys` (static, or a function of the controller re-run on every build) on the
   controller's `keyboard`; a button without a key is left out. Core needs no accessor for this -
   the keys are the app's, not the controller's.
+- A layout's direction buttons (car pedals and steering, the 2D character's move buttons) hold a
+  named direction (`TouchButton.bindDirection(input, 'up')`, i.e. `DirectionInput.pressDirection`),
+  never an analog `{ y: 1 }` and never an emulated direction key: a held direction follows the
+  input's `oppositeKeys` with the keys, needs no keyboard (running or not) and no keymap, and
+  presses nothing other listeners of that key would see. `TouchButton.bindDirection` with an
+  `AnalogDirection` stays for a partial push. Sticks, the d-pad and tilt are analog. A button or
+  axis control bound to a direction input pushes again when that input starts while the control is
+  still held (`IInput.running$`, skipping its replayed value): stopping the input released the
+  hold, and a control living outside the overlay is not reset by it. Unlike `bindKey` - a key held
+  through a stop counts from its next press on purpose - a held direction is a continuous state,
+  like a gamepad stick's `bindDirection`, which re-applies on every poll.
 - Overlay-wide settings live on the overlay element, not in each placement: `inset` is written as
   the unitless `--gg-mc-inset-<edge>` custom properties, and `applyControlPlacement` folds them into
   every numeric edge (`calc(var(--gg-mc-unit) * (N + var(--gg-mc-inset-<edge>, 0)) + env(...))`),
