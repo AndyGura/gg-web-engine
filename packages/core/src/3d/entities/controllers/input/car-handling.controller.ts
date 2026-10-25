@@ -2,6 +2,7 @@ import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  DirectionOppositeKeys,
   BindingsChange,
   IRebindableController,
   GamepadAxisBinding,
@@ -36,6 +37,13 @@ export type CarHandlingControllerOptions = {
    */
   readonly keymap: DirectionKeymap | null;
   readonly maxSteerDeltaPerSecond: number;
+  /**
+   * What both keys of a pair held give: both pedals (`upDown`), both steering keys (`leftRight`).
+   * They cancel each other out by default; `{ upDown: 'down' }` brakes with the throttle held too.
+   * Passed to `directionsInput`, whose `oppositeKeys` changes it while the game runs. Keys only:
+   * gamepad and on-screen pedals are summed.
+   */
+  readonly oppositeKeys?: DirectionOppositeKeys;
   /**
    * The gamepad controls, bound on the world's `gamepadInput`. `DEFAULT_CAR_GAMEPAD_BINDING` when
    * omitted; `null` leaves the gamepad alone. `setGamepad` changes it while the game runs.
@@ -111,7 +119,7 @@ export class CarHandlingController extends IEntity implements IRebindableControl
       ...options,
       gamepad: options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : options.gamepad,
     };
-    this.directionsInput = new DirectionInput(keyboard, options.keymap);
+    this.directionsInput = new DirectionInput(keyboard, options.keymap, { oppositeKeys: options.oppositeKeys });
     this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING, this._onRemoved$);
   }
 

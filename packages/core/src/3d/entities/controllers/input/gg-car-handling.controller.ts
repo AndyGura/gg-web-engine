@@ -175,6 +175,7 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
     this.carHandlingInput = new CarHandlingController(keyboard, {
       keymap: this.options.keymap,
       maxSteerDeltaPerSecond: this.options.maxSteerDeltaPerSecond,
+      oppositeKeys: this.options.oppositeKeys,
       gamepad: GgCarHandlingController.carControls(this.options.gamepad ?? null),
     });
     this.addChildren(this.carHandlingInput);

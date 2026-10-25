@@ -211,6 +211,105 @@ describe('DirectionInput', () => {
     });
   });
 
+  describe('both opposite keys held', () => {
+    const holdBoth = (keyboard: KeyboardInput, first: string, second: string) => {
+      keyboard.emulateKeyDown(first);
+      keyboard.emulateKeyDown(second);
+    };
+
+    it('cancel each other out by default', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      holdBoth(keyboard, 'KeyW', 'KeyS');
+      holdBoth(keyboard, 'KeyA', 'KeyD');
+      expect(input.oppositeKeys).toEqual({});
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs[outputs.length - 1]).toEqual({});
+      keyboard.emulateKeyUp('KeyW');
+      keyboard.emulateKeyUp('KeyD');
+      expect(input.direction).toEqual({ x: -1, y: -1 });
+      expect(outputs[outputs.length - 1]).toEqual({ upDown: false, leftRight: true });
+    });
+
+    it('cancel each other out with cancel given', () => {
+      const cancel = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'cancel', leftRight: 'cancel' } });
+      cancel.start();
+      holdBoth(keyboard, 'KeyW', 'KeyS');
+      holdBoth(keyboard, 'KeyA', 'KeyD');
+      expect(cancel.direction).toEqual({ x: 0, y: 0 });
+      cancel.stop();
+    });
+
+    it.each([
+      ['down', 'left', { x: -1, y: -1 }, { upDown: false, leftRight: true }],
+      ['up', 'right', { x: 1, y: 1 }, { upDown: true, leftRight: false }],
+    ] as const)('give the winner, %s and %s, in direction$ and output$', (upDown, leftRight, direction, output) => {
+      const winner = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown, leftRight } });
+      winner.start();
+      const outputs: any[] = [];
+      winner.output$.subscribe(o => outputs.push(o));
+      // pressed in either order
+      holdBoth(keyboard, 'KeyW', 'KeyS');
+      holdBoth(keyboard, 'KeyD', 'KeyA');
+      expect(winner.direction).toEqual(direction);
+      expect(outputs[outputs.length - 1]).toEqual(output);
+      winner.stop();
+    });
+
+    it('give the other key back when the winner is released, and the winner when the other is', () => {
+      const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
+      brake.start();
+      keyboard.emulateKeyDown('KeyW');
+      expect(brake.direction).toEqual({ x: 0, y: 1 });
+      keyboard.emulateKeyDown('KeyS');
+      expect(brake.direction).toEqual({ x: 0, y: -1 });
+      keyboard.emulateKeyUp('KeyS');
+      expect(brake.direction).toEqual({ x: 0, y: 1 });
+      keyboard.emulateKeyDown('KeyS');
+      keyboard.emulateKeyUp('KeyW');
+      expect(brake.direction).toEqual({ x: 0, y: -1 });
+      keyboard.emulateKeyUp('KeyS');
+      expect(brake.direction).toEqual({ x: 0, y: 0 });
+      // an axis left out cancels
+      holdBoth(keyboard, 'KeyA', 'KeyD');
+      expect(brake.direction).toEqual({ x: 0, y: 0 });
+      brake.stop();
+    });
+
+    it('applies at once to the keys held when assigned while running, and only to the keys', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      input.setAnalogDirection('stick', { x: 0.5 });
+      holdBoth(keyboard, 'KeyW', 'KeyS');
+      expect(input.direction).toEqual({ x: 0.5, y: 0 });
+
+      const before = outputs.length;
+      input.oppositeKeys = { upDown: 'down' };
+      expect(input.oppositeKeys).toEqual({ upDown: 'down' });
+      expect(input.direction).toEqual({ x: 0.5, y: -1 });
+      expect(outputs.slice(before)).toEqual([{ upDown: false }]);
+      // a setting giving the same result reports nothing
+      input.oppositeKeys = { upDown: 'down', leftRight: 'right' };
+      expect(outputs.length).toBe(before + 1);
+      input.oppositeKeys = { upDown: 'up' };
+      expect(input.direction).toEqual({ x: 0.5, y: 1 });
+      input.oppositeKeys = {};
+      expect(input.direction).toEqual({ x: 0.5, y: 0 });
+      expect(outputs.slice(before)).toEqual([{ upDown: false }, { upDown: true }, {}]);
+    });
+
+    it('takes a setting assigned while stopped on the next start, and keeps it across a rebind', () => {
+      input.stop();
+      input.oppositeKeys = { leftRight: 'left' };
+      input.start();
+      holdBoth(keyboard, 'KeyA', 'KeyD');
+      expect(input.direction).toEqual({ x: -1, y: 0 });
+      input.keymap = 'arrows';
+      holdBoth(keyboard, 'ArrowRight', 'ArrowLeft');
+      expect(input.direction).toEqual({ x: -1, y: 0 });
+    });
+  });
+
   it('directionKeyCodes lists the codes of every keymap, as copies', () => {
     expect(directionKeyCodes('wasd+arrows')).toEqual({
       up: ['KeyW', 'ArrowUp'],

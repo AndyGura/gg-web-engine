@@ -1332,8 +1332,8 @@ o.jumpKey)` (an observable, piped through `takeUntil(this._onRemoved$)`),
 without a key of its own and `this.bindings.followGamepadDirection(gamepadInput,
 this.directionsInput, g => g.move)` - the three that bind are unbound by the bindings themselves
 when `_onRemoved$` next emits. `GgCarHandlingController` nests a `CarHandlingController` with
-bindings of its own: it constructs the child with only the child's options (keymap, steering rate
-and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls)
+bindings of its own: it constructs the child with only the child's options (keymap, steering rate,
+`oppositeKeys` and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls)
 and forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods.
 The child is rebound only through the parent (its doc says so); nothing syncs a change made on
 the child back up, on purpose - a two-way sync made the order of every forward matter. These wrap the free functions `followKey`,
@@ -1368,7 +1368,11 @@ key set mid-game must not drop a held direction key. A direction with no codes b
 never `bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit
 at all. Unbinding emits `{}` on `output$` and zeroes the keys' share of `direction$`; on a stop the
 analog contributions are cleared first, so `direction$` goes straight to zero instead of reporting
-the contributions alone on the way. A new
+the contributions alone on the way. `DirectionInput.oppositeKeys` (constructor `options` or the
+live setter) decides an axis whose two keys are both held: `'cancel'` (default) or the winning
+direction, for `output$` and `direction$` alike. The bound subscription keeps the raw held states
+(`heldKeys`) so the setter can re-resolve them at once without rebinding; it applies to keys only -
+analog contributions (gamepad pedals, touch) are summed whatever it says. A new
 `KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
 held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
 `loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import

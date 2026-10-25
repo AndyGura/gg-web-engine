@@ -21,7 +21,7 @@ describe('GgCarHandlingController', () => {
   // the parent here cascades to the child via ordinary `IEntity.active` parent-checking (the child is
   // added via `addChildren` in the constructor), with no explicit `active` filter of its own on that
   // particular subscription needed.
-  const setup = async (options: { neutralGear?: boolean } = {}, carOverrides: Partial<any> = {}) => {
+  const setup = async (options: Partial<any> = {}, carOverrides: Partial<any> = {}) => {
     const world = new MockWorld();
     await world.init();
     const keyboard = new KeyboardInput();
@@ -117,6 +117,22 @@ describe('GgCarHandlingController', () => {
     controller.active = true;
     tick(world, 16, 16);
     expect(car.acceleration).toBeGreaterThan(0);
+  });
+
+  it('passes oppositeKeys on to its steering and pedals: both pedal keys held brake given upDown: down', async () => {
+    const moving = { raycastVehicle: { getSpeed: () => 10 } };
+    const brakeWins = await setup({ oppositeKeys: { upDown: 'down' } }, moving);
+    const cancels = await setup({}, moving);
+    for (const { world, keyboard } of [brakeWins, cancels]) {
+      keyboard.emulateKeyDown('ArrowUp');
+      keyboard.emulateKeyDown('ArrowDown');
+      tick(world, 0, 16);
+    }
+    expect(brakeWins.controller.carHandlingInput.directionsInput.oppositeKeys).toEqual({ upDown: 'down' });
+    expect(brakeWins.car.brake).toBe(1);
+    expect(brakeWins.car.acceleration).toBe(0);
+    expect(cancels.car.brake).toBeCloseTo(0); // -0: no pedal
+    expect(cancels.car.acceleration).toBe(0);
   });
 
   describe('autoReverse', () => {

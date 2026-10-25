@@ -29,6 +29,14 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- core: `DirectionInput` takes `options.oppositeKeys` (`DirectionOppositeKeys`, per axis
+  `'cancel'`/`'up'`/`'down'` and `'cancel'`/`'left'`/`'right'`): what both opposite direction keys
+  held give, in `direction$` and `output$` alike. `'cancel'` (neither direction) stays the default;
+  the `oppositeKeys` property changes it while the input runs. `CarHandlingController` and
+  `GgCarHandlingController` pass on an `oppositeKeys` option, e.g. `{ upDown: 'down' }` for a brake
+  that overrides the throttle. Keys only: gamepad and on-screen directions are summed as before.
+
 ### Fixed
 - pixi: a renderer no longer draws while its WebGL context is lost (`render()` returns early, a
   WebGPU renderer keeps drawing). Drawing then compiled pixi's shader programs without uniforms
