@@ -55,7 +55,7 @@ describe('DirectionInput', () => {
     expect(input.direction).toEqual({ x: 0, y: 0 });
   });
 
-  it('leaves output$ to the keys alone', () => {
+  it('leaves analog contributions out of output$', () => {
     const outputs: any[] = [];
     input.output$.subscribe(o => outputs.push(o));
     input.setAnalogDirection({}, { x: 1 });
@@ -96,6 +96,98 @@ describe('DirectionInput', () => {
     expect(input.direction).toEqual({ x: 0, y: 0 });
     input.start();
     expect(input.direction).toEqual({ x: 0, y: 0 });
+  });
+
+  describe('pressed directions', () => {
+    it('count as held keys, in direction$ and output$', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      input.pressDirection('up', 'button');
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      input.pressDirection('left', 'other');
+      expect(input.direction).toEqual({ x: -1, y: 1 });
+      input.releaseDirection('up', 'button');
+      input.releaseDirection('left', 'other');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs).toEqual([{ upDown: true }, { upDown: true, leftRight: true }, { leftRight: true }, {}]);
+    });
+
+    it('stay held while any holder or key holds them', () => {
+      input.pressDirection('right', 'a');
+      input.pressDirection('right', 'a');
+      input.pressDirection('right', 'b');
+      keyboard.emulateKeyDown('KeyD');
+      input.releaseDirection('right', 'a');
+      expect(input.direction).toEqual({ x: 1, y: 0 });
+      keyboard.emulateKeyUp('KeyD');
+      expect(input.direction).toEqual({ x: 1, y: 0 });
+      input.releaseDirection('right', 'b');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      // releasing what is not held changes nothing
+      input.releaseDirection('right', 'b');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+    });
+
+    it('are decided by oppositeKeys together with the keys, while analog contributions are summed', () => {
+      const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
+      brake.start();
+      // two buttons
+      brake.pressDirection('up', 'throttle');
+      brake.pressDirection('down', 'brake');
+      expect(brake.direction).toEqual({ x: 0, y: -1 });
+      brake.releaseDirection('down', 'brake');
+      expect(brake.direction).toEqual({ x: 0, y: 1 });
+      // a button and a key
+      keyboard.emulateKeyDown('KeyS');
+      expect(brake.direction).toEqual({ x: 0, y: -1 });
+      keyboard.emulateKeyUp('KeyS');
+      // an analog contribution summed on top
+      brake.pressDirection('down', 'brake');
+      brake.setAnalogDirection('stick', { y: 0.5 });
+      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
+      // an axis left out cancels
+      brake.pressDirection('left', 'left');
+      brake.pressDirection('right', 'right');
+      expect(brake.direction.x).toBe(0);
+      // a new setting applies at once
+      brake.oppositeKeys = { upDown: 'up', leftRight: 'right' };
+      expect(brake.direction).toEqual({ x: 1, y: 1 });
+      brake.stop();
+    });
+
+    it('work without a keyboard, and survive a rebind', () => {
+      const keyless = new DirectionInput(null, null, { oppositeKeys: { upDown: 'down' } });
+      keyless.start();
+      keyless.pressDirection('up', 'throttle');
+      keyless.pressDirection('down', 'brake');
+      expect(keyless.direction).toEqual({ x: 0, y: -1 });
+      keyless.stop();
+
+      input.pressDirection('left', 'button');
+      input.keymap = 'arrows';
+      expect(input.direction).toEqual({ x: -1, y: 0 });
+      keyboard.emulateKeyDown('ArrowUp');
+      expect(input.direction).toEqual({ x: -1, y: 1 });
+      keyboard.emulateKeyUp('ArrowUp');
+      input.keymap = null;
+      expect(input.direction).toEqual({ x: -1, y: 0 });
+    });
+
+    it('are ignored while stopped and released on stop', () => {
+      const outputs: any[] = [];
+      const keyless = new DirectionInput();
+      keyless.output$.subscribe(o => outputs.push(o));
+      keyless.pressDirection('up', 'button');
+      expect(keyless.direction).toEqual({ x: 0, y: 0 });
+      keyless.start();
+      keyless.pressDirection('up', 'button');
+      keyless.stop();
+      expect(keyless.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs).toEqual([{ upDown: true }, {}]);
+      keyless.start();
+      expect(keyless.direction).toEqual({ x: 0, y: 0 });
+      keyless.stop();
+    });
   });
 
   describe('custom key codes', () => {

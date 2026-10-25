@@ -134,6 +134,19 @@ describe('TouchButton', () => {
     input.stop();
   });
 
+  it("holds a named direction while pressed, decided by the input's oppositeKeys with the keys", () => {
+    const input = new DirectionInput(keyboard, 'arrows', { oppositeKeys: { upDown: 'down' } });
+    input.start();
+    const brake = new TouchButton().bindDirection(input, 'down');
+    keyboard.emulateKeyDown('ArrowUp');
+    pointer(brake.element, 'pointerdown');
+    expect(input.direction).toEqual({ x: 0, y: -1 });
+    pointer(brake.element, 'pointerup');
+    expect(input.direction).toEqual({ x: 0, y: 1 });
+    keyboard.emulateKeyUp('ArrowUp');
+    input.stop();
+  });
+
   it('calls onPress/onRelease, and carries its id and content', () => {
     const press = jest.fn();
     const release = jest.fn();

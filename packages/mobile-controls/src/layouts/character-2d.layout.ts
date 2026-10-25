@@ -34,7 +34,7 @@ export function character2dLayout(
           label: 'Move left',
           content: b.icon('move-left', MobileControlsIcons.left),
           placement: b.placement('move-left', { left: 4, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { x: -1 }),
+        }).bindDirection(direction, 'left'),
       );
       b.add('move-right', () =>
         new TouchButton({
@@ -42,7 +42,7 @@ export function character2dLayout(
           label: 'Move right',
           content: b.icon('move-right', MobileControlsIcons.right),
           placement: b.placement('move-right', { left: 16, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { x: 1 }),
+        }).bindDirection(direction, 'right'),
       );
     } else {
       b.add('move', () =>

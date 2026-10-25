@@ -47,7 +47,7 @@ Every built-in layout has variants:
 new MobileControls({
   // steering: 'buttons' (default) | 'stick' | 'tilt' - tilt steers by turning the device like a wheel
   // pedals: 'buttons' (default) | 'stick' - one analog stick, up for throttle, down for brake;
-  // the buttons press the controller's throttle and brake keys, so both held follow its oppositeKeys
+  // the buttons hold the controller's up and down directions like its keys, so both held follow its oppositeKeys
   car: { steering: 'tilt', pedals: 'stick', gears: false },
   // movement: 'stick' (default, appears under the thumb) | 'dpad'
   // look: 'drag' (default) | 'stick' (a second stick) | false

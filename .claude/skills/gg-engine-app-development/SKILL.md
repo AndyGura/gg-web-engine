@@ -480,9 +480,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   out by default. `oppositeKeys` makes one of them win per axis - `new DirectionInput(keyboard,
   'arrows', { oppositeKeys: { upDown: 'down' } })`, or the same option on `CarHandlingController`/
   `GgCarHandlingController` for a brake that overrides the throttle; `directionInput.oppositeKeys
-  = {...}` changes it while the game runs. Keys only: gamepad and analog touch directions (sticks,
-  tilt) are summed; the mobile car layout's pedal buttons press the throttle and brake keys, so
-  they follow it.
+  = {...}` changes it while the game runs. It decides the keys together with directions held
+  through `directionInput.pressDirection('down', holder)`/`releaseDirection` - what an on-screen
+  button does (`TouchButton.bindDirection(input, 'down')`, the mobile layouts' pedal, steering and
+  move buttons) - in any mix; analog directions (gamepad sticks and triggers, touch sticks, tilt)
+  are summed.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's

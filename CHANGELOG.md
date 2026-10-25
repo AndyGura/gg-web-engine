@@ -29,11 +29,19 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- core: `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` hold a direction the
+  way its key does, for an on-screen button or anything else that is either pushed or not: it is
+  part of `output$`, and `oppositeKeys` decides it together with the keys. Analog contributions
+  (`setAnalogDirection`: sticks, tilt, a gamepad) are still summed.
+- mobile-controls: `TouchButton.bindDirection` takes a direction name (`'left'`) to hold that
+  direction, besides an `AnalogDirection` to push.
+
 ### Fixed
-- mobile-controls: the car layout's accelerate and brake buttons press the car controller's own
-  throttle and brake keys (the first up and down codes of its `keymap`) instead of pushing an
-  analog direction, so both held follow the controller's `oppositeKeys` the way the keys do - with
-  `{ upDown: 'down' }` they brake, where they used to cancel each other out. The pedal stick stays
+- mobile-controls: the car layout's accelerate/brake and steering buttons, and the 2D character
+  layout's move buttons, hold their direction instead of pushing an analog one, so both held
+  follow the controller's `oppositeKeys` the way the keys do - with `{ upDown: 'down' }` the pedal
+  buttons brake, where they used to cancel each other out. The pedal and steering sticks stay
   analog.
 
 ## [0.0.88] - 2026-10-25

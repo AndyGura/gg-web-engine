@@ -1,6 +1,6 @@
 import { BehaviorSubject, Observable, skip, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, filter } from 'rxjs/operators';
-import { AnalogDirection, DirectionInput, KeyboardInput } from '@gg-web-engine/core';
+import { AnalogDirection, DirectionInput, DirectionName, KeyboardInput } from '@gg-web-engine/core';
 import { TouchControl, TouchControlOptions } from './touch-control';
 
 export type TouchButtonOptions = TouchControlOptions & {
@@ -89,10 +89,20 @@ export class TouchButton extends TouchControl {
   }
 
   /**
-   * Makes the button push `input` in a direction while pressed, e.g. `{ x: -1 }` for "left".
+   * Makes the button push `input` in a direction while pressed. A direction name (`'left'`) holds
+   * that direction the way its key would (`DirectionInput.pressDirection`), so the button and the
+   * keys follow the input's `oppositeKeys` together: a brake button held with the throttle button
+   * brakes when `oppositeKeys` says `{ upDown: 'down' }`. An `AnalogDirection` (`{ x: -0.5 }`) is
+   * an analog contribution instead, summed with everything else.
    */
-  public bindDirection(input: DirectionInput, value: AnalogDirection): this {
-    this.changes$.subscribe(pressed => input.setAnalogDirection(this, pressed ? value : null));
+  public bindDirection(input: DirectionInput, direction: DirectionName | AnalogDirection): this {
+    if (typeof direction === 'string') {
+      this.changes$.subscribe(pressed =>
+        pressed ? input.pressDirection(direction, this) : input.releaseDirection(direction, this),
+      );
+    } else {
+      this.changes$.subscribe(pressed => input.setAnalogDirection(this, pressed ? direction : null));
+    }
     return this;
   }
 
