@@ -371,13 +371,25 @@ engine API level (no translation needed between a level JSON and e.g.
 cylinder-only - `"CONE"` and the 2D shapes have no elliptical counterpart.
 
 Common `config` fields for both: `material` (`DisplayObject2dOpts`/`DisplayObject3dOpts`, e.g.
-`{ "color": ... }`), `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a
+`{ "color": ... }`; see the 3D material note below), `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a
 default dynamic body: `{ bodyType: 'dynamic', mass: 1, restitution: 0.2, friction: 0.5,
 ownCollisionGroups: 'all', interactWithCollisionGroups: 'all' }`), and optional `linearVelocity`/
 `angularVelocity` (2D: `Point2`/a radians-per-second number; 3D: `Point3`/`Point3`) applied once
 right after the body is created, e.g. to spawn something already moving. Missing a shape-required
 field, or using an unrecognized `shape` value, throws (and fails the whole `loadLevel` call - see
 above).
+
+A 3D `material` (`DisplayObject3dOpts`, `packages/core/src/3d/factories.ts`) takes `color`,
+`shading` (`"unlit"` | `"standart"` - the engine's spelling - | `"phong"` | `"wireframe"`),
+`diffuse` (a texture), `castShadow`, `receiveShadow` and `opacity` (`0`-`1`, below `1` renders
+transparent). **`shading` defaults to `"unlit"`**: a flat color that ignores every `"Light"` and
+never shows a shadow, `castShadow`/`receiveShadow` included. Anything meant to be lit and shaded
+needs `"shading": "standart"` (physically based); keep `"unlit"` for things that should glow or
+stay flat (markers, beacons, clouds).
+
+3D orientation of the round primitives is Z-up like everything else: `"CYLINDER"`, `"CAPSULE"`
+and `"CONE"` stand along +Z, and a `"CONE"`'s tip points to +Z (rotate it 180 degrees about X,
+`{ "x": 1, "y": 0, "z": 0, "w": 0 }`, for a tip-down cone).
 
 ### `"Trigger"` - a physics-only trigger volume, ready to use
 
@@ -417,7 +429,12 @@ versus a hard crash off this same `impulse` field.
 
 ### `"Camera"` (3D only) - a `Camera3dEntity`, ready to use
 
-`config: { fov?, aspectRatio?, frustrum?: { near, far } }`. Returns a `Camera3dEntity` (`.camera`
+`config: { fov?, aspectRatio?, frustrum?: { near, far } }`. A camera looks down its local -Z, so
+with no `rotation` it looks straight down at the ground; `Qtrn.lookAt(position, target)` gives the
+entry's `rotation` for a camera at `position` looking at `target` (a rotation of 90 degrees about X,
+`{ "x": 0.7071, "y": 0, "z": 0, "w": 0.7071 }`, looks level along +Y). A `PlayerCharacterController`
+driving the camera keeps its starting view direction, so aim it the way the player should first
+look. Returns a `Camera3dEntity` (`.camera`
 holds the raw camera component - pass that to `Gg3dWorld.addRenderer`, since a level JSON has no
 notion of a canvas), already parented under the level's group entity - look it up with
 `level.getChildEntityByName`:
@@ -527,8 +544,8 @@ plus every gameplay field `CharacterController3dEntity` itself takes (`walkSpeed
 `minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`, `up`, `ownCollisionGroups`,
 `interactWithCollisionGroups`, `pushMass`) - see that class's own doc for defaults. `pushMass`
 (default 80) only sizes how hard the character shoves a dynamic body it walks into - not every
-backend implements pushing (currently only `packages/ammo`'s), so on one that doesn't it's accepted
-but has no effect. Leave `gravity` out entirely to have the character follow `physicsWorld.gravity`
+backend implements pushing (`packages/ammo` and `packages/rapier3d` do; the 2D adapters don't), so on
+one that doesn't it's accepted but has no effect. Leave `gravity` out entirely to have the character follow `physicsWorld.gravity`
 live (including a runtime change via the `gravity` dev-console command); only set it to give this
 character a gravity scale different from the rest of the world. `display` (optional,
 `DisplayObject3dOpts`) builds a matching capsule mesh via `visualScene.factory.createCapsule`; omit

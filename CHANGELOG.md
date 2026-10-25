@@ -30,6 +30,9 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Examples: a prompt-to-level demo (`examples/3d/prompt-to-level`). It plays an obstacle course an
+  agent wrote as level JSON from the prompt shown beside it, lists the one fix the draft needed,
+  and loads any level JSON pasted into the page.
 - core: `DirectionInput` takes `options.oppositeKeys` (`DirectionOppositeKeys`, per axis
   `'cancel'`/`'up'`/`'down'` and `'cancel'`/`'left'`/`'right'`): what both opposite direction keys
   held give, in `direction$` and `output$` alike. `'cancel'` (neither direction) stays the default;

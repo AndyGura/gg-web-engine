@@ -420,7 +420,8 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   keeps a resting dynamic body simulated, e.g. one whose collision groups change under it),
   friction/restitution, collision groups — see `packages/core/src/base/models/body-options.ts`.
 - **Materials and textures**: `DisplayObject3dOpts` (`color`, `shading`, `diffuse`, `opacity`,
-  `castShadow`, `receiveShadow`) and `DisplayObject2dOpts` (`color` - a tint when combined with a
+  `castShadow`, `receiveShadow`; `shading` defaults to `'unlit'`, a flat color that ignores lights
+  and shadows, so a lit, shadowed object needs `shading: 'standart'`) and `DisplayObject2dOpts` (`color` - a tint when combined with a
   `texture` -, `texture`, `stroke: { color, width }` for an outline, `opacity`). Textures come from
   `world.loader.loadTexture(url, options)` - `{ repeat, filter, mapping }` in 3D (`repeat: { x, y }`
   tiles a texture across a surface), `{ filter }` in 2D (`filter: 'nearest'` keeps pixel art crisp) -
@@ -833,6 +834,9 @@ class GameScreen extends Screen {
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
+- **Focus**: key presses are ignored while an `<input>`, `<textarea>`, `<select>` or `<button>` has
+  focus (`KeyboardInput.externalFocusBlacklist`), so a clicked HTML button over the game swallows
+  WASD until focus moves. Call `button.blur()` in its click handler.
 - **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
   the game's layer and sits below any screen pushed on top. An on-screen pause button opening the
   pause screen is `new MobileControls({ container: this.layer, pauseButton: { onPress: () =>
