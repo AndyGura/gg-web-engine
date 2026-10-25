@@ -4,6 +4,7 @@ import { distinctUntilChanged } from 'rxjs/operators';
 import { IInput } from './i-input';
 import { Point2 } from '../models/points';
 import { Pnt2 } from '../math/point2';
+import { warnOnce } from '../logging';
 
 /**
  * Custom direction keys: `KeyboardEvent.code` values per direction (`'KeyW'`, `'ArrowUp'`,
@@ -67,11 +68,15 @@ export function directionKeyCodes(keymap: DirectionKeymap): {
 
 /**
  * The value of `DirectionInput.output$`: which way the held directions point - the direction keys
- * and the directions pressed through `DirectionInput.pressDirection`. An axis is `undefined` while
- * neither of its directions is held, and while both are unless `DirectionOppositeKeys` makes one of
- * them win; `upDown` is `true` for up, `leftRight` for left
+ * and the directions pressed through `DirectionInput.pressDirection` (on-screen buttons), not only
+ * the keyboard. An axis is `undefined` while neither of its directions is held, and while both are
+ * unless `DirectionOppositeKeys` makes one of them win; `upDown` is `true` for up, `leftRight` for
+ * left
  */
-export type DirectionKeyboardOutput = { upDown?: boolean; leftRight?: boolean };
+export type DirectionHeldOutput = { upDown?: boolean; leftRight?: boolean };
+
+/** @deprecated named after the keyboard, though `output$` is not limited to it: use `DirectionHeldOutput` */
+export type DirectionKeyboardOutput = DirectionHeldOutput;
 
 /**
  * What a `DirectionInput` reads, per axis, while both opposite directions are held - by keys or
@@ -99,8 +104,11 @@ export type AnalogDirection = { x?: number; y?: number };
 
 const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 
+const sameOutput = (a: DirectionHeldOutput, b: DirectionHeldOutput): boolean =>
+  a.upDown === b.upDown && a.leftRight === b.leftRight;
+
 /**
- * One axis of a `DirectionKeyboardOutput` from its two keys: `true` for the first, `false` for the
+ * One axis of a `DirectionHeldOutput` from its two keys: `true` for the first, `false` for the
  * second, `undefined` for neither; with both held, `winner` decides (`undefined` to cancel)
  */
 const resolveAxis = (first: boolean, second: boolean, winner: boolean | undefined): boolean | undefined =>
@@ -135,16 +143,17 @@ const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boole
  * cancel each other out, unless `oppositeKeys` makes one win; analog contributions are summed.
  */
 export class DirectionInput extends IInput {
-  /**
-   * A subject that emits `DirectionKeyboardOutput` objects whenever the held directions change.
-   */
-  private _output$: Subject<DirectionKeyboardOutput> = new Subject<DirectionKeyboardOutput>();
+  private _output$: Subject<DirectionHeldOutput> = new Subject<DirectionHeldOutput>();
 
   /**
-   * Emits a `DirectionKeyboardOutput` whenever the held directions - keys and pressed directions -
-   * change. Analog contributions are not part of it.
+   * Emits a `DirectionHeldOutput` whenever the way the held directions - keys and pressed directions
+   * - point changes, as `oppositeKeys` resolves them: a key or press that leaves it as it was (a
+   * second key or holder of a direction already held, the throttle pressed under a winning brake)
+   * emits nothing, and neither does starting the input. Stopping it emits `{}` unless the output
+   * already was; a rebind letting go of a held key emits what is left. Analog contributions are not
+   * part of it.
    */
-  public get output$(): Observable<DirectionKeyboardOutput> {
+  public get output$(): Observable<DirectionHeldOutput> {
     return this._output$.asObservable();
   }
 
@@ -157,7 +166,9 @@ export class DirectionInput extends IInput {
   private keysSubscription: Subscription | null = null;
   /** The keys held while bound: up, left, down, right; `null` while unbound */
   private heldKeys: readonly boolean[] | null = null;
-  private heldOutput: DirectionKeyboardOutput = {};
+  private heldOutput: DirectionHeldOutput = {};
+  /** The last value emitted on `output$` */
+  private reportedOutput: DirectionHeldOutput = {};
   private _keymap: DirectionKeymap | null;
   private _oppositeKeys: DirectionOppositeKeys;
 
@@ -183,12 +194,8 @@ export class DirectionInput extends IInput {
     const same = sameKeymap(value, this._keymap);
     this._keymap = value;
     if (this.running && !same) {
-      // one emission on `output$` for the rebind: the new bindings' first one, or, with no keys to
-      // bind, the release of the old ones
-      const wasBound = this.unbindKeys(false);
-      if (!this.bindKeys() && wasBound) {
-        this._output$.next(this.heldOutput);
-      }
+      this.unbindKeys();
+      this.bindKeys();
     }
   }
 
@@ -196,7 +203,7 @@ export class DirectionInput extends IInput {
    * What both opposite directions held give, per axis: `'cancel'` (or the axis left out) for
    * neither direction, or the direction that wins. It decides the keys and the pressed directions
    * alike: with `{ upDown: 'down' }`, an on-screen brake button overrides the throttle key or
-   * button. Assigning it while the input runs applies at once to what is already held, reporting the
+   * button. Assigning it while the input runs applies at once to what is already held, reporting a
    * change on `output$` and `direction$`. Analog contributions are summed whatever it says.
    *
    * @example
@@ -211,11 +218,7 @@ export class DirectionInput extends IInput {
 
   public set oppositeKeys(value: DirectionOppositeKeys) {
     this._oppositeKeys = { ...value };
-    const before = this.heldOutput;
-    const after = this.outputOf(this.held());
-    if (before.upDown !== after.upDown || before.leftRight !== after.leftRight) {
-      this.applyHeld(true);
-    }
+    this.applyHeld();
   }
 
   /**
@@ -259,8 +262,9 @@ export class DirectionInput extends IInput {
    * doing the call), the way a held key does: it counts with the keys towards `output$` and
    * `direction$`, and `oppositeKeys` decides it together with them - for anything that is either
    * pushed or not, like an on-screen button. A direction is held while any holder (or key) holds it;
-   * pressing it again by the same holder changes nothing. Ignored while the input is not running;
-   * stopping the input releases every pressed direction.
+   * pressing it again by the same holder changes nothing. Ignored while the input is not running,
+   * and for a name that is not one of the four directions (with a warning); stopping the input
+   * releases every pressed direction.
    *
    * @example
    * ```ts
@@ -272,6 +276,10 @@ export class DirectionInput extends IInput {
     if (!this.running) {
       return;
     }
+    if (!DIRECTIONS.includes(direction)) {
+      warnOnce(`DirectionInput.pressDirection: "${direction}" is not a direction (up, down, left or right)`);
+      return;
+    }
     let holders = this.pressedDirections.get(direction);
     if (!holders) {
       holders = new Set<unknown>();
@@ -279,7 +287,7 @@ export class DirectionInput extends IInput {
     }
     if (!holders.has(holder)) {
       holders.add(holder);
-      this.applyHeld(true);
+      this.applyHeld();
     }
   }
 
@@ -290,7 +298,7 @@ export class DirectionInput extends IInput {
       if (holders.size === 0) {
         this.pressedDirections.delete(direction);
       }
-      this.applyHeld(true);
+      this.applyHeld();
     }
   }
 
@@ -331,17 +339,14 @@ export class DirectionInput extends IInput {
     // the contributions and pressed directions go first, so that `direction$` and `output$` go
     // straight to zero: `unbindKeys` reports them, and would otherwise report those alone on the way
     this.analogDirections.clear();
-    const pressed = this.pressedDirections.size > 0;
     this.pressedDirections.clear();
-    if (!this.unbindKeys() && pressed) {
-      this._output$.next({});
-    }
+    this.unbindKeys();
   }
 
-  /** Binds the keymap's keys, emitting their state on `output$` at once; `false` with none to bind */
-  private bindKeys(): boolean {
+  /** Binds the keymap's keys, reporting what that changes at once */
+  private bindKeys(): void {
     if (!this.keyboard || !this._keymap) {
-      return false;
+      return;
     }
     const keyboard = this.keyboard;
     const { up, left, down, right } = directionKeyCodes(this._keymap);
@@ -350,9 +355,8 @@ export class DirectionInput extends IInput {
       [up, left, down, right].map(codes => (codes.length > 0 ? keyboard.bindMany(...codes) : of(false))),
     ).subscribe(held => {
       this.heldKeys = held;
-      this.applyHeld(true);
+      this.applyHeld();
     });
-    return true;
   }
 
   /** Whether each direction (up, left, down, right) is held, by a key or a pressed direction */
@@ -360,10 +364,10 @@ export class DirectionInput extends IInput {
     return DIRECTIONS.map((d, i) => !!this.heldKeys?.[i] || this.pressedDirections.has(d));
   }
 
-  /** The `DirectionKeyboardOutput` of the directions held (up, left, down, right) */
-  private outputOf([up, left, down, right]: readonly boolean[]): DirectionKeyboardOutput {
+  /** The `DirectionHeldOutput` of the directions held (up, left, down, right) */
+  private outputOf([up, left, down, right]: readonly boolean[]): DirectionHeldOutput {
     const { upDown, leftRight } = this._oppositeKeys;
-    const result: DirectionKeyboardOutput = {};
+    const result: DirectionHeldOutput = {};
     const vertical = resolveAxis(up, down, upDown === 'up' ? true : upDown === 'down' ? false : undefined);
     const horizontal = resolveAxis(
       left,
@@ -375,8 +379,11 @@ export class DirectionInput extends IInput {
     return result;
   }
 
-  /** Makes what is held now the held directions' share of `direction$`, reporting it on `output$` if told to */
-  private applyHeld(report: boolean): void {
+  /**
+   * Makes what is held now the held directions' share of `direction$`, and reports it on `output$`
+   * if that differs from what was reported last
+   */
+  private applyHeld(): void {
     const o = this.outputOf(this.held());
     this.heldOutput = o;
     this.heldDirection = {
@@ -384,23 +391,22 @@ export class DirectionInput extends IInput {
       y: o.upDown === undefined ? 0 : o.upDown ? 1 : -1,
     };
     this.updateDirection();
-    if (report) {
-      this._output$.next(o);
+    // what is held now, not `o`: a `direction$` subscriber may have pressed or released a direction
+    // meanwhile, and that nested call has reported the newer value already
+    const current = this.heldOutput;
+    if (!sameOutput(current, this.reportedOutput)) {
+      this.reportedOutput = current;
+      this._output$.next(current);
     }
   }
 
-  /**
-   * Unbinds the keys, reporting what is still held on `output$` (as releasing every key would)
-   * unless told not to; whether any were bound
-   */
-  private unbindKeys(report: boolean = true): boolean {
-    const wasBound = !!this.keysSubscription;
+  /** Unbinds the keys, reporting what is still held on `output$` (as releasing every key would) */
+  private unbindKeys(): void {
     if (this.keysSubscription) {
       this.keysSubscription.unsubscribe();
       this.keysSubscription = null;
       this.heldKeys = null;
     }
-    this.applyHeld(wasBound && report);
-    return wasBound;
+    this.applyHeld();
   }
 }

@@ -1,5 +1,5 @@
-import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
-import { distinctUntilChanged } from 'rxjs/operators';
+import { BehaviorSubject, Observable, skip, takeUntil } from 'rxjs';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 import { DirectionInput, KeyboardInput, MouseInput, Pnt2, Point2 } from '@gg-web-engine/core';
 import { TouchControl, TouchControlOptions } from './touch-control';
 
@@ -38,10 +38,19 @@ export abstract class TouchAxisControl extends TouchControl {
 
   /**
    * Feeds the control into `input` as an analog direction, which every built-in controller moving by
-   * direction keys (car, character, free camera) follows proportionally.
+   * direction keys (car, character, free camera) follows proportionally. A control held while
+   * `input` stops and starts again pushes it again on the start, since stopping dropped it.
    */
   public bindDirection(input: DirectionInput): this {
-    this.value$.subscribe(v => input.setAnalogDirection(this, v.x === 0 && v.y === 0 ? null : v));
+    const apply = (v: Point2) => input.setAnalogDirection(this, v.x === 0 && v.y === 0 ? null : v);
+    this.value$.subscribe(apply);
+    input.running$
+      .pipe(
+        skip(1),
+        filter(running => running && (this.value.x !== 0 || this.value.y !== 0)),
+        takeUntil(this.disposed$),
+      )
+      .subscribe(() => apply(this.value));
     return this;
   }
 

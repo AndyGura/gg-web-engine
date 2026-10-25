@@ -147,6 +147,28 @@ describe('TouchButton', () => {
     input.stop();
   });
 
+  it('pushes its direction again when the input restarts while it is held', () => {
+    const input = new DirectionInput();
+    input.start();
+    const held = new TouchButton().bindDirection(input, 'up');
+    const analog = new TouchButton().bindDirection(input, { x: -1 });
+    pointer(held.element, 'pointerdown');
+    pointer(analog.element, 'pointerdown');
+    input.stop();
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    input.start();
+    expect(input.direction).toEqual({ x: -1, y: 1 });
+    pointer(held.element, 'pointerup');
+    pointer(analog.element, 'pointerup');
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    // a released or disposed button pushes nothing on a restart
+    analog.dispose();
+    input.stop();
+    input.start();
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    input.stop();
+  });
+
   it('calls onPress/onRelease, and carries its id and content', () => {
     const press = jest.fn();
     const release = jest.fn();

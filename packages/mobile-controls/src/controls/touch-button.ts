@@ -93,16 +93,24 @@ export class TouchButton extends TouchControl {
    * that direction the way its key would (`DirectionInput.pressDirection`), so the button and the
    * keys follow the input's `oppositeKeys` together: a brake button held with the throttle button
    * brakes when `oppositeKeys` says `{ upDown: 'down' }`. An `AnalogDirection` (`{ x: -0.5 }`) is
-   * an analog contribution instead, summed with everything else.
+   * an analog contribution instead, summed with everything else. A button held while `input` stops
+   * and starts again (a menu switching the world's input off and on) pushes it again on the start,
+   * since stopping released it.
    */
   public bindDirection(input: DirectionInput, direction: DirectionName | AnalogDirection): this {
-    if (typeof direction === 'string') {
-      this.changes$.subscribe(pressed =>
-        pressed ? input.pressDirection(direction, this) : input.releaseDirection(direction, this),
-      );
-    } else {
-      this.changes$.subscribe(pressed => input.setAnalogDirection(this, pressed ? direction : null));
-    }
+    const apply =
+      typeof direction === 'string'
+        ? (pressed: boolean) =>
+            pressed ? input.pressDirection(direction, this) : input.releaseDirection(direction, this)
+        : (pressed: boolean) => input.setAnalogDirection(this, pressed ? direction : null);
+    this.changes$.subscribe(apply);
+    input.running$
+      .pipe(
+        skip(1),
+        filter(running => running && this.pressed),
+        takeUntil(this.disposed$),
+      )
+      .subscribe(() => apply(true));
     return this;
   }
 

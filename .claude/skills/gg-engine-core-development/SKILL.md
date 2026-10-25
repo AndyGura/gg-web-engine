@@ -1371,10 +1371,18 @@ so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardI
 controller's `setKeys` forwards whatever `keymap` it is given, and a controls menu applying a whole
 key set mid-game must not drop a held direction key. A direction with no codes binds `of(false)`,
 never `bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit
-at all. Unbinding emits what is still held (the pressed directions) on `output$` and drops the
-keys from the held directions' share of `direction$`; on a stop the analog contributions and pressed
-directions are cleared first, so `direction$` and `output$` go straight to zero instead of
-reporting those alone on the way. `DirectionInput.oppositeKeys` (constructor `options` or the live
+at all. `output$` (a `DirectionHeldOutput` - pressed directions included, so not keyboard-only;
+`DirectionKeyboardOutput` is its deprecated alias) emits only when the resolved output changes:
+every state change goes through `applyHeld`, which compares what is held now with the last
+emitted value (`reportedOutput`), so a second key or holder of a held direction, the throttle under
+a winning brake, a start with nothing held, a rebind keeping the same result and a stop with
+nothing resolved emit nothing. `applyHeld` reports `heldOutput` as it stands after `direction$`
+was updated, not the value it computed, because a `direction$` subscriber may press or release a
+direction re-entrantly, and that nested call has already reported the newer value. Unbinding
+drops the keys from the held directions and reports the change; on a stop the analog
+contributions and pressed directions are cleared first, so `direction$` and `output$` go straight
+to zero instead of reporting those alone on the way. `pressDirection` ignores (with `warnOnce`) a
+name outside the four directions - a JS caller or level data isn't type-checked. `DirectionInput.oppositeKeys` (constructor `options` or the live
 setter) decides an axis whose two directions are both held, by keys or pressed directions in any
 mix: `'cancel'` (default) or the winning direction, for `output$` and `direction$` alike. Held
 states are kept raw - the keys' (`heldKeys`, from the bound subscription) and the pressed
@@ -1615,7 +1623,12 @@ changing one:
   never an analog `{ y: 1 }` and never an emulated direction key: a held direction follows the
   input's `oppositeKeys` with the keys, needs no keyboard (running or not) and no keymap, and
   presses nothing other listeners of that key would see. `TouchButton.bindDirection` with an
-  `AnalogDirection` stays for a partial push. Sticks, the d-pad and tilt are analog.
+  `AnalogDirection` stays for a partial push. Sticks, the d-pad and tilt are analog. A button or
+  axis control bound to a direction input pushes again when that input starts while the control is
+  still held (`IInput.running$`, skipping its replayed value): stopping the input released the
+  hold, and a control living outside the overlay is not reset by it. Unlike `bindKey` - a key held
+  through a stop counts from its next press on purpose - a held direction is a continuous state,
+  like a gamepad stick's `bindDirection`, which re-applies on every poll.
 - Overlay-wide settings live on the overlay element, not in each placement: `inset` is written as
   the unitless `--gg-mc-inset-<edge>` custom properties, and `applyControlPlacement` folds them into
   every numeric edge (`calc(var(--gg-mc-unit) * (N + var(--gg-mc-inset-<edge>, 0)) + env(...))`),

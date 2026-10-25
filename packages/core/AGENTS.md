@@ -952,7 +952,8 @@ world.addEntity(new MobileControls()); // shown on touch-first devices only; ena
   every layout.
 - An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
   To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
-  and analog sources combined) rather than `output$` (keys only).
+  and analog sources combined) rather than `output$`, which only reports the held directions -
+  keys and on-screen buttons - not sticks, tilt or a gamepad.
 - An app that embeds the canvas in a page, or uses the Fullscreen API, passes a positioned wrapper
   element as `container`; otherwise the overlay covers the viewport.
 

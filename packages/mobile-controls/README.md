@@ -214,7 +214,8 @@ touch:
 | Binding | Effect |
 |---|---|
 | `button.bindKey(keyboard, 'Space')` | the button is that key (`KeyboardInput.emulateKeyDown/Up`) |
-| `button.bindDirection(input, { x: -1 })` | pushes a `DirectionInput` while pressed |
+| `button.bindDirection(input, 'left')` | holds a direction of a `DirectionInput` like its key, so `oppositeKeys` decides it with the keys |
+| `button.bindDirection(input, { x: -0.5 })` | pushes a `DirectionInput` as an analog direction while pressed, summed with the rest |
 | `stick.bindDirection(input)` | analog direction into a `DirectionInput` |
 | `stick.bindKeys(keyboard, { up: 'KeyW', ... })` | holds keys past a threshold |
 | `stick.bindLook(mouse)` / `lookArea.bindMouse(mouse)` | turns the view like the mouse does (`MouseInput.emulateMove`) |

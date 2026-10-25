@@ -36,6 +36,13 @@ where one exists.
   (`setAnalogDirection`: sticks, tilt, a gamepad) are still summed.
 - mobile-controls: `TouchButton.bindDirection` takes a direction name (`'left'`) to hold that
   direction, besides an `AnalogDirection` to push.
+- core: `IInput.running$` reports every input's running state on start and stop.
+- core: `DirectionHeldOutput`, the type of `DirectionInput.output$`; `DirectionKeyboardOutput` is
+  its deprecated alias.
+
+### Changed
+- core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the
+  input, on a key or press that leaves it as it was, or on a stop with nothing resolved.
 
 ### Fixed
 - mobile-controls: the car layout's accelerate/brake and steering buttons, and the 2D character
@@ -43,6 +50,10 @@ where one exists.
   follow the controller's `oppositeKeys` the way the keys do - with `{ upDown: 'down' }` the pedal
   buttons brake, where they used to cancel each other out. The pedal and steering sticks stay
   analog.
+- mobile-controls: a `TouchButton`, `TouchStick` or `TouchDPad` bound to a `DirectionInput` that
+  stops and starts again while the control is held pushes its direction again, instead of staying
+  pressed without effect until the finger lifts.
+- core: `DirectionInput.pressDirection` ignores, with a warning, a name that is not a direction.
 
 ## [0.0.88] - 2026-10-25
 
