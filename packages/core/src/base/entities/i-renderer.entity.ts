@@ -1,10 +1,12 @@
 import { IEntity, TickOrder } from './i-entity';
 import { GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../gg-world';
-import { auditTime, BehaviorSubject, fromEvent, merge, Observable, startWith, takeUntil } from 'rxjs';
-import { distinctUntilChanged, map } from 'rxjs/operators';
+import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 import { Point2 } from '../models/points';
 import { RendererOptions } from '../components/rendering/i-renderer.component';
+import { viewportSize$ } from '../components/rendering/viewport';
 import { IPositionable } from '../interfaces/i-positionable';
+import { markCanvasReleased } from '../components/rendering/canvas-reuse';
 
 /**
  * Represents a base class for a renderer entity.
@@ -81,32 +83,32 @@ export abstract class IRendererEntity<D, R, VTypeDoc extends VisualTypeDocRepo<D
 
   onSpawned(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>) {
     this._rendererSize$.next(null);
-    if (this.rendererOptions.size == 'fullscreen' || typeof this.rendererOptions.size === 'function') {
+    const size = this.rendererOptions.size;
+    if (size == 'fullscreen' || typeof size === 'function') {
       if (this.renderer.canvas) {
         this.renderer.canvas.style.position = 'absolute';
       }
-      merge(fromEvent(window, 'resize').pipe(auditTime(100)), fromEvent(window, 'orientationchange'))
-        .pipe(
-          takeUntil(this._onRemoved$),
-          map(() => ({ x: window.innerWidth, y: window.innerHeight })),
-          startWith({ x: window.innerWidth, y: window.innerHeight }),
-        )
-        .subscribe(size => {
-          this._rendererSize$.next(
-            typeof this.rendererOptions.size === 'function' ? this.rendererOptions.size(size) : size,
-          );
+      viewportSize$()
+        .pipe(takeUntil(this._onRemoved$))
+        .subscribe(pageSize => {
+          this._rendererSize$.next(typeof size === 'function' ? size(pageSize) : pageSize);
         });
-    } else if (
-      this.rendererOptions.size instanceof Observable ||
-      // for cases when project uses two separate rxjs packages, instanceof can return false for observable
-      ((this.rendererOptions.size as any).subscribe !== undefined &&
-        (this.rendererOptions.size as any).pipe !== undefined)
-    ) {
-      (this.rendererOptions.size as Observable<Point2>).pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
+    } else if (isObservableLike<Point2>(size)) {
+      size.pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
         this._rendererSize$.next(newSize);
       });
     } else {
-      this._rendererSize$.next(this.rendererOptions.size);
+      this._rendererSize$.next(size);
+    }
+    const resolution = this.rendererOptions.forceResolution;
+    if (isObservableLike<number>(resolution)) {
+      resolution
+        .pipe(
+          takeUntil(this._onRemoved$),
+          filter(value => typeof value === 'number' && value > 0 && isFinite(value)),
+          distinctUntilChanged(),
+        )
+        .subscribe(value => this.renderer.setResolution(value));
     }
     this._rendererSize$
       .pipe(
@@ -121,8 +123,24 @@ export abstract class IRendererEntity<D, R, VTypeDoc extends VisualTypeDocRepo<D
     super.onSpawned(world);
   }
 
+  /**
+   * Disposes the renderer, which releases its canvas's WebGL context: that canvas can't host
+   * another renderer (`addRenderer` throws for it) - use `replaceCanvas` for the next one.
+   */
   dispose() {
     super.dispose();
     this._rendererSize$.complete();
+    markCanvasReleased(this.renderer.canvas);
   }
+}
+
+/**
+ * Whether `x` is an observable. Checked by shape rather than `instanceof`: an app can end up with two
+ * copies of rxjs, and an observable of the other copy fails `instanceof Observable`.
+ */
+function isObservableLike<T>(x: unknown): x is Observable<T> {
+  return (
+    x instanceof Observable ||
+    (!!x && typeof (x as any).subscribe === 'function' && typeof (x as any).pipe === 'function')
+  );
 }

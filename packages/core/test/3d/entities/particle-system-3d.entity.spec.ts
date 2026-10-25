@@ -79,7 +79,10 @@ describe('ParticleSystem3dEntity', () => {
   it('emits at the attached target, offset in its frame, and leaves particles in world space', async () => {
     const { world } = await makeWorld();
     const target = { position: { x: 10, y: 0, z: 0 }, rotation: Qtrn.fromAngle(Pnt3.Z, Math.PI / 2) };
-    const entity = world.addParticleSystem({ capacity: 8 }, { lifetime: 10, attachTo: target, offset: { x: 1, y: 0, z: 0 } });
+    const entity = world.addParticleSystem(
+      { capacity: 8 },
+      { lifetime: 10, attachTo: target, offset: { x: 1, y: 0, z: 0 } },
+    );
     const system = entity.particleSystem as MockParticleSystem;
     entity.emit(1, (p, ctx) => {
       p.velocity = ctx.directionToSim({ x: 1, y: 0, z: 0 });

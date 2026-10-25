@@ -1,4 +1,4 @@
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PointLight } from 'three';
+import { BoxGeometry, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PointLight } from 'three';
 import { ThreeDisplayObjectComponent } from '../../src/components/three-display-object.component';
 
 /** Builds a GLTF-shaped hierarchy: a root Group with two child Meshes nested a level apart, the
@@ -23,6 +23,62 @@ function buildCharacterModel(): Group {
 }
 
 describe('ThreeDisplayObjectComponent', () => {
+  describe('getLocalBoundings', () => {
+    it('measures the subtree in its own frame, unaffected by its own or its parents transforms', () => {
+      const model = new Group();
+      const chassis = new Mesh(new BoxGeometry(2, 4, 1), new MeshBasicMaterial());
+      const turned = new Group();
+      turned.position.set(0, 3, 0);
+      turned.rotation.z = Math.PI / 2;
+      // 2 m along its own X, i.e. along the model's Y once turned
+      turned.add(new Mesh(new BoxGeometry(2, 0.5, 0.5), new MeshBasicMaterial()));
+      model.add(chassis, turned);
+      model.position.set(10, 20, 30);
+      model.rotation.set(0.3, 0.2, 1);
+      model.scale.set(3, 3, 3);
+      const parent = new Group();
+      parent.position.set(-5, 0, 0);
+      parent.rotation.x = 1;
+      parent.add(model);
+
+      const { min, max } = new ThreeDisplayObjectComponent(model).getLocalBoundings();
+      expect(min.x).toBeCloseTo(-1);
+      expect(max.x).toBeCloseTo(1);
+      expect(min.y).toBeCloseTo(-2);
+      expect(max.y).toBeCloseTo(4);
+      expect(min.z).toBeCloseTo(-0.5);
+      expect(max.z).toBeCloseTo(0.5);
+    });
+
+    it('uses the bounding box of an InstancedMesh, covering every instance', () => {
+      const instanced = new InstancedMesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial(), 2);
+      instanced.setMatrixAt(0, new Matrix4().makeTranslation(-3, 0, 0));
+      instanced.setMatrixAt(1, new Matrix4().makeTranslation(3, 0, 0));
+      const root = new Group();
+      root.add(instanced);
+      const { min, max } = new ThreeDisplayObjectComponent(root).getLocalBoundings();
+      expect(min.x).toBeCloseTo(-3.5);
+      expect(max.x).toBeCloseTo(3.5);
+    });
+
+    it('is empty for an object with no geometry', () => {
+      const { min, max } = new ThreeDisplayObjectComponent(new Group()).getLocalBoundings();
+      expect(min.x).toBeGreaterThan(max.x);
+    });
+  });
+
+  describe('name', () => {
+    it('is the native Object3D name, and empty (not the uuid) until one is assigned', () => {
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+      const component = new ThreeDisplayObjectComponent(mesh);
+
+      expect(component.name).toBe('');
+      component.name = 'wheel';
+      expect(mesh.name).toBe('wheel');
+      expect(component.name).toBe('wheel');
+    });
+  });
+
   describe('materialOptions (IMaterialReadable3dComponent)', () => {
     it('exposes the options it was constructed with', () => {
       const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());

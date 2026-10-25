@@ -122,7 +122,15 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   embedded in the subtree (on a light that flag is the light's own shadow setting). `createPrimitive` must
   apply `DisplayObject3dOpts.castShadow`/`receiveShadow` through those setters rather than on the
   root node alone, or a `COMPOUND`'s parts never cast shadows. 2D adds `tint` (multiplied over the
-  object's colors, `0xffffff` = none) and `opacity`, both inherited by children. Both dimensions
+  object's colors, `0xffffff` = none) and `opacity`, both inherited by children.
+  `getBoundings()` is the world-space axis-aligned box of the object and its subtree;
+  `getLocalBoundings()` is the subtree in the object's own frame - the object's own position,
+  rotation and engine-level `scale` left out, its built size kept (where a primitive's size lives in
+  the native scale, as in `packages/pixi`, that part stays in), children counted with their
+  transforms relative to it, children hidden with `visible = false` left out (the object itself
+  counts even while hidden). Compute it from local transforms only, so neither the object's own
+  transform nor its parents' plays a part. The shared contract suite checks both on a moved,
+  turned, scaled box and on a parent with a shown and a hidden child. Both dimensions
   implement `addChild(child)`/`removeChild(child)` as native scene-graph nesting, so the child's
   transform becomes relative to the parent; `removeChild` of something that isn't a direct child is
   a no-op, and `dispose()` must take nested children with it. `clone()` must return a component
@@ -131,7 +139,16 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   loader caches one original per loaded file and hands out a `clone()` per use, so a copy that
   freed shared geometry on `dispose()` would pull it out from under its siblings. The source frees
   them, and is disposed last (see `IDisplayObjectComponent.clone`'s doc). In `packages/three` this
-  is `ThreeDisplayObjectComponent.resourceOwnership` (see `gg-engine-visual-adapter-three`). A
+  is `ThreeDisplayObjectComponent.resourceOwnership` (see `gg-engine-visual-adapter-three`).
+  3D only: `makeUnique(resources)` (`UniqueResources3d`: `'materials'`, `'meshes'` adding geometry,
+  `'all'` adding textures) replaces what a copy still shares with copies of its own - one copy per
+  shared resource, so a material used by several meshes stays one material - and from then on
+  `dispose()` frees exactly those copies while still leaving what remains shared alone. Track
+  ownership per resource kind, not as one flag: a copy that got its own materials still shares its
+  geometry. A second call at the same or a lower level does nothing; a skinned mesh must keep its
+  skinning and morph data; an object whose resources are always its own implements it as a no-op.
+  Core's `loadModel`/`loadGgGlb` call it on the returned copies for their `unique` option. 2D has
+  no counterpart: a 2D display object's tint and opacity are already per object. A
   library without a generic deep-clone needs a hand-rolled one covering every kind of native object
   the package creates (`packages/pixi`'s `src/utils/clone-container.ts`, see
   `gg-engine-visual-adapter-pixi`).
@@ -159,9 +176,10 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   that draws the first `buffers.count` particles of the `ParticleRenderBuffers` last given to
   `setParticles` (the arrays are reused every tick; keep the reference and read them when drawing).
   The simulation is core's, so the adapter only draws: one draw call per system (instanced quads),
-  each particle a quad of `size` world units (width, height) around its center, rotated in its own
-  plane, facing the camera - or, with `billboard: 'vertical'`, turning around world `Z` only. The
-  atlas region is in image coordinates (top-left origin, `y` down); account for the library's own
+  each particle a quad of `size` world units (width, height) whose `anchor` point (fractions of the
+  sprite, `y` down: `0.5, 0.5` the center, `0.5, 1` the middle of the bottom edge) is at its
+  position, rotated around that point in its own plane, facing the camera - or, with `billboard:
+  'vertical'`, turning around world `Z` only, the image's bottom edge towards `-Z`. The atlas region is in image coordinates (top-left origin, `y` down); account for the library's own
   texture orientation. Tint is sRGB. Honor every `ParticleBlendMode` with the formulas its doc
   gives, `textureAlpha: 'brightness'`, `alphaTest`, depth test on / depth write off by default,
   fog, `renderOrder`, and sort back to front per camera with core's `sortParticlesBackToFront`
@@ -185,7 +203,12 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   The loader's `disposeTexture(texture)` frees a texture either load method returned.
 - **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
   `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
-  `position` is the world point at the center of the view, `zoom` 1 scales around it) on the 2D one.
+  `zoom` 1, `origin` `'center'`) on the 2D one. A 2D camera's `position` is the world point drawn
+  at the view point its `origin` names - the view's center, or its top-left corner for
+  `'top-left'` (a UI layer in canvas pixels) - and the view zooms and rotates around that point.
+  The renderer reads `origin` on every frame, and accounts for it wherever it derives the visible
+  area from the camera (a parallax layer's coverage: from a corner the view reaches a whole
+  diagonal away, not half of one). The shared 2D contract checks the defaults.
 - **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings.
   `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a color, a
   texture drawn fixed to the screen and scaled to cover the view, or `null` for the clear color the
@@ -207,7 +230,8 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   returns the TypeDoc's `particleSystem` member, an `IParticleSystem2dComponent`: the 2D
   counterpart of the 3D contract above, reading the same `ParticleRenderBuffers` (with
   `dimensions: 2`, two floats per position). Draw every particle as a quad of `size` world units
-  around its center, rotated by `rotation` in the world's own rotation sign (the same sign as a
+  with its `anchor` point at its position (the image's top edge towards `-y`), rotated around that
+  point by `rotation` in the world's own rotation sign (the same sign as a
   display object's `rotation`), in spawn order - oldest first, so the newest is on top - at the
   system's `zIndex`, tinted (sRGB) with the texture's alpha times the particle's opacity, and let
   the component's own `tint`/`opacity` multiply all of them as for any display object. The atlas
@@ -219,7 +243,15 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &
   VTypeDoc['rendererExtraOpts']` is the merged options type callers see — put anything
-  library-specific (antialias, alpha, power preference, ...) into `rendererExtraOpts`.
+  library-specific (antialias, alpha, power preference, ...) into `rendererExtraOpts`. Start at
+  core's `initialResolution` (a number `forceResolution`, else the device resolution - never read
+  `forceResolution` directly, it can be an observable) and implement `setResolution(resolution)`:
+  change the native pixel ratio in place, keeping the CSS size, and resize everything the renderer
+  owns that is sized in render pixels (a post-processing composer's targets). `IRendererEntity`
+  subscribes to an observable `forceResolution` and calls it; the canvas's CSS size must not follow
+  the resolution. A renderer whose native init is async defers it like `resizeRenderer`. `size`
+  is resolved by `IRendererEntity` too (`'fullscreen'` through core's `viewportSize$`), so an
+  adapter only implements `resizeRenderer`.
 - **Physics debug view** (optional but expected for parity with `three`/`pixi`): renders
   wireframes/bounds for the physics world's `children`, toggled via the dev console/debugger UI in
   `packages/core/src/dev/`.
@@ -312,7 +344,11 @@ unless the renderer's `dispose()` releases its context explicitly (three:
 `forceContextLoss()`, see `gg-engine-visual-adapter-three`). The price: a canvas whose context was
 force-lost can't host another renderer, so each renderer gets a canvas of its own, and anything a
 subclass disposes that lives in the context (a composer's render targets) goes before
-`super.dispose()`.
+`super.dispose()`. Core relies on this: `IRendererEntity.dispose` marks the canvas released and
+the worlds' `addRenderer` refuse it, pointing the app at `replaceCanvas(canvas)` (a blank copy put
+in its place in the page). So leave a canvas the app passed in where it is on dispose - removing it
+from the page leaves `replaceCanvas` nothing to replace - and only remove one the adapter created
+itself.
 
 A renderer can be disposed before an async native init has finished (a screen popped while its
 world was still starting). A renderer with an async init must handle that order without leaking the

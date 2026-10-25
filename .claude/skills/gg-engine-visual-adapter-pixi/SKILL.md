@@ -1,6 +1,6 @@
 ---
 name: gg-engine-visual-adapter-pixi
-description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, scale relative to a sized sprite's built size, and the jest setup (a babel-jest transform loads the real ESM-only pixi.js; unit specs still mock it). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, the replaying initialized$, the camera origin in render(), no drawing while the WebGL context is lost, scale relative to a sized sprite's built size, and the jest setup (a babel-jest transform loads the real ESM-only pixi.js; unit specs still mock it). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
 ---
 
 # packages/pixi implementation notes
@@ -42,7 +42,14 @@ subclass built itself). **A new kind of native object the package starts creatin
 `addChild`/`removeChild` are `Container.addChild`/`removeChild`; `dispose()` is
 `destroy({ children: true })` so nested children go with the parent. `name` is the native
 `Container.label` (copied by `copyContainerState`), and `popChild(name)` detaches the first child
-with that label and wraps it in a new `PixiDisplayObjectComponent`.
+with that label and wraps it in a new `PixiDisplayObjectComponent`. **pixi.js 8 labels every
+object built without an explicit label with its class name** (`new Graphics()` is `"Graphics"`,
+a `Sprite` `"Sprite"`, `Mesh`, `TilingSprite`, ...). That is not a name: core's `Entity2d` adopts a
+named display object's `name` as its own world-unique entity name, so two unnamed primitives of
+one kind would make `GgWorld.addEntity` throw a name collision. The component's constructor
+clears such a default label (the `PIXI_DEFAULT_LABELS` set next to the class), so `name` reads
+`''` until something names the object; a new kind of native object the package starts creating
+needs its pixi default label added to that set (grep `label: "` under `pixi.js/lib/scene`).
 
 ## Scale and bounds
 
@@ -53,6 +60,11 @@ so every primitive starts at `scale = { x: 1, y: 1 }` and `scale = { x: 2, y: 2 
 in three. `clone()` passes `baseScale` on, since the cloned native object already carries any scale
 the app set. `getBoundings()` is `Container.getBounds()` (world coordinates, scale and position
 included); `boundsArea` is only a user-set override and is usually `undefined`.
+`getLocalBoundings()` is `Container.getLocalBounds()` multiplied by `baseScale`: pixi's local bounds
+leave out the container's whole own transform, native scale included, which for a sized sprite is
+its built size (a `BOX` would measure 1x1). pixi already skips children with `visible = false` there
+(not the root). A child nested under a sized sprite sits in the sprite's native frame and so is
+magnified by `baseScale` when drawn; multiplying the local bounds by it matches what is drawn.
 
 ## Draw order, backdrops and parallax layers
 
@@ -79,7 +91,7 @@ included); `boundsArea` is only a user-set override and is usually `undefined`.
 `dynamicProperties` flag on (`vertex`, `position`, `rotation`, `uvs`, `color`) - a particle's size
 (scale), frame (uvs) and tint/opacity (color) all change per frame, and a flag left off makes the
 container upload that attribute only on `update()`. `particleChildren` is filled directly from
-`capacity` pooled plain `IParticle` records (`x`, `y`, `scaleX/Y`, `anchorX/Y` = 0.5, `rotation`,
+`capacity` pooled plain `IParticle` records (`x`, `y`, `scaleX/Y`, `anchorX/Y`, `rotation`,
 `color`, `texture`) truncated to the drawn count, then `container.update()`, instead of
 `addParticle`/`removeParticle` churn. Things specific to pixi's particle pipeline:
 
@@ -92,6 +104,11 @@ container upload that attribute only on `update()`. `particleChildren` is filled
   per distinct region cached on the component, destroyed with `destroy(false)` - never the source -
   when the texture is swapped or the system disposed. The whole image (region `0,0,1,1`) uses the
   base texture itself.
+- **The anchor is pixi's own.** `anchorX`/`anchorY` are copied straight from `buffers.anchor`:
+  both are fractions of the frame with a top-left origin, and pixi's particle vertex code offsets
+  the quad by the anchor before the shader rotates it, so a sprite turns around its anchor. A
+  record is reused for a different particle every frame, so the anchor is written every frame too,
+  never only at pool creation.
 - **Sprite size is scale**: `scaleX = size.x / texture.orig.width` (the frame's pixel size), so a
   system without a texture draws `Texture.WHITE` (1x1) scaled to the size in world units.
 - **The blend mode is the container's `blendMode`** (`'normal'`/`'add'`/`'multiply'`), which is why
@@ -141,8 +158,52 @@ that case and the `init` callback destroys the application. Work deferred until 
 `resizeRenderer`) waits on `onInitialized$.pipe(take(1))`, never `first()`: `dispose()` completes
 that subject, and `first()` errors on a subject completed without a value.
 
+`onInitialized$` is an `AsyncSubject`, exposed read-only as the public `initialized$` (plus the
+`initialized` flag): an app waiting for `application.renderer` (its event system, a bitmap font)
+may subscribe after init already finished, and a plain `Subject` would hand that subscriber only
+the completion - `firstValueFrom` then rejects. An `AsyncSubject` replays its one value on
+completion to every subscriber, early or late, and still completes empty when `dispose()` comes
+first. Apps reach it as `world.addRenderer(...).renderer.initialized$`.
+
+**Resolution.** `Application.init` gets `resolution: initialResolution` and `autoDensity: true`
+whatever the resolution, so the canvas's CSS size is always the renderer size and only the
+drawing buffer follows the resolution (without `autoDensity` a forced resolution of 2 would make
+the canvas twice as large on the page). `setResolution(r)` is `renderer.resize(renderer.width,
+renderer.height, r)`: pixi v8's three-argument `resize` keeps the screen size, resizes the canvas
+source at the new resolution and emits the renderer's `resolutionChange` runner. Before init it
+waits on `onInitialized$` like `resizeRenderer`, in call order, and is dropped by a `dispose()`
+before init.
+
+**Lost WebGL context.** `render()` returns before touching anything while
+`(application.renderer as WebGLRenderer).gl?.isContextLost()` (a WebGPU renderer has no `gl` and
+keeps drawing), as three.js does. pixi's `GlContextSystem` calls `preventDefault` on
+`webglcontextlost` and on `webglcontextrestored` emits `contextChange`, which empties
+`GlShaderSystem`'s program data, but `GlUniformGroupSystem` keeps its generated uniform sync
+functions (keyed by uniform group signature + program key). A render while the context is lost
+compiles the programs with `getProgramParameter(ACTIVE_UNIFORMS)` null, so their program data has
+no uniforms ("Could not retrieve shader source", "Could not initialize shader"), and the cached
+sync functions then throw on every frame (`Cannot read properties of undefined (reading 'value')`
+/ `'location'`). Seen in production on Opera Mobile, Android 10, pixi 8.22.
+
+## Camera origin
+
+`PixiRendererComponent.render()` places the world container (and the physics debug container)
+with `pivot = camera.position`, `scale = zoom`, `rotation = -camera.rotation` and `position` = the
+screen point the camera's `origin` names: the canvas center for `'center'`, `(0, 0)` for
+`'top-left'` - read every frame, so a camera switched at runtime takes effect on the next one.
+Parallax layers still get `camera.position` as their `updateView` center (it is what their
+`offset + camera * (1 - parallax)` origin is defined against), with `halfExtent` the whole
+diagonal over zoom instead of half of it when the origin is a corner, so a square around that
+corner still covers the view at any rotation. `PixiCameraComponent.worldToScreen`/`screenToWorld`
+are plain `(world - position) * zoom` offsets that ignore rotation and the origin: they match canvas
+pixels only for an unrotated `'top-left'` camera.
+
 `dispose()` otherwise is `Application.destroy(...)` / `Container.destroy()`; `removeFromWorld(world,
-dispose)` calls it when `dispose` is `true`.
+dispose)` calls it when `dispose` is `true`. The renderer destroys with `{ removeView: !this.canvas }`:
+a canvas the app passed in stays in the page (core's `replaceCanvas` swaps it for a blank copy before
+the next renderer, which needs it to still be there), while a canvas pixi created itself is
+removed. pixi's `GlContextSystem.destroy` loses the WebGL context either way (`loseContext()`), so
+the canvas can't host another renderer.
 
 ## Testing (jest + jsdom)
 
@@ -170,7 +231,13 @@ still replace `pixi.js` with small stand-ins (`jest.mock('pixi.js', () => ({ ...
 fake object cast to a type imported with `import type`), because they assert exactly what a
 component writes to its native object. A stand-in needs every field the code under test reads -
 `PixiDisplayObjectComponent`'s constructor reads `scale`, so every fake container has
-`scale: { x: 1, y: 1 }`. Anything that needs a real draw call is verified in
+`scale: { x: 1, y: 1 }`. A spec that needs the real scene graph and a real `Gg2dWorld` but no GPU
+(`test/pixi-ui-world.spec.ts`: a physics-less world, a top-left camera, raw pixi objects in
+`nativeContainer`) mocks only `Application` over `jest.requireActual('pixi.js')`, with a real
+`Container` as `stage`, a `renderer` whose `resize` records `width`/`height`, and an `init` that
+resolves at once; it asserts screen positions with `Container.toGlobal`, which updates transforms
+itself, and drives frames with `world.worldClock.step(ms)` on a started, then paused world.
+Anything that needs a real draw call is verified in
 `examples/2d/primitives` or by rendering in headless Chromium.
 
 ## Keep this skill current

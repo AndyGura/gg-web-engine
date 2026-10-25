@@ -27,18 +27,17 @@ declare global {
 }
 
 describe(`Pnt3`, () => {
-
   describe('angle', () => {
     it('returns angle between almost identical vectors, handling precision error', () => {
       const a = {
-          x: 2.9611996755771295,
-          y: 0.48093292813229027,
-          z: 0
+        x: 2.9611996755771295,
+        y: 0.48093292813229027,
+        z: 0,
       };
       const b = {
-          x: 0.9870665585257098,
-          y: 0.16031097604409816,
-          z: 0
+        x: 0.9870665585257098,
+        y: 0.16031097604409816,
+        z: 0,
       };
       const angle = Pnt3.angle(a, b);
       expect(angle).not.toBeNaN();
@@ -143,5 +142,4 @@ describe(`Pnt3`, () => {
       });
     });
   });
-
 });

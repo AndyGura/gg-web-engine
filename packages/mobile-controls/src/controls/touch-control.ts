@@ -2,9 +2,10 @@ import { Subject } from 'rxjs';
 
 /**
  * Where a control sits inside the overlay and how big it is. A number is a multiple of the overlay's
- * `--gg-mc-unit` (an edge offset also keeps clear of the device's safe-area inset on that side); a
- * string is used as a CSS value as is. Leave `width`/`height` out to keep the size the stylesheet
- * gives that kind of control.
+ * `--gg-mc-unit`; an edge offset given as a number also keeps clear of the device's safe-area inset
+ * on that side and moves with the overlay's inset on that side (`MobileControlsOptions.inset`, the
+ * `--gg-mc-inset-<edge>` custom properties). A string is used as a CSS value as is. Leave
+ * `width`/`height` out to keep the size the stylesheet gives that kind of control.
  */
 export type ControlPlacement = {
   left?: number | string;
@@ -39,7 +40,9 @@ export function applyControlPlacement(element: HTMLElement, placement: ControlPl
     if (value !== undefined) {
       element.style.setProperty(
         edge,
-        typeof value === 'number' ? `calc(var(--gg-mc-unit) * ${value} + env(safe-area-inset-${edge}, 0px))` : value,
+        typeof value === 'number'
+          ? `calc(var(--gg-mc-unit) * (${value} + var(--gg-mc-inset-${edge}, 0)) + env(safe-area-inset-${edge}, 0px))`
+          : value,
       );
     }
   }

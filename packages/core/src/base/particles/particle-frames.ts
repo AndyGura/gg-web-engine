@@ -1,3 +1,5 @@
+import { Point2 } from '../models/points';
+
 /**
  * One sprite region of a particle texture (an atlas), in normalized texture coordinates with the
  * origin at the image's top-left corner and `y` going down, like the image file itself: `x`/`y` is
@@ -10,6 +12,14 @@ export type ParticleFrame = {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /**
+   * The point of this sprite that sits at the particle's position, in fractions of the region itself
+   * (`{ x: 0, y: 0 }` its top-left corner, `{ x: 0.5, y: 1 }` the middle of its bottom edge) - see
+   * `ParticleSimulationOptions.anchor` for what top and bottom mean on screen. Overrides the
+   * system's `anchor` for every particle showing this frame, so sprites with different pivots can
+   * share one atlas and one frame sequence can move its pivot from frame to frame.
+   */
+  readonly anchor?: Point2;
 };
 
 /** The whole texture as one frame - the default when a system defines no `frames`. */
@@ -44,7 +54,9 @@ export class ParticleFrames {
 
   /**
    * Regions given in pixels of a texture of `textureWidth` x `textureHeight` pixels, e.g. sprites of
-   * different sizes packed into one atlas.
+   * different sizes packed into one atlas. A region's optional `anchor` is in pixels too, from the
+   * region's own top-left corner (a sprite's pivot as sprite sheet tools export it), and becomes the
+   * frame's `anchor` in fractions of the region.
    *
    * @example
    * ```ts
@@ -52,7 +64,8 @@ export class ParticleFrames {
    * const frames = ParticleFrames.fromPixels(
    *   [
    *     { x: 0, y: 0, width: 64, height: 64 },
-   *     { x: 64, y: 0, width: 64, height: 32 },
+   *     // drawn with the point 4 px above the middle of its bottom edge on the particle's position
+   *     { x: 64, y: 0, width: 64, height: 32, anchor: { x: 32, y: 28 } },
    *   ],
    *   128,
    *   64,
@@ -64,15 +77,21 @@ export class ParticleFrames {
    * ```
    */
   static fromPixels(
-    regions: readonly { x: number; y: number; width: number; height: number }[],
+    regions: readonly { x: number; y: number; width: number; height: number; anchor?: Point2 }[],
     textureWidth: number,
     textureHeight: number,
   ): ParticleFrame[] {
-    return regions.map(r => ({
-      x: r.x / textureWidth,
-      y: r.y / textureHeight,
-      width: r.width / textureWidth,
-      height: r.height / textureHeight,
-    }));
+    return regions.map(r => {
+      const frame: { x: number; y: number; width: number; height: number; anchor?: Point2 } = {
+        x: r.x / textureWidth,
+        y: r.y / textureHeight,
+        width: r.width / textureWidth,
+        height: r.height / textureHeight,
+      };
+      if (r.anchor) {
+        frame.anchor = { x: r.anchor.x / r.width, y: r.anchor.y / r.height };
+      }
+      return frame;
+    });
   }
 }

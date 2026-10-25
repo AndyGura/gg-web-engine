@@ -1,4 +1,15 @@
-import { KeyboardInput, Pnt3, PlayerCharacterController, Qtrn } from '../../../../../src';
+import {
+  BindingsChange,
+  DEFAULT_CHARACTER_GAMEPAD_BINDING,
+  GAMEPAD_LEFT_STICK,
+  GAMEPAD_RIGHT_STICK,
+  GamepadInput,
+  KeyboardInput,
+  Pnt3,
+  PlayerCharacterController,
+  Qtrn,
+} from '../../../../../src';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCharacter = (overrides: Partial<any> = {}) =>
   ({
@@ -57,6 +68,22 @@ describe('PlayerCharacterController', () => {
       await controller.onSpawned({} as any);
       keyboard.emulateKeyDown('ArrowUp');
       expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
+    });
+
+    it('moves by custom key codes, and by new ones given to setKeys', async () => {
+      const { keyboard, controller, character } = setup(fakeCharacter(), {
+        keymap: { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' },
+      });
+      await controller.onSpawned({} as any);
+      keyboard.emulateKeyDown('KeyI');
+      expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
+
+      controller.setKeys({ keymap: { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6' } });
+      // the old key, still held, stops counting at once
+      expect(character.moveDirection).toEqual({ x: 0, y: 0, z: 0 });
+      expect(controller.directionsInput.keymap).toBe(controller.options.keymap);
+      keyboard.emulateKeyDown('Numpad4');
+      expect(character.moveDirection).toEqual({ x: -1, y: 0, z: 0 });
     });
   });
 
@@ -407,6 +434,103 @@ describe('PlayerCharacterController', () => {
       controller.lookDirection = Pnt3.Z; // straight up - well beyond a maxPitch of 0 (level)
       const pitch = Math.PI / 2 - Pnt3.toSpherical(controller.lookDirection).phi;
       expect(pitch).toBeCloseTo(0);
+    });
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    let gamepadInput: GamepadInput;
+    beforeEach(() => {
+      pads = stubGamepads();
+      gamepadInput = new GamepadInput();
+      gamepadInput.start();
+      gamepadInput.poll(); // a binding counts a control from the first read with it released
+    });
+    afterEach(() => {
+      gamepadInput.stop();
+      pads.restore();
+    });
+
+    it('moves, acts and looks by the controls given to setGamepad', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      controller.setGamepad({ jump: 'b3', move: GAMEPAD_RIGHT_STICK, look: GAMEPAD_LEFT_STICK });
+      pads.set({ buttons: { 0: true }, axes: [0, 0, 1, 0] });
+      gamepadInput.poll();
+      expect(character.jump).not.toHaveBeenCalled();
+      expect(character.moveDirection.x).toBe(1);
+      const before = controller.lookDirection;
+      controller.tick$.next([0, 500]);
+      expect(controller.lookDirection).toEqual(before);
+
+      pads.set({ buttons: { 3: true }, axes: [1, 0, 0, 0] });
+      gamepadInput.poll();
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.moveDirection.x).toBe(0);
+      controller.tick$.next([500, 500]);
+      expect(controller.lookDirection).not.toEqual(before);
+    });
+
+    it('acts by the keys given to setKeys, from the keyboard and the gamepad buttons alike', async () => {
+      const { keyboard, controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      const changes: BindingsChange[] = [];
+      controller.bindingsChanged$.subscribe(v => changes.push(v));
+
+      keyboard.emulateKeyDown('ShiftLeft');
+      expect(character.isRunning).toBe(true);
+      controller.setKeys({ jumpKey: 'KeyJ', runKey: 'KeyR', toggleViewKey: null });
+      expect(changes).toEqual(['keys']);
+      expect(controller.options.jumpKey).toBe('KeyJ');
+      // a held key that was replaced lets go
+      expect(character.isRunning).toBe(false);
+
+      keyboard.emulateKeyDown('Space');
+      expect(character.jump).not.toHaveBeenCalled();
+      keyboard.emulateKeyDown('KeyJ');
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      keyboard.emulateKeyUp('KeyJ');
+      const viewMode = controller.viewMode;
+      keyboard.emulateKeyDown('KeyV');
+      expect(controller.viewMode).toBe(viewMode);
+
+      const jumpKey: boolean[] = [];
+      keyboard.bind('KeyJ').subscribe(v => jumpKey.push(v));
+      pads.set({ buttons: { 0: true, 10: true } }); // A jumps, L3 runs
+      gamepadInput.poll();
+      expect(jumpKey).toEqual([false, true]);
+      expect(character.jump).toHaveBeenCalledTimes(2);
+      expect(character.isRunning).toBe(true);
+    });
+
+    it('walks by the left stick, acts by the buttons and looks by the right stick, per tick', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      const before = controller.lookDirection;
+
+      pads.set({ axes: [0.56, 0, 1, 0], buttons: { 0: true, 10: true, 1: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection.x).toBeCloseTo(0.5);
+      expect(character.moveDirection.y).toBe(0);
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.isRunning).toBe(true);
+      expect(character.isCrouching).toBe(true);
+
+      controller.tick$.next([0, 500]); // half a second at full deflection to the right
+      const after = controller.lookDirection;
+      const turned = Math.atan2(after.y, after.x) - Math.atan2(before.y, before.x);
+      expect(Math.abs(turned)).toBeCloseTo(DEFAULT_CHARACTER_GAMEPAD_BINDING.lookSpeed / 2, 5);
+      expect(Pnt3.len(after)).toBeCloseTo(Pnt3.len(before), 5);
+    });
+
+    it('does nothing with gamepad: null', async () => {
+      const { controller, character } = setup(fakeCharacter(), { gamepad: null });
+      await controller.onSpawned({ gamepadInput } as any);
+      pads.set({ axes: [1, 0, 1, 0], buttons: { 0: true } });
+      gamepadInput.poll();
+      controller.tick$.next([0, 500]);
+      expect(character.moveDirection).toEqual(Pnt3.O);
+      expect(character.jump).not.toHaveBeenCalled();
     });
   });
 });

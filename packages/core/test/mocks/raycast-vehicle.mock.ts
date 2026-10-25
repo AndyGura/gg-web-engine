@@ -7,6 +7,7 @@ import {
   RVEntityProperties,
   RVEntityTractionBias,
   Shape3DDescriptor,
+  WheelContact,
 } from '../../src';
 import { mock3DObject } from './object.mock';
 import { mock3DBody } from './body.mock';
@@ -35,6 +36,16 @@ export const mockRaycastVehicle = (
     applyEngineForce: () => {},
     applyBrake: () => {},
     isWheelTouchesGround: () => true,
+    // every wheel is on the ground (`isWheelTouchesGround`), standing still on flat ground
+    getWheelContact: (): WheelContact => ({
+      point: { x: 0, y: 0, z: 0 },
+      normal: { x: 0, y: 0, z: 1 },
+      axle: { x: 1, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      sideSlipSpeed: 0,
+      suspensionForce: 0,
+      skid: 1,
+    }),
     setWheelFrictionSlip: () => {},
     getWheelFrictionSlip: () => 1,
     getWheelTransform: () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }),

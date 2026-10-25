@@ -1,8 +1,8 @@
 # firebase/
 
-The Firebase project behind `FirebaseSignaling`: deploy these to the project whose web config is
-`DEFAULT_FIREBASE_CONFIG`, or to your own project (then pass its config as `FirebaseSignaling`'s
-`config`). Not part of the npm package.
+The Firebase project behind `FirebaseSignaling` and `FirebaseLobbyBackend`: deploy these to the
+project whose web config is `DEFAULT_FIREBASE_CONFIG`, or to your own project (then pass its config
+as their `config`). Not part of the npm package.
 
 | File | What |
 |---|---|

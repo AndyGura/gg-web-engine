@@ -75,7 +75,9 @@ world.start(); // starts the tick clock (visual RAF loop + physics simulate())
 
 The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSULE`/`CONVEX_HULL`/
 `POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
-`rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
+`rotation` is a plain radians scalar rather than 3D's `Point4` quaternion. A 2D camera's `position`
+is the world point at the center of the view; `camera.origin = 'top-left'` makes it the view's
+top-left corner instead (see "A 2D UI layer over the game's canvas").
 
 ## Loading screen while the game starts
 
@@ -105,6 +107,31 @@ Don't wrap loads that happen while the game keeps running (the next round's piec
 chunks) - that would cover the game. Hide it in a `finally` if the startup can fail, or a failure
 stays hidden behind it. A `ScreenManager` app doesn't need it: the manager shows the same default
 view while a screen enters (see "Screens").
+
+## Renderer size and resolution
+
+`addRenderer`'s third argument (`RendererOptions` plus the adapter's own renderer options) sets the
+canvas size and pixel resolution; neither needs the renderer recreated to change:
+
+- `size` (CSS pixels): `'fullscreen'` (the default) follows the page's visible area, a function maps
+  that area to a size, an `Observable<Point2>` drives it from app code, a plain `Point2` fixes it.
+  The page is measured with `measureViewport()` (through `window.visualViewport` where there is one,
+  which mobile browsers keep current where `innerWidth`/`innerHeight` can be stale - an iOS
+  home-screen app right after a rotation), re-measured on resize and on rotation, once more
+  `VIEWPORT_REMEASURE_DELAY` (300 ms) after it. App code laying out its own DOM around the game can
+  subscribe to the same `viewportSize$()` instead of listening to `resize` itself.
+- `forceResolution` (render pixels per CSS pixel): unset means the device's `devicePixelRatio`; a
+  number fixes it; an `Observable<number>` changes it live - a game's resolution or quality setting
+  feeds it, and every value is applied while the renderer is in a world (drawing buffer and any
+  post-processing composer the adapter owns resized, CSS size unchanged). Until the observable's
+  first value the device resolution is used, so pass a `BehaviorSubject` to start at the setting's
+  value.
+
+```typescript
+const resolution$ = new BehaviorSubject(settings.hiRes ? devicePixelRatio : 1);
+world.addRenderer(camera, canvas, { forceResolution: resolution$ });
+resolution$.next(0.5); // later, from a settings menu
+```
 
 ## Hidden tab: pausing automatically, or just reacting to it
 
@@ -312,6 +339,49 @@ by default), which would make the default name meaningless, or worse, silently d
 dev build and this same app's production build. `entityTypeName` is a plain static string property,
 untouched by minification regardless of build config.
 
+## Subscriptions that end with the entity, and per-world singletons
+
+An entity can be removed from its world and added again (a network layer hides entities that way,
+a level reload re-adds them), and `onSpawned` runs on every add. So anything subscribed in
+`onSpawned` has to end on removal, or each re-add stacks another copy of it. The protected helpers on
+every entity do that:
+
+```typescript
+class Blinker extends Entity3d<AppTypeDoc> {
+  static readonly entityTypeName: string = 'Blinker';
+
+  onSpawned(world: Gg3dWorld<AppTypeDoc>) {
+    super.onSpawned(world); // first, then subscribe
+    this.onTick((elapsed, delta) => this.update(delta)); // tick$ until the next removal
+    this.whileSpawned(world.keyboardInput.bind('KeyL')).subscribe(on => (this.lit = on)); // any observable
+  }
+}
+```
+
+`whileSpawned(obs)` is `obs.pipe(takeUntil(<next removal>))`; `onTick(fn)` is that over `tick$`,
+returning the `Subscription` for ending it earlier. A subscription meant to last as long as the
+entity (made in the constructor) needs neither.
+
+A service one world needs exactly once, shared by many entities (one skid-mark mesh for every car,
+one particle pool, a race director), comes from `world.getOrAddEntity(name, factory, type?)`: the
+entity named `name` if the world has one, otherwise `factory()`'s result, renamed to `name` and
+added. Wrap it in a static accessor so every user gets the same instance:
+
+```typescript
+class SkidMarks extends Entity3d<AppTypeDoc> {
+  static readonly entityTypeName: string = 'SkidMarks';
+  static of(world: Gg3dWorld<AppTypeDoc>): SkidMarks {
+    return world.getOrAddEntity('SkidMarks', () => new SkidMarks(), SkidMarks);
+  }
+}
+```
+
+Pass the class as `type` so an unrelated entity that happens to carry the name throws instead of
+being returned under the wrong type (any class works, one with a private constructor too). Only
+what is in the world now counts: once the entity has been removed, the next call builds a new one.
+Prefer this over a `WeakMap<world, entity>` of your own, which keeps returning an entity after it
+left the world.
+
 ## Adding a loose component to the world without an entity
 
 Every component that can live in a world - display objects/renderers (visual), rigid
@@ -362,6 +432,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   "Loading assets" below. Every 3D display object also has live `castShadow`/`receiveShadow` properties
   that apply to a loaded model's whole hierarchy (`loadGgGlb` and the `"Glb"` level class take the
   same two options); every 2D display object has live `tint` and `opacity`.
+- **Measuring a display object**: `getBoundings()` is the axis-aligned box in world coordinates (it
+  grows when the object is turned); `getLocalBoundings()` is the object and its children in its own
+  frame - as if at the origin, unrotated, at scale 1 - so a car model's footprint along its own
+  forward axis, whatever way it faces. Nested children hidden with `visible = false` are left out;
+  multiply by `scale` for the size as drawn.
 - **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
   not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
   it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.
@@ -381,6 +456,52 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `active = false` already stops every input subscription from touching `character` and neutralizes
   whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
   mode) rather than leaving it stuck mid-motion.
+- **Rebinding keys (controls menu)**: a controller's `keymap` option is `'wasd'`, `'arrows'`,
+  `'wasd+arrows'` or custom `KeyboardEvent.code`s per direction - `{ up: 'KeyI', down: 'KeyK',
+  left: 'KeyJ', right: 'KeyL' }`, each a code or a list. To rebind while the game runs, call the
+  controller's `setKeys` with the keys that change - `player.setKeys({ jumpKey: 'KeyJ', keymap:
+  {...} })`, `car.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB' })`,
+  `freeCamera.setKeys({ upDownKeys, zoomOutInKeys, boostKey })`, `grab.setKeys({ grabKey })`. It
+  writes them to `options` and takes effect at once; gamepad buttons press the new keys, and a
+  `MobileControls` layout on screen is rebuilt (on the controller's `bindingsChanged$`, which
+  emits `'keys'` or `'gamepad'` and which a hint of your own can listen to as well). A gamepad
+  button still held when `setGamepad` assigns it - the one a menu just captured - counts from its
+  next push, so the capture never fires the action. For your own actions, `followKey(world.keyboardInput,
+  code$)` reports the state of whichever key an observable code names last,
+  `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, controls$)` keeps a gamepad
+  button on it (an observable of the controls too; `of('b2')` for a fixed one), and
+  `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up (each
+  `followGamepad*` that binds returns an unbind function: call it when the action goes away). A
+  controller of your own that should rebuild a `MobileControls` layout declares `implements
+  IRebindableController` and emits `'keys'` on its `bindingsChanged$` after a change. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
+  layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so
+  AZERTY's `KeyQ` reads "A" from the first frame), and check a captured `keydown`'s `e.code` with
+  `KeyboardInput.isBindable(code)` (false for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and
+  media keys). Saving the bindings, and what to do when two actions get the same key, is the
+  app's.
+- **Both opposite keys held**: up and down (or left and right) held together cancel each other
+  out by default. `oppositeKeys` makes one of them win per axis - `new DirectionInput(keyboard,
+  'arrows', { oppositeKeys: { upDown: 'down' } })`, or the same option on `CarHandlingController`/
+  `GgCarHandlingController` for a brake that overrides the throttle; `directionInput.oppositeKeys
+  = {...}` changes it while the game runs. Keys only: gamepad and touch directions are summed.
+- **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
+  `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
+  the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's
+  pedals, bumpers shift, A jumps, Start is yours to bind. Each controller's `gamepad` option takes
+  its own binding (`gamepad: { ...DEFAULT_GG_CAR_GAMEPAD_BINDING, handbrake: 'b1' }`) or `null` to
+  leave the gamepad alone; `controller.setGamepad({ handbrake: 'b1' })` (or `null`) changes it
+  while the game runs, like `setKeys`. Controls are named by index (`'b7'` the right trigger, `'a0-'` the left
+  stick to the left, per the standard mapping; `GamepadInput.controlName('b7')` gives "RT" for a
+  menu). For your own actions: `world.gamepadInput.bindKeys(world.keyboardInput, { KeyF: 'b2' })`
+  holds a key while a button is pressed, so whatever is bound to the key works; `pressed$('b9')`,
+  `value$('b7')` (a trigger's 0..1) and `direction$(GAMEPAD_RIGHT_STICK)` read controls directly;
+  `inUse$` tells whether to show gamepad or keyboard hints; `controlPushed$` captures the next
+  control pushed for a "press a button" rebinding menu. Browsers list a gamepad only once a button
+  was pressed on it. Which gamepad drives, with several connected (some keyboards and wheel pedals
+  list themselves as gamepads too): `GamepadInput.choice`, a `{ id, nth }` every world's input
+  follows - save it and assign it back at startup; without one, the first gamepad with the
+  standard mapping. A controls menu shows `GamepadInput.gamepadName(GamepadInput.selectedGamepad())`
+  and steps with `GamepadInput.chooseNext(1)`/`(-1)`.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
@@ -406,9 +527,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   Meshes only take part in shadows with `castShadow`/`receiveShadow` in their `DisplayObject3dOpts`.
   `world.visualScene.setEnvironment({ background, environmentMap, fog })` sets the scene background
   (a color or a sky texture), image-based lighting and fog; sky textures come from
-  `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
+  `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz }, { filter })` (faces named by world
   direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
-  `-Y`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
+  `-Y`; `filter: 'nearest'` for a pixel-art sky, as in `loadTexture`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
   matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
@@ -422,15 +543,23 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   they multiply the particle's own `size`/`opacity`, so leave them unset to drive everything from
   `update`. `fixedTimeStep: 1 / 30` runs the simulation in 30 Hz steps (interpolated for display
   unless `interpolate: false`); emit from `onStep` to spawn in lockstep with them. Atlas regions
-  come from `ParticleFrames.grid`/`fromPixels` (image coordinates). Blend modes: `normal`,
+  come from `ParticleFrames.grid`/`fromPixels` (image coordinates). The simulation option `anchor`
+  is the point of each sprite placed at the particle's position and turned around by its rotation,
+  in fractions of the sprite as its image shows it (`y` down): `{ x: 0.5, y: 0.5 }` (default) the
+  center, `{ x: 0.5, y: 1 }` the bottom edge's middle - smoke, dust, grass, flames standing on
+  their base (screen-down for a camera-facing sprite, `-Z` for `billboard: 'vertical'`). A frame's
+  own `anchor` (`fromPixels` takes it in pixels of the region) overrides it, so sprites with
+  different pivots share one atlas. Blend modes: `normal`,
   `additive`, `multiply`, `subtractive`, `premultiplied` (+ `textureAlpha: 'brightness'` for a
   sprite on opaque black); with three.js, the `material` option adjusts or replaces the shader
-  material for anything else.
+  material for anything else - to add GLSL to the built-in vertex shader (a screen-space offset,
+  say), use `extendThreeParticleVertexShader(m, { declarations, mainEnd })` there, never a string
+  replace on `m.vertexShader`, whose text is not a stable API.
 - **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
   returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
   3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
   in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
-  `attachTo` any 2D entity. Blend modes are `normal`, `additive` and `multiply` only; the entity's
+  `attachTo` any 2D entity, `anchor` as in 3D (the image's top edge towards `-y`). Blend modes are `normal`, `additive` and `multiply` only; the entity's
   component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
   (newest on top) at the system's `zIndex`.
 - **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
@@ -471,8 +600,34 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   carries the environment reverb, `music`/`ui` beside it - separate volume sliders per category, one
   shared tunnel echo. Set it up once at load (moving a playing bus can click). `getBusVolume` reads
   a bus's own volume, `getEffectiveBusVolume` (Web Audio scenes) the product with its parents'.
-  Console: `audio_bus_parent BUS [PARENT|master]`. A world's audio scene owns its own
-  `AudioContext`: apply the app's audio settings to each new world's scene when creating it.
+  Console: `audio_bus_parent BUS [PARENT|master]`. Each world's audio scene has its own
+  volumes, buses and budget (even on a shared context): apply the app's audio settings to each new
+  world's scene when creating it.
+  **Fades**: `source.fadeTo(volume, ms)` is a timed fade on the audio clock (it pauses with the
+  world; `volume` reads the target at once); it resolves `true` when done, `false` when a `volume`
+  write, another `fadeTo` or `dispose()` took over - so `if (await s.fadeTo(0, 500)) s.stop();`
+  never stops a sound that was faded back in. Don't animate `volume` per frame for a fade.
+  **Sounds outside the world** (menu clicks, UI): `audioScene.playOneShot({ clip, bus: 'ui',
+  volume })` - non-positional, disposes itself at the end, needs no world or entity. For menus that
+  have no world, create a scene of its own (`new WebAudioScene3dComponent()`, `await
+  scene.init()`) and keep it for the app's lifetime. **Share that scene's `AudioContext` with every
+  world** (`new WebAudioScene3dComponent({ context: menuScene.context })`, 2D likewise): browsers
+  start a context only after a gesture, and iOS starts a new one on its own only within ~2 s of a
+  tap, so a world created after a long load stays silent until the next tap, while the menu's
+  context, unlocked once, keeps running. Such a scene doesn't own the context (`ownsContext`
+  false); scenes on one context never silence each other: a pause (the world's) pauses only that
+  scene's own sources, and the context is closed only when the last scene on it is disposed. The
+  menu scene (the owner) unlocks it on gestures. A context the app suspends itself
+  (`context.suspend()`) stays suspended until its own `context.resume()`. Leave the 3D listener to
+  the world's scene (a menu scene no world updates never writes it). **Music**: `new MusicPlayer(scene, { bus?,
+  crossfadeMs?, loadClip? })` (core) plays `MusicTrack`s (`{ url, volume?, loop?, loopStart?,
+  loopEnd? }`, extend it with your own fields such as a title): `play(trackOrList, { crossfadeMs,
+  shuffle, repeat })` crossfades from what is playing, `next()`, `stop(fadeMs?)`, `nowPlaying$`
+  for a "now playing" display; shuffle never repeats a track back to back; tracks play on the
+  `"music"` bus at priority `Infinity`, decoded whole before they start. **Mobile**:
+  `applyMobileAudioDefaults(audioScene)` right after creating a scene sets a 16-voice budget and
+  `'equalpower'` panning on a touch device (`MOBILE_AUDIO_DEFAULTS`) and does nothing elsewhere;
+  pass `true`/`false` as its second argument to use your own detection or a player setting.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both
@@ -499,7 +654,24 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   resistance settings, and `GgCarEntity` exposes `computeDrive`/`applyDrive`/`selectAutoGear`/
   `applyResistance` as `protected` hooks for a subclass; `raycastVehicle.setFrictionSlip(axle, v)`
   retunes tyre grip at runtime (a sliding handbrake, a surface change). A car's `engine.torques`
-  push the whole car, not each driven wheel.
+  push the whole car, not each driven wheel. A `RaycastVehicle3dEntity` subclass supplies its own
+  wheel entities by overriding `protected createWheelEntity(options, index)` (return
+  `{ entity, localRotation }`, or `null` for no wheel entity) - the vehicle names them, adds them as
+  children and moves them to the wheel transforms every tick; the default clones
+  `display.displayObject`. It runs from the base constructor, before the subclass's own fields
+  exist, so it may read only its arguments. For hit sounds, damage, camera shake and sparks, use the
+  vehicle's own events rather than the chassis body's collision events: `raycastVehicle.impact$`
+  fires once per hit with `speed` (approach speed along the normal, m/s, from the velocities
+  *before* the step that resolved the hit - `CollisionEvent.relativeVelocity` is read after it) and
+  `mirrored` (`true` on the second report of a hit between two vehicles - skip it for one sound per
+  crash, keep it for per-car damage); `airborne$`/`landed$({ speed, airTime })`/`isAirborne` tell
+  jumps from bumps (every wheel off the ground for `airborneDelay` ms, default 250).
+  ```typescript
+  car.raycastVehicle.impact$.subscribe(hit => {
+    if (!hit.mirrored && hit.speed > 2) playCrash(hit.position, hit.speed);
+  });
+  car.raycastVehicle.landed$.subscribe(({ speed }) => shakeCamera(speed / 10)); // your own effects
+  ```
 - **Forces and impulses**: `applyForce(force, worldPoint?)`/`applyImpulse(impulse, worldPoint?)`/
   `applyTorque`/`applyTorqueImpulse` on every rigid body (`entity.objectBody`), on every physics
   backend. A force acts during the next `simulate()` only, so re-apply a continuous one (wind,
@@ -535,7 +707,24 @@ const result = await world.loader.loadGgGlb('assets/city', {
   state) that shares geometry, materials and textures with the cached original; `loadTexture`/
   `loadClip` return the one shared object. Consequences: changing a material on one copy changes it
   on all, and you never dispose a loaded texture yourself. `cachingStrategy: CachingStrategy.Nothing`
-  on `loadGgGlb` loads a private, uncached instance instead.
+  on `loadGgGlb` loads a private, uncached instance instead (parsed again on every load).
+- **A copy you change per instance needs copies of its own** - a car painted per player, a prop
+  that fades out on its own, a mesh whose vertices you edit. Ask for them with the `unique` option
+  (`loadModel` and `loadGgGlb`, props included) or call `makeUnique` on a 3D display object later;
+  never clone the native materials/geometry by hand, since `dispose()` then neither frees your
+  copies nor knows the cached originals are no longer used by this copy:
+
+  ```typescript
+  const car = await world.loader.loadModel('assets/car', { unique: 'materials' });
+  // or, on any 3D display object: entity.object3D.makeUnique('materials');
+  ```
+
+  `'materials'` (the default) copies the materials, `'meshes'` also the geometry, `'all'` also the
+  textures (for per-copy wrapping/filtering/offset; the image itself stays shared). The file is
+  still parsed once - `unique` is not part of the cache key. The copy frees exactly what it got
+  copies of when disposed and never touches the cached original; calling `makeUnique` again with
+  the same or a lower level does nothing. Do it before changing anything, and before `clone()`ing
+  the object yourself if those clones should share the copies.
 - **An asset is freed when nothing holds it anymore.** A level holds what it loaded until it is
   removed; a `MapGraph` chunk until it unloads; an entity built with `world.loader.createEntity`
   until it is disposed. Anything you load directly is held until `world.dispose()`, unless you pass
@@ -639,7 +828,12 @@ class GameScreen extends Screen {
   only this player's input is off. A world you paused yourself is not resumed for you.
 - **Keys**: `this.keyboard` is the screen's own `KeyboardInput`, running only while the screen is
   on top - use it for the screen's shortcuts (Escape, back). Gameplay keys stay on
-  `world.keyboardInput`. With the pointer locked the browser keeps Escape for releasing the lock,
+  `world.keyboardInput`. `this.bindGamepadKeys()` in a menu screen's constructor or `enter()` has
+  the gamepad press that keyboard too: d-pad or left stick are the arrows (held ones repeat), A is
+  Enter, B is Escape, so a menu driven by `this.keyboard.bind('ArrowDown')` etc. works from a pad.
+  Moving DOM focus or clicking the focused button on those keys is your handler's job. Keep the
+  menu keys off a game screen (B is a gameplay button there) and bind only its pause key:
+  `this.bindGamepadKeys({ Escape: 'b9' })` (Start). With the pointer locked the browser keeps Escape for releasing the lock,
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
@@ -647,17 +841,69 @@ class GameScreen extends Screen {
   focus (`KeyboardInput.externalFocusBlacklist`), so a clicked HTML button over the game swallows
   WASD until focus moves. Call `button.blur()` in its click handler.
 - **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
-  the game's layer and sits below any screen pushed on top. An on-screen pause button is
-  `controls.addControls(new TouchButton({ id: 'pause', content: 'II', placement: { top: 1, right: 1 } }).onPress(...))`.
+  the game's layer and sits below any screen pushed on top. An on-screen pause button opening the
+  pause screen is `new MobileControls({ container: this.layer, pauseButton: { onPress: () =>
+  this.screens.push(new PauseScreen()) } })` - not the button's default, which pauses the world
+  itself, and a world paused that way stays paused when the pause screen pops.
 - **A screen can draw its UI with a renderer** instead of DOM: it creates its own world in `enter()`
   (a 2D world for a pause menu over a 3D game, with a transparent renderer on a canvas in its
   layer), registers it with `addWorld`, and never touches the game's world. Nothing requires both
-  renderers in an app that doesn't do this.
+  renderers in an app that doesn't do this. See "A 2D UI layer over the game's canvas" below.
 - The manager adds a fixed, full-viewport container to `document.body` unless given `container`
   (which must be positioned). `screens.stack`/`top`/`stack$`/`busy$` expose its state.
 - Declare `static readonly screenTypeName: string = 'MenuScreen';` on each screen class: the dev
   console's `screens` command prints it, where the class name would be minified in a production
   build (the same reason entities declare `entityTypeName`).
+
+## A 2D UI layer over the game's canvas
+
+A HUD or menu drawn with pixi over a 3D (or another 2D) game is a world of its own: a `Gg2dWorld`
+with the pixi scene and no physics world (physics is optional), a renderer with `transparent: true`
+on a second canvas stacked over the game's, and a camera whose `origin` is `'top-left'`, so world
+coordinates are canvas pixels with `(0, 0)` at the top-left corner and y down. It runs on its own
+clock, so pausing the game world leaves the UI running.
+
+```typescript
+import { Entity2d, Gg2dWorld } from '@gg-web-engine/core';
+import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+import { Container, Sprite } from 'pixi.js';
+import { firstValueFrom } from 'rxjs';
+
+const ui: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent() });
+await ui.init();
+const camera = ui.visualScene.factory.createCamera();
+camera.origin = 'top-left';
+const uiRenderer = ui.addRenderer(camera, document.getElementById('ui') as HTMLCanvasElement, {
+  transparent: true, // the game shows wherever the UI draws nothing
+});
+ui.start();
+
+// engine objects, placed in pixels
+const score = new Entity2d({ object2D: ui.visualScene.factory.createText('0', { fontSize: 24, color: 0xffffff }) });
+ui.addEntity(score);
+score.position = { x: 16, y: 16 };
+
+// raw pixi objects, for what the engine has no API for (pixi's pointer events, masks, bitmap fonts)
+await firstValueFrom(uiRenderer.renderer.initialized$); // pixi's Application init is asynchronous
+const menu = ui.visualScene.nativeContainer!.addChild(new Container());
+const button = menu.addChild(new Sprite(await ui.loader.loadTexture('ui/button.png')));
+button.position.set(40, 120);
+uiRenderer.rendererSize$.subscribe(size => size && menu.position.set(size.x / 2 - 200, 0)); // re-layout on resize
+```
+
+- Stack the canvases with CSS (both `position: absolute`, the UI one later in the DOM or with a
+  higher `z-index`). The UI canvas takes every pointer event over it: give it `pointer-events:
+  none` when the game below needs them, and leave it on only while the UI itself is clickable.
+- Leave `setEnvironment({ background })` unset on the UI scene: a background color or texture
+  makes the layer opaque.
+- `renderer.renderer.initialized$` (emits once, also to a late subscriber) is only needed before
+  using pixi's own `application.renderer`; drawing, resizing and adding objects work before it.
+- Raw pixi objects in `nativeContainer` tie that part of the UI to pixi. Prefer the factory's
+  text, primitives and textures (wrapped in an `Entity2d`) where they suffice.
+- `camera.zoom` scales the whole UI around the top-left corner, e.g. to fit a UI authored at a
+  fixed size: `uiRenderer.rendererSize$.subscribe(s => s && (camera.zoom = s.y / 720))`.
+- In a `ScreenManager` app, the screen showing the UI creates this world in `enter()` and
+  registers it with `addWorld`, like any other world.
 
 ## Touch devices: on-screen controls
 
@@ -677,11 +923,29 @@ world.addEntity(new MobileControls()); // shown on touch-first devices only; ena
   any controller's mouse-look without an overlay: `MouseInput` scales a finger's movement by its
   `touchSensitivity` option (3 by default) so a drag turns the view about as far as it does through
   the overlay's look area.
-- Options pick a scheme per controller (`car: { steering: 'buttons' | 'stick' | 'tilt' }`,
-  `character: { movement: 'stick' | 'dpad', look: 'drag' | 'stick' }`) and adjust single controls
-  (`placements`, `icons`, `hide`, `extra`).
+- Options pick a scheme per controller (`car: { steering: 'buttons' | 'stick' | 'tilt', pedals:
+  'buttons' | 'stick' }`, `character: { movement: 'stick' | 'dpad', look: 'drag' | 'stick' }`) and
+  adjust single controls (`placements`, `icons`, `hide`, `extra`). `inset: { left: -2, right: -2 }`
+  (or one number) moves every control placed by numbers towards (negative) or away from the
+  overlay's edges, in placement units - instead of restating every placement.
+- A car controller of the game's own (an entity driving the vehicle's handbrake and gearbox by
+  keys, around a bare `CarHandlingController` child for steering and pedals) gets handbrake and
+  gear buttons through `car: { keys: { handbrake, gearUp, gearDown } }` - or a function of the
+  controller returning them, called each time the layout is built (`controls.refresh()` after the
+  game's keys change). The buttons press them on the `CarHandlingController`'s `keyboard`.
+- `pauseButton: true` adds a pause button (top left) that pauses the world and resumes it on the
+  next press; a game with a pause menu passes `pauseButton: { onPress: () => screens.push(new
+  PauseScreen()) }` instead, since a `ScreenManager` resumes on close only a world it paused
+  itself. `fullscreenButton: true` (top right) toggles fullscreen of the `container` and is hidden
+  where fullscreen is unavailable (iPhone Safari). `toggleFullscreen(element?)` (standard and
+  WebKit API, never throws) is exported for a button of your own - call it from
+  `TouchButton.onTap` (the finger lifting), not `onPress`: a browser grants a touch the user
+  gesture fullscreen needs on lift, not on press.
+- `visible$: Observable<boolean>` shows the overlay only while it last emitted `true` (e.g. "in a
+  car and no menu open"); hiding releases every held button, so no key stays pressed.
 - An app's own keys get a button with `new TouchButton({...}).bindKey(world.keyboardInput, 'KeyF')`,
-  added to a layout's `extra` or kept always on screen with `controls.addControls(...)`.
+  added to a layout's `extra` or kept always on screen with `controls.addControls(...)`, on top of
+  every layout.
 - An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
   To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
   and analog sources combined) rather than `output$` (keys only).
@@ -716,6 +980,17 @@ Rules of thumb:
   leaving, and react to `possessionChanged$` (a race for the same seat is lost by one peer).
 - Set `net.localPosition` to where the player is (`null` while spectating) - distance arbitration
   and zoning use it.
+- **Room list and lobby**: don't build one on your own database code. `RoomDirectory` over
+  `FirebaseLobbyBackend` (or `BroadcastChannelLobbyBackend` for two local tabs) lists rooms
+  (`rooms$`: name, capacity, member count, meta, `joinable`) and `createRoom`/`joinRoom` gives a
+  `Lobby` with atomic capacity, disconnect cleanup, `host`/`isHost$` (the senior member),
+  host-written `state$`, `startMatch()` (locks `match.roster`, the room admits nobody until
+  `endMatch()`), `setReady(round)`/`waitForReady(round, ms)`, `scheduleStart(round, at)`/
+  `startsAt$(round)` on the shared `serverNow()` clock, and `writeResult(round, subject, value)`
+  (first write wins). Pass `lobby.roomId`/`lobby.localPeerId` to the transport, build the game from
+  `match.roster` (never from the live members), and `await net.waitForPeers(match.roster, ms)`
+  before declaring ready - links open seconds after `connect()`. On `lobby.closed$` `'lost'` (the
+  connection to the backend dropped) the player is out of the room.
 - Custom entity classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a
   player drives them) - see `gg-engine-multiplayer`.
 - In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
@@ -725,6 +1000,16 @@ Rules of thumb:
 For Angular/React/Vue/vanilla wiring, the pattern is the same regardless of framework: create the
 `GgWorld` in a lifecycle hook (`ngOnInit`/`useEffect`) once a canvas ref exists, and call
 `world.dispose()` on teardown.
+
+One canvas element hosts one renderer. Disposing a renderer (with its world, or
+`removeEntity(renderer, true)`) releases the canvas's WebGL context right away - a page gets only
+about 16, so a game creating a world per session would otherwise run out - and a released context
+can't come back. An app that keeps one `<canvas>` in its layout for world after world passes
+`replaceCanvas(canvas)` (from `@gg-web-engine/core`) to the next world's `addRenderer`: it puts a
+blank copy (same id, classes, attributes, inline style) where the canvas was and returns it. Keep
+the returned element (the old one is out of the page) and hand it to anything else that reads the
+canvas. `addRenderer` throws, naming `replaceCanvas`, when given a canvas whose renderer was
+disposed.
 
 ## Debugging with the dev console
 
@@ -913,6 +1198,11 @@ on any named entity, including the player.
 - Forgetting `await world.init()` before calling `.factory`, `.addRenderer`, etc. (adapters throw
   "not initialized" errors by design — see e.g. `AmmoWorldComponent.factory` getter).
 - Passing a canvas element that isn't attached to the DOM yet when calling `addRenderer`.
+- Handing the next world the canvas a disposed world drew on: its WebGL context is gone, and
+  `addRenderer` throws. Use `replaceCanvas(canvas)` (see "Framework integration").
+- Subscribing in `onSpawned` without ending the subscription on removal - every re-add then runs
+  the handler once more per tick. Use `this.onTick(...)`/`this.whileSpawned(obs)` (see
+  "Subscriptions that end with the entity").
 - Mixing 2D and 3D packages, or mismatched `@gg-web-engine/*` versions across packages.
 - Typing `world` as a single adapter's world alias (e.g. `ThreeGgWorld`) when the code actually
   uses *both* halves concretely — compiles, but silently erases the untyped half back to the
@@ -934,6 +1224,13 @@ on any named entity, including the player.
   same?", lists the known differences). Tune physics on the backend the app ships with, check the
   specific adapter's source under `packages/<adapter>/src` when a capability seems missing, and
   consult `milestones.md` for known gaps before assuming a bug.
+- Overriding `MapGraph3dEntity.loadChunk` to do more per-chunk work after `await super.loadChunk(node)`
+  (loading props, signs). By then the chunk is already in `loaded` and no longer loading, so it can
+  unload while the override awaits, and whatever the override then adds (`loaded.set`,
+  `addChildren`, `attachToChunk`) brings back a chunk that is gone: an entry without its terrain
+  that never loads again, or a second copy. Override `prepareChunk(node, loaded, entities, signal)`
+  instead: it is awaited before the chunk joins the world, may change the loaded entities, and the
+  entities it returns are added with the chunk and disposed when it unloads.
 - Writing `<...>`-style argument placeholders (`<name>`, `<x>`) into a console command's `doc`
   string or thrown `Error` message. The console panel renders both via raw `innerHTML`
   (`gg-console.ui.ts`), so `<name>` parses as an (unknown, self-closing) HTML tag and its text is

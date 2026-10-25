@@ -91,6 +91,33 @@ describe('PixiDisplayObjectComponent', () => {
     });
   });
 
+  describe('name', () => {
+    it('is the native label, and empty until one is assigned', () => {
+      const native = { scale: { x: 1, y: 1 } } as unknown as Container;
+      const component = new PixiDisplayObjectComponent(native);
+
+      expect(component.name).toBe('');
+      component.name = 'eye';
+      expect(native.label).toBe('eye');
+      expect(component.name).toBe('eye');
+    });
+
+    it("drops the class-name label pixi.js gives an unnamed object, so it isn't taken for a name", () => {
+      // pixi.js 8 labels `new Graphics()` "Graphics", `new Sprite()` "Sprite", ... by default; an
+      // Entity2d built around one would adopt that as its world-unique name and collide with the next
+      for (const label of ['Graphics', 'Sprite', 'Mesh', 'TilingSprite']) {
+        const native = { label, scale: { x: 1, y: 1 } } as unknown as Container;
+        expect(new PixiDisplayObjectComponent(native).name).toBe('');
+        expect(native.label).toBe('');
+      }
+    });
+
+    it('keeps a label assigned on purpose', () => {
+      const native = { label: 'Crate', scale: { x: 1, y: 1 } } as unknown as Container;
+      expect(new PixiDisplayObjectComponent(native).name).toBe('Crate');
+    });
+  });
+
   describe('tint and opacity', () => {
     it('map to the native tint and alpha', () => {
       const native = { tint: 0xffffff, alpha: 1, scale: { x: 1, y: 1 } } as unknown as Container;

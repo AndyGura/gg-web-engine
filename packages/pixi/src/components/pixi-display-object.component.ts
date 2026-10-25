@@ -11,6 +11,24 @@ import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
 import { Container, Texture } from 'pixi.js';
 import { cloneContainer } from '../utils/clone-container';
 
+/**
+ * The `label` pixi.js gives a display object built without an explicit one: its class name (a
+ * `new Graphics()` is labelled `"Graphics"`, a `Sprite` `"Sprite"`, ...). Not a name in the
+ * engine's sense - `Entity2d` adopts a named display object's name as its own world-unique name, so
+ * every unnamed primitive of one kind would collide on it. The component clears it on construction.
+ */
+const PIXI_DEFAULT_LABELS: ReadonlySet<string> = new Set([
+  'Container',
+  'Graphics',
+  'Sprite',
+  'AnimatedSprite',
+  'Mesh',
+  'TilingSprite',
+  'NineSliceSprite',
+  'ParticleContainer',
+  'RenderContainer',
+]);
+
 export class PixiDisplayObjectComponent
   implements
     IDisplayObject2dComponent<PixiVisualTypeDocRepo2D>,
@@ -41,6 +59,9 @@ export class PixiDisplayObjectComponent
   ) {
     if (materialOptions) {
       this.materialOptions = materialOptions;
+    }
+    if (nativeSprite.label && PIXI_DEFAULT_LABELS.has(nativeSprite.label)) {
+      nativeSprite.label = '';
     }
     this.baseScale = baseScale ?? Pnt2.clone(nativeSprite.scale);
   }
@@ -103,6 +124,7 @@ export class PixiDisplayObjectComponent
     this.nativeSprite.alpha = value;
   }
 
+  /** the native `Container.label`; `''` while nothing has named this object */
   public get name(): string {
     return this.nativeSprite.label ?? '';
   }
@@ -141,6 +163,23 @@ export class PixiDisplayObjectComponent
     return {
       min: { x: bounds.minX, y: bounds.minY },
       max: { x: bounds.maxX, y: bounds.maxY },
+    };
+  }
+
+  /**
+   * `Container.getLocalBounds()` - the subtree in the container's own frame, leaving out hidden
+   * children - scaled by `baseScale`, since a sized sprite's built size is its native scale, which
+   * the native local bounds leave out along with the rest of the container's own transform.
+   */
+  getLocalBoundings(): GgBox2d {
+    const bounds = this.nativeSprite.getLocalBounds();
+    const x1 = bounds.minX * this.baseScale.x;
+    const x2 = bounds.maxX * this.baseScale.x;
+    const y1 = bounds.minY * this.baseScale.y;
+    const y2 = bounds.maxY * this.baseScale.y;
+    return {
+      min: { x: Math.min(x1, x2), y: Math.min(y1, y2) },
+      max: { x: Math.max(x1, x2), y: Math.max(y1, y2) },
     };
   }
 

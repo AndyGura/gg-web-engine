@@ -12,12 +12,25 @@ jest.mock('pixi.js', () => {
     destroyed = false;
     stage = { addChild: jest.fn(), removeChild: jest.fn() };
     ticker = { stop: jest.fn(), destroy: jest.fn() };
-    renderer = { resize: jest.fn() };
+    options: any = null;
+    // pixi's renderer.resize keeps the resolution when none is given
+    renderer: any = {
+      width: 0,
+      height: 0,
+      resolution: 1,
+      resize: jest.fn(function (this: any, width: number, height: number, resolution?: number) {
+        this.width = width;
+        this.height = height;
+        this.resolution = resolution ?? this.resolution;
+      }),
+    };
     render = jest.fn();
     constructor() {
       pixi.applications.push(this);
     }
-    init() {
+    init(options: any) {
+      this.options = options;
+      this.renderer.resolution = options.resolution;
       return new Promise<void>(resolve => {
         const finish = () => {
           this.initialized = true;
@@ -39,6 +52,7 @@ jest.mock('pixi.js', () => {
   return { Application, Container: Empty, Graphics: Empty, Sprite: Empty, Texture: Empty };
 });
 
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { PixiRendererComponent } from '../../src/components/pixi-renderer.component';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -66,6 +80,32 @@ describe('PixiRendererComponent', () => {
     expect(renderer.nativeTextureSystem).toBeNull();
   });
 
+  it('reports the end of pixi init through initialized$, also to a subscriber that comes later', async () => {
+    const renderer = new PixiRendererComponent(scene, {} as any);
+    const early = jest.fn();
+    renderer.initialized$.subscribe(early);
+    expect(renderer.initialized).toBe(false);
+    pixi.resolveInit();
+    await flush();
+    expect(renderer.initialized).toBe(true);
+    expect(early).toHaveBeenCalledTimes(1);
+    await expect(firstValueFrom(renderer.initialized$)).resolves.toBeUndefined();
+    renderer.dispose();
+  });
+
+  it('completes initialized$ without emitting when disposed before init finished', async () => {
+    const renderer = new PixiRendererComponent(scene, {} as any);
+    const next = jest.fn();
+    const complete = jest.fn();
+    renderer.initialized$.subscribe({ next, complete });
+    renderer.dispose();
+    pixi.resolveInit();
+    await flush();
+    expect(next).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(renderer.initialized).toBe(false);
+  });
+
   it('destroys the application right away once initialized, and only once', async () => {
     const renderer = new PixiRendererComponent(scene, {} as any);
     const app = pixi.applications[0];
@@ -74,6 +114,18 @@ describe('PixiRendererComponent', () => {
     renderer.dispose();
     renderer.dispose();
     expect(app.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a canvas the app passed in the page, and lets pixi remove only one of its own', async () => {
+    const canvas = document.createElement('canvas');
+    const withCanvas = new PixiRendererComponent(scene, {} as any, canvas);
+    const withoutCanvas = new PixiRendererComponent(scene, {} as any);
+    pixi.pendingInits.splice(0).forEach(finish => finish());
+    await flush();
+    withCanvas.dispose();
+    withoutCanvas.dispose();
+    expect(pixi.applications[0].destroy).toHaveBeenCalledWith({ removeView: false }, true);
+    expect(pixi.applications[1].destroy).toHaveBeenCalledWith({ removeView: true }, true);
   });
 
   it('frees every application over many create/dispose rounds, disposed before or after init', async () => {
@@ -91,5 +143,118 @@ describe('PixiRendererComponent', () => {
     expect(pixi.applications.every(app => app.destroyed)).toBe(true);
     expect(pixi.applications.every(app => app.destroy.mock.calls.length === 1)).toBe(true);
     expect(scene.renderers.size).toBe(0);
+  });
+
+  describe('lost WebGL context', () => {
+    const drawnScene = (): any => ({
+      renderers: new Set(),
+      nativeContainer: { pivot: {}, scale: {}, position: {} },
+      parallaxLayers: [],
+      environment: {},
+    });
+
+    const initializedWithGl = async (contextLost: boolean) => {
+      const renderer = new PixiRendererComponent(drawnScene(), { position: { x: 0, y: 0 }, zoom: 1 } as any);
+      const app = pixi.applications[0];
+      app.renderer.gl = { isContextLost: jest.fn(() => contextLost) };
+      pixi.resolveInit();
+      await flush();
+      return { renderer, app };
+    };
+
+    it('skips drawing while the context is lost', async () => {
+      const { renderer, app } = await initializedWithGl(true);
+      renderer.render();
+      expect(app.render).not.toHaveBeenCalled();
+      renderer.dispose();
+    });
+
+    it('draws while the context is not lost', async () => {
+      const { renderer, app } = await initializedWithGl(false);
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
+
+    it('draws again once the context is restored', async () => {
+      const { renderer, app } = await initializedWithGl(true);
+      renderer.render();
+      app.renderer.gl.isContextLost.mockReturnValue(false);
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
+
+    it('keeps drawing with a renderer that has no WebGL context (WebGPU)', async () => {
+      const renderer = new PixiRendererComponent(drawnScene(), { position: { x: 0, y: 0 }, zoom: 1 } as any);
+      const app = pixi.applications[0];
+      pixi.resolveInit();
+      await flush();
+      renderer.render();
+      expect(app.render).toHaveBeenCalledTimes(1);
+      renderer.dispose();
+    });
+  });
+
+  describe('resolution', () => {
+    const originalRatio = window.devicePixelRatio;
+    afterEach(() => {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: originalRatio });
+    });
+
+    it('starts at a fixed forceResolution, keeping the canvas CSS size', () => {
+      const renderer = new PixiRendererComponent(scene, {} as any, undefined, { forceResolution: 1.5 });
+      const app = pixi.applications[0];
+      expect(app.options.resolution).toBe(1.5);
+      expect(app.options.autoDensity).toBe(true);
+      renderer.dispose();
+    });
+
+    it('starts at the device resolution for an observable forceResolution, until it emits', () => {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 3 });
+      const renderer = new PixiRendererComponent(scene, {} as any, undefined, {
+        forceResolution: new BehaviorSubject(2),
+      });
+      expect(pixi.applications[0].options.resolution).toBe(3);
+      renderer.dispose();
+    });
+
+    it('changes the resolution in place, keeping the size', async () => {
+      const renderer = new PixiRendererComponent(scene, {} as any);
+      const app = pixi.applications[0];
+      pixi.resolveInit();
+      await flush();
+      renderer.resizeRenderer({ x: 200, y: 100 });
+      renderer.setResolution(0.5);
+      expect(pixi.applications).toHaveLength(1);
+      expect(app.renderer.resize).toHaveBeenLastCalledWith(200, 100, 0.5);
+      expect(app.renderer.resolution).toBe(0.5);
+      renderer.dispose();
+    });
+
+    it('applies a resolution set before init once pixi has initialized', async () => {
+      const renderer = new PixiRendererComponent(scene, {} as any);
+      const app = pixi.applications[0];
+      renderer.resizeRenderer({ x: 200, y: 100 });
+      renderer.setResolution(2);
+      expect(app.renderer.resize).not.toHaveBeenCalled();
+      pixi.resolveInit();
+      await flush();
+      expect(app.renderer.resize.mock.calls).toEqual([
+        [200, 100],
+        [200, 100, 2],
+      ]);
+      renderer.dispose();
+    });
+
+    it('drops a pending resolution change when disposed before init', async () => {
+      const renderer = new PixiRendererComponent(scene, {} as any);
+      const app = pixi.applications[0];
+      renderer.setResolution(2);
+      renderer.dispose();
+      pixi.resolveInit();
+      await flush();
+      expect(app.renderer.resize).not.toHaveBeenCalled();
+    });
   });
 });

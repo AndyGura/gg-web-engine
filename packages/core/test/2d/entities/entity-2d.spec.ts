@@ -4,7 +4,6 @@ import { mock2DObject } from '../../mocks/object.mock';
 import { Subject } from 'rxjs';
 
 describe(`Entity2d`, () => {
-
   describe(`constructor`, () => {
     it(`should pull position and rotation from body immediately`, () => {
       const objectBody = mock2DBody();

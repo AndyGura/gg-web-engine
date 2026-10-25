@@ -378,10 +378,11 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       }
 
       if (started) {
-        const geometry = this.computeContactGeometry(collider1, collider2);
-        if (!geometry) {
-          return;
-        }
+        // a start is never dropped, even without a manifold: the bodies count their touching
+        // collider pairs (see `Rapier3dRigidBodyComponent.collidingWith`), and the stop of this
+        // pair will come either way
+        const geometry =
+          this.computeContactGeometry(collider1, collider2) ?? this.fallbackContactGeometry(body1, body2);
         const v1 = Pnt3.clone(body1.linvel());
         const v2 = Pnt3.clone(body2.linvel());
         out.push(() => {
@@ -471,6 +472,24 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       result = { position, normal, impulse };
     });
     return result;
+  }
+
+  /**
+   * Contact geometry for a started pair `computeContactGeometry` found no manifold for: the midpoint
+   * of the two bodies, the direction from `body1` to `body2` (`+Z` when they coincide), no impulse.
+   */
+  protected fallbackContactGeometry(
+    body1: { translation(): Point3 },
+    body2: { translation(): Point3 },
+  ): { position: Point3; normal: Point3; impulse: number } {
+    const p1 = Pnt3.clone(body1.translation());
+    const p2 = Pnt3.clone(body2.translation());
+    const between = Pnt3.sub(p2, p1);
+    return {
+      position: Pnt3.lerp(p1, p2, 0.5),
+      normal: Pnt3.len(between) > 1e-9 ? Pnt3.norm(between) : Pnt3.Z,
+      impulse: 0,
+    };
   }
 
   protected lockedCollisionGroups: number[] = [];

@@ -15,7 +15,6 @@ import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../gg-2d-world';
 import { IRenderable2dEntity } from './i-renderable-2d.entity';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { CharacterController2dOptions } from '../models/character-controller-options';
-import { takeUntil } from 'rxjs';
 
 /**
  * Options for a `CharacterController2dEntity`: the capsule shape/mover tuning from
@@ -333,7 +332,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
       this.recreateCapsule(expectedCentersDistance, true);
     }
     // until removed: an entity may be removed from the world and added again
-    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => this.updateMovement(delta));
+    this.onTick((_, delta) => this.updateMovement(delta));
   }
 
   /** This character's current gravitational acceleration as a full 2D vector - see

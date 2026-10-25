@@ -37,7 +37,10 @@ export class TouchLookArea extends TouchControl {
     this.tapDistance = options.tapDistance ?? 10;
     this.tapDuration = options.tapDuration ?? 250;
     if (!options.placement) {
-      this.element.style.inset = '0';
+      this.element.style.top = '0';
+      this.element.style.right = '0';
+      this.element.style.bottom = '0';
+      this.element.style.left = '0';
     }
   }
 

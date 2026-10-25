@@ -4,7 +4,6 @@ import { mock3DObject } from '../../mocks/object.mock';
 import { Subject } from 'rxjs';
 
 describe(`Entity3d`, () => {
-
   describe(`constructor`, () => {
     it(`should pull position and rotation from body immediately`, () => {
       const objectBody = mock3DBody();

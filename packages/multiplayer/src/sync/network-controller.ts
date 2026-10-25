@@ -503,6 +503,52 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return this._peers$.getValue();
   }
 
+  /**
+   * Wait until the links to other peers are open (they are in {@link peerInfos}) - e.g. the whole
+   * roster of a match before a player declares itself ready. Links open one by one after
+   * {@link connect}, and a slow one can take seconds.
+   * @param peers how many other peers, or which ones (the local peer id among them is ignored)
+   * @param timeoutMs give up after this long (`Infinity`: never)
+   * @returns `true` once they are all connected (at once if they already are), `false` on timeout or
+   * when the session ends first ({@link leave}, a failed join)
+   */
+  waitForPeers(peers: number | Iterable<string>, timeoutMs: number): Promise<boolean> {
+    const wanted = typeof peers === 'number' ? null : [...peers].filter(id => id !== this.localPeerId);
+    const satisfied = (infos: ReadonlyArray<PeerInfo>): boolean =>
+      wanted ? wanted.every(id => infos.some(p => p.peerId === id)) : infos.length >= (peers as number);
+    return new Promise<boolean>(resolve => {
+      let done = false;
+      let timer: unknown = null;
+      const subscriptions: Subscription[] = [];
+      const finish = (result: boolean) => {
+        if (done) {
+          return;
+        }
+        done = true;
+        if (timer !== null) {
+          this.scheduler.clearTimeout(timer);
+        }
+        subscriptions.forEach(s => s.unsubscribe());
+        resolve(result);
+      };
+      let previousState = this.sessionState;
+      subscriptions.push(
+        this._sessionState$.subscribe(state => {
+          if (state !== previousState && (state === 'left' || state === 'idle')) {
+            finish(false);
+          }
+          previousState = state;
+        }),
+        this._peers$.subscribe(infos => satisfied(infos) && finish(true)),
+      );
+      if (done) {
+        subscriptions.forEach(s => s.unsubscribe());
+      } else if (Number.isFinite(timeoutMs)) {
+        timer = this.scheduler.setTimeout(() => finish(false), Math.max(0, timeoutMs));
+      }
+    });
+  }
+
   /** Live network numbers (what the `net_panel` overlay shows), for an app's own HUD or logging. */
   get netStats(): NetStats {
     const now = this.now;

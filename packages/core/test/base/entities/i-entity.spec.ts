@@ -1,4 +1,5 @@
 import { GgWorld } from '../../../src/base/gg-world';
+import { Subject } from 'rxjs';
 import { IEntity, TickOrder } from '../../../src';
 import { MockWorld } from '../../mocks/world.mock';
 
@@ -271,6 +272,77 @@ describe('IEntity', () => {
 
     expect(component.dispose).toHaveBeenCalledTimes(1);
     expect(childDisposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('whileSpawned/onTick', () => {
+    class Ticking extends IEntity {
+      readonly tickOrder: TickOrder = TickOrder.OBJECTS_BINDING;
+      readonly ticks: [number, number][] = [];
+      readonly events: number[] = [];
+      readonly source = new Subject<number>();
+      endTicksEarly = false;
+
+      onSpawned(world: GgWorld<any, any>) {
+        super.onSpawned(world);
+        const subscription = this.onTick((elapsed, delta) => this.ticks.push([elapsed, delta]));
+        this.whileSpawned(this.source).subscribe(value => this.events.push(value));
+        if (this.endTicksEarly) {
+          subscription.unsubscribe();
+        }
+      }
+    }
+
+    it('runs from onSpawned until the next removal, subscribing once per spawn however often the entity is re-added', () => {
+      const entity = new Ticking();
+      ggWorld.addEntity(entity);
+      entity.tick$.next([16, 16]);
+      entity.source.next(1);
+      expect(entity.ticks).toEqual([[16, 16]]);
+      expect(entity.events).toEqual([1]);
+
+      ggWorld.removeEntity(entity);
+      entity.tick$.next([32, 16]);
+      entity.source.next(2);
+      expect(entity.ticks).toEqual([[16, 16]]);
+      expect(entity.events).toEqual([1]);
+
+      ggWorld.addEntity(entity);
+      ggWorld.removeEntity(entity);
+      ggWorld.addEntity(entity);
+      entity.tick$.next([48, 16]);
+      entity.source.next(3);
+      expect(entity.ticks).toEqual([
+        [16, 16],
+        [48, 16],
+      ]);
+      expect(entity.events).toEqual([1, 3]);
+
+      entity.dispose();
+      entity.source.next(4);
+      expect(entity.events).toEqual([1, 3]);
+      expect(entity.source.observed).toBe(false);
+    });
+
+    it('hands back the tick subscription, to end it earlier', () => {
+      const entity = new Ticking();
+      entity.endTicksEarly = true;
+      ggWorld.addEntity(entity);
+      entity.tick$.next([16, 16]);
+      expect(entity.ticks).toEqual([]);
+      entity.dispose();
+    });
+
+    it('gets ticks from a running world', async () => {
+      const entity = new Ticking();
+      ggWorld.addEntity(entity);
+      await ggWorld.init();
+      ggWorld.worldClock.start();
+      ggWorld.worldClock.pause();
+      ggWorld.worldClock.step(20);
+      expect(entity.ticks.length).toBe(1);
+      expect(entity.ticks[0][1]).toBe(20);
+      ggWorld.dispose();
+    });
   });
 
   // Mock class for GgEntity

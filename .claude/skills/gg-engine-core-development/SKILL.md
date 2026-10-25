@@ -16,7 +16,9 @@ ripple into every adapter and every app.
 ```
 src/base/    dimension-agnostic: IComponent, IEntity, clocks, math (Point2/3, Quaternion,
              Matrix4, Box, splines), inputs, GgWorld base class, body-options base,
-             assets/ (fetch with progress, the per-world asset cache), screens/ (ScreenManager)
+             assets/ (fetch with progress, the per-world asset cache), screens/ (ScreenManager),
+             audio/ (MusicPlayer, playAudioOneShot, the mobile audio preset - helpers written
+             against the audio scene/source contract only, so they work with any audio adapter)
 src/2d/      2D specialization: Gg2dWorld, Entity2d, 2D components/interfaces, 2D shapes
 src/3d/      3D specialization: Gg3dWorld, Entity3d, 3D components/interfaces, 3D shapes,
              loaders, controllers (camera/car/free-fly), GgCarEntity, MapGraph3dEntity
@@ -79,6 +81,18 @@ a message naming the fix. The pieces, all exported from the package root:
   entities to an uninitialized `MockWorld`, and the real failure is adapter-specific (a three/pixi
   display object would be dropped, Ammo/Rapier have no factory yet), so each adapter throws
   `notInitializedError` at that point instead.
+- **A canvas whose renderer was disposed.** Every adapter's renderer `dispose()` releases its
+  canvas's WebGL context (see `IRendererComponent.dispose`), so that canvas can't host another
+  renderer. `IRendererEntity.dispose` records `renderer.canvas` in a module-level `WeakSet`
+  (`base/components/rendering/canvas-reuse.ts`, `markCanvasReleased`), and both worlds'
+  `addRenderer` call `assertCanvasReusable(canvas)` before `createRenderer`, throwing a message
+  that names `replaceCanvas`. Both helpers are internal (`base/index.ts` exports only
+  `replaceCanvas` from that module); a renderer component disposed on its own, outside an entity,
+  is not recorded. `replaceCanvas` is `cloneNode(false)` plus `replaceWith`: the copy keeps
+  attributes and inline style, never listeners or a context. A per-renderer "keep the context"
+  dispose option was rejected: three's renderer would reuse a context with the first renderer's
+  creation attributes (antialias, alpha) whatever the next one asks for, along with whatever GPU
+  resources the old world never freed, and pixi's destroy loses the context unconditionally.
 - **Two core versions in one page.** `src/index.ts` calls `registerCoreVersion(VERSION)`, which
   records every loaded copy's version on `window.gg_core_versions` and `console.error`s when a
   different one is already there. Every adapter pins core exactly and lists it in `dependencies`,
@@ -298,10 +312,29 @@ completes afterward.
 
 `removeEntity(entity)` without `dispose` leaves an entity that `addEntity` accepts again (a network
 layer does this to hide an entity for a while). So whatever an entity class sets up in `onSpawned`
-must end in `onRemoved`: a `tick$` subscription made there is piped through
-`takeUntil(this._onRemoved$)`, as `GgCarEntity` and the character controller entities do, or each
-re-add stacks one more per-tick update on top of the previous ones. A subscription made in the
-constructor lives as long as the entity and needs nothing.
+must end in `onRemoved`, or each re-add stacks one more per-tick update on top of the previous ones.
+`IEntity`'s protected `whileSpawned(obs)` (`obs.pipe(takeUntil(this._onRemoved$))`) and
+`onTick((elapsed, delta) => ...)` (that over `tick$`, returning the `Subscription`) are the way to
+write it in new code, called after `super.onSpawned(world)`; the character controller entities and
+`CharacterAnimationController` use `onTick`. Most built-in classes still spell out
+`.pipe(takeUntil(this._onRemoved$))` - equivalent, and fine to convert when touching one. A
+subscription made in the constructor lives as long as the entity and needs neither.
+
+`_onRemoved$` fires at the end of `onRemoved`, after the children and components left the world;
+`dispose()` removes a spawned entity first, so it ends these subscriptions too. A spawn that fails
+inside `IEntity.onSpawned` rolls back without emitting it - nothing subscribed by then, since a
+subclass subscribes after `super.onSpawned` returned.
+
+### Per-world singletons: `GgWorld.getOrAddEntity`
+
+`getOrAddEntity(name, factory, type?)` keys a one-per-world entity on its world-unique name: it
+returns `entitiesByName.get(name)` when present (checked with `instanceof type` when `type` is
+given - typed `Function & { prototype: T }` rather than a constructor signature, so an abstract
+class or one with a private constructor passes), otherwise renames `factory()`'s result to `name`
+and `addEntity`s it. A factory result that is already in a world throws; one that fails to add (a
+name in its subtree is taken) is disposed before the error is rethrown, since nothing else holds
+it. Only spawned entities are in the index, so a removed singleton is replaced on the next call -
+unlike an app-side `WeakMap<world, entity>`, which keeps handing back an entity that left.
 
 ## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
 
@@ -442,6 +475,27 @@ it in one `attachToChunk`/`addChildren` call - is still exposed to the identical
 every entity queued after it in that batch" failure mode from any *other* cause (not just the
 double-`loadChunk()` case just fixed); attaching one entity at a time, each in its own `try`/`catch`,
 avoids that regardless of cause.
+
+Per-chunk work an app subclass adds goes into the `prepareChunk(node, loaded, entities, signal)`
+hook, never into a `loadChunk` override that awaits after `super.loadChunk(node)`. `loadChunk`
+awaits `prepareChunk` between the GLB load and committing the chunk (`loaded`, `chunkScopes`,
+`loadedWith`, `addChildren`, `chunkLoaded$`), so the node is still in `loadingNodes` meanwhile: the
+unload scan can't dispose it and the load list can't queue it again. A chunk that left the window
+while being prepared is committed and then queued for unload by `queueIfNowStale`. The entities the
+hook returns are committed with the chunk's own (part of `loaded.get(node)`, unloaded with it) but
+not put into `loadedWith`: they don't share the chunk's cached assets. Until it commits, `loadChunk`
+throws the chunk away on any failure - the load rejecting, the signal aborting (map graph removed)
+or the hook throwing: the chunk's entities and the hook's extras are disposed and the scope is
+released. The race the hook prevents: an override awaiting after `super.loadChunk` runs while the
+chunk is already committed and no longer loading, so the unload scan can dispose it in the
+meantime, and the override's `loaded.set`/`addChildren` then brings back a chunk without its
+terrain that the scan never loads again (it is in `loaded`), or a second copy if the node was
+queued again.
+
+The scan also filters `loadList` down to `canBeLoaded` each time it runs, so a queued chunk that
+fell out of range before its turn is never loaded. The entity's own tick runs before the load
+clock's scan within one world tick, so the chunk at the head of the queue can still be handed to
+`loadChunk` in the tick the cursor moves; it unloads through `queueIfNowStale`.
 
 `detachFromChunk(entities)` is the way out of a chunk's lifecycle: it drops the entities from
 whichever `loaded` list holds them and returns the ones that actually were attached. They stay
@@ -635,6 +689,10 @@ shared function.
 For models the cache holds an original that never enters a scene and every load returns
 `clone()`s of it; `IDisplayObjectComponent.clone` documents the ownership rule that makes this
 safe (a copy never frees shared resources, the source does), and each visual adapter implements it.
+A copy that is changed per instance gets copies of its own through `IDisplayObject3dComponent
+.makeUnique`; the `unique` option of `loadModel`/`loadGgGlb` calls it on the returned copy and is
+stripped from the options before the cache key is built (in `acquireModel`, so a `preload` ref
+carrying it hits the same entry) - never pass it on to the adapter's `loadFromGlb`.
 Lifetime follows scopes: `loadLevel` creates one and releases it on the level group's `disposed$`,
 `createEntity` does the same per entity when it isn't given one, `MapGraph3dEntity` keeps one per
 chunk and cancels its chunk loads when it leaves the world (an abort controller per spawn; a chunk
@@ -719,6 +777,24 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
 - **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
   has no package-private access. It is `@internal`; app code has no use for it.
+- **Gamepad keys of a screen** (`Screen.bindGamepadKeys`) are opt-in, never on by default: on a
+  game screen, B (Escape in `GAMEPAD_MENU_KEYS`) is a gameplay button and would open the pause
+  menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
+  `dispose`; running beside a world's own input costs no second `navigator.getGamepads()` read -
+  every running `GamepadInput` shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
+  screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
+  across screens: B closing the pause menu is still held when the game screen's keyboard starts,
+  and pressing it would open the menu again at once. An edge binding presses only a control
+  pushed while the keyboard runs. Every binding, edge or not, drops a hold the keyboard no longer
+  has (`KeyboardInput.isHeldBy`, false after a stop or `resetAllKeys`) and waits for the control's
+  next push - checking `keyboard.running` instead misses a stop and start between two polls (a
+  screen transition within one frame) - and treats what is held at the first read after the
+  gamepad input itself restarted as a baseline, not a press: until then the control values are
+  empty, which says nothing about the hand on the gamepad. Without both, A pressed on a pause
+  menu's "Resume" (Enter) is still down when the world's input comes back and jumps (A is the
+  character's jump). An edge binding also takes its first read after it was made as a baseline,
+  so the button that closed the previous screen does not close the new one on its first frame. A
+  spec therefore polls once with nothing pushed before its first press.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
   them unless the push said otherwise or `world.localPauseAllowed` is `false`. While covered it
   follows `world.localPauseAllowed$`: a network session joined under an open menu resumes the
@@ -914,8 +990,8 @@ behaviour, dimension-agnostic (`dimensions: 2 | 3`; vectors carry `z` only in 3D
 directly), a live list in spawn order, emission (`emit(count, init)`, `rate`, `bursts`), motion,
 aging, frame sequences, curves (`particle-curve.ts`), an optional `fixedTimeStep` with
 interpolation, and `writeRenderBuffers()` into `ParticleRenderBuffers` (`particle-render.ts`: flat
-`Float32Array`s sized for `capacity` - center, width/height, rotation, sRGB tint + opacity, atlas
-region, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/particle-system-3d
+`Float32Array`s sized for `capacity` - position, width/height, rotation, sRGB tint + opacity, atlas
+region, anchor, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/particle-system-3d
 .entity.ts`) owns one, ticks it, and hands the buffers to `IParticleSystem3dComponent.setParticles`
 (`3d/components/rendering/i-particle-system-3d.component.ts`, created by the 3D factory's
 `createParticleSystem`; `VisualTypeDocRepo3D.particleSystem`/`particleSystemExtraOpts`, the latter
@@ -954,6 +1030,14 @@ clockwise as seen by the viewer in 3D, the 2D world's own sign in 2D - what a 2D
 - **World vs local space**: in world space the component stays at the origin and particles carry
   world positions; in local space the entity copies the emitter transform onto the component
   every tick and `pointToSim`/`directionToSim` are the identity.
+- **The anchor is resolved in core, per particle**: `writeRenderBuffers` writes the drawn frame's
+  `ParticleFrame.anchor`, else `options.anchor`, else the center, into `buffers.anchor` - in
+  fractions of the sprite as its image shows it (`y` down, like atlas regions and `Text2dStyle
+  .anchor`), the same numbers in 2D and 3D, so an adapter never re-derives it and both dimensions
+  agree on what "the bottom" is (screen-down for a camera-facing 3D sprite, `-Z` for a vertical
+  billboard, `+y` in 2D). It lives with `frames` in the simulation options, not in the render
+  options, because it varies per particle (with the frame it shows); there is no per-`Particle`
+  anchor field - a particle needing its own pivot shows a frame that carries it.
 - **Back-to-front sorting is a core helper** (`sortParticlesBackToFront`, by depth along the view
   direction, ties in spawn order) that the adapter calls per camera at render time - the camera is
   only known there.
@@ -990,6 +1074,47 @@ overrides instead of the getters. Units to keep straight when touching them:
 
 `test/3d/entities/gg-car.entity.spec.ts`'s `drivetrain` block pins each of these with a mocked
 vehicle (`totalForce()` sums the last engine force set per wheel).
+
+`RaycastVehicle3dEntity`'s wheel entities come from `protected createWheelEntity(options, index)`
+(`RVEntityWheelFullOptions` in, `RVEntityWheelEntity` - `{ entity, localRotation }` - or `null`
+out), called once per wheel from the constructor; the constructor names each result, pushes it into
+`wheels`/`wheelLocalRotation` and adds it as a child, so the naming, renaming and per-tick placement
+stay in one place whatever a subclass returns. Being a constructor-time hook, an override runs
+before the subclass's field initializers: its doc says so, and nothing the base passes it depends on
+subclass state.
+
+## `RaycastVehicle3dEntity`: impact and landing events from adapter-agnostic contracts
+
+`impact$`, `airborne$`/`landed$`/`isAirborne` are computed in the entity from what every 3D
+adapter already reports - the vehicle component's `onCollisionStart` and `isWheelTouchesGround`/
+`getWheelContact` - so no adapter implements them. What to keep when changing them:
+
+- **Velocities before the step come from the entity's own tick.** The entity ticks at
+  `OBJECTS_BINDING`, after `simulate()`; at the end of that tick it samples the chassis' linear and
+  angular velocity (`sampleVelocities`), which is what the next step starts from. Collision events
+  fire inside `simulate()`, so `reportImpact` reads that sample, never `CollisionEvent
+  .relativeVelocity` (every adapter reads it after the solver resolved the contact - a crash at 20
+  m/s reads as a few m/s). The other body's velocity is another vehicle's own sample, or the body's
+  current velocity (exact for static/kinematic bodies, post-step for a dynamic prop - documented on
+  `impact$`). `speed` is the approach along the normal at the contact point (`v + ω × r`), clamped
+  at 0. `resetTo` and `onSpawned` resample (`resetMotionTracking`).
+- **`mirrored` pairs the two reports of a vehicle-vehicle hit** through `_unmirroredImpacts`: the
+  first vehicle to report adds the other, the other's report finds itself there (and removes it).
+  Both reports come from one `simulate()`, before any post-physics tick, so the set is cleared every
+  tick. It assumes the adapter emits one start per body pair (see `gg-engine-physics-adapter`'s
+  collision-event invariants); a per-collider duplicate would report a hit twice.
+- **Airborne time is world time** (the tick's `delta` summed while no wheel touches), compared with a
+  1e-6 ms tolerance: 15 ticks of `1000 / 60` ms add up to just under 250, which would make the
+  default `airborneDelay` take a sixteenth tick at 60 FPS. A vehicle with no wheels is never
+  airborne. The landing speed is the sampled velocity against the mean ground normal of the
+  touching wheels' `getWheelContact` (`+Z` when none reports one).
+
+`test/3d/entities/gg-3d-raycast-vehicle.entity.spec.ts` covers these with a mocked vehicle
+component (emit on its `onCollisionStart` Subject, drive `tick$` by hand); the 3D contract suite's
+`raycast vehicle` → `RaycastVehicle3dEntity` block runs a head-on crash, a drop and a resting car on
+every backend. A contract test that spawns a car has to mind the drop to the ground: the wheel rays
+end `restLength + tyreRadius` below the chassis, and a car spawned higher than about 0.3 m above
+where they reach the ground falls longer than `airborneDelay` and is (correctly) airborne once.
 
 ## Collision groups can't express "these two specific bodies don't collide"
 
@@ -1182,6 +1307,81 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+**Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
+`setGamepad`**, and a new key option or gamepad control has to be too. The mechanism is written once,
+in `base/inputs/rebindable-keys.ts`, and each controller only wires it. `ControllerBindings` and
+`sameBinding` there are internal - `base/index.ts` lists that module's exports by name and leaves
+them out, and controllers import them by path; an app has the free `follow*` functions and
+`IRebindableController` only. Each controller has a `XxxControllerKeys` type
+(`Pick` of the key options), a private `bindings = new ControllerBindings(this.options,
+DEFAULT_XXX_GAMEPAD_BINDING, this._onRemoved$)` built in the constructor right after `options` is
+(it writes to that object, which is why `CarHandlingController`/`GgCarHandlingController` copy the
+options they are given), `implements IRebindableController` with `bindingsChanged$` returning
+`bindings.changed$`, `setKeys(partial)` calling `bindings.setKeys(keys)` (copies the keys, skipping
+`undefined`, and emits `'keys'`; typed `Partial<Omit<O, 'gamepad'>>`, so a gamepad change can never
+arrive as a `'keys'` one), and `setGamepad(partial | null)` calling `bindings.setGamepad(binding)`
+(`null`, or the partial over the current binding or the default one while off; emits `'gamepad'`
+and returns what it wrote). Every binding in `onSpawned` goes through the bindings' own methods,
+each over a key picked from `options` and a control picked from `options.gamepad` (nothing while
+that is `null`): `this.bindings.followKeymap(this.directionsInput, o => o.keymap)` keeps the
+`DirectionInput`'s keys at `options.keymap` (no `setKeys` special case for it - a controller
+only writes options, the bindings apply them), `this.bindings.followKey(this.keyboard, o =>
+o.jumpKey)` (an observable, piped through `takeUntil(this._onRemoved$)`),
+`this.bindings.followGamepadKey(gamepadInput, this.keyboard, o => o.jumpKey, g => g.jump)`,
+`this.bindings.followGamepadPressed(gamepadInput, g => g.throw)` for an edge-triggered action
+without a key of its own and `this.bindings.followGamepadDirection(gamepadInput,
+this.directionsInput, g => g.move)` - the three that bind are unbound by the bindings themselves
+when `_onRemoved$` next emits. `GgCarHandlingController` nests a `CarHandlingController` with
+bindings of its own: it constructs the child with only the child's options (keymap, steering rate,
+`oppositeKeys` and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls)
+and forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods.
+The child is rebound only through the parent (its doc says so); nothing syncs a change made on
+the child back up, on purpose - a two-way sync made the order of every forward matter. These wrap the free functions `followKey`,
+`followGamepadKey`, `followGamepadPressed` and `followGamepadDirection` (for an app's own actions,
+over plain observables) with `option$`/`gamepadOption$`; never `keyboard.bind(this.options.x)`, one
+`gamepadInput.bindKeys` map of all keys, a `switchMap` of `option$` straight onto `pressed$`, or a
+`gamepad` read once in `onSpawned`. Gamepad bindings are made whenever `world.gamepadInput` exists,
+even with `gamepad: null`, since `setGamepad` can turn it on later; something read per tick (the
+look stick, `lookSpeed`) reads `this.options.gamepad` on that tick. One binding per key is the
+point: each follows its own code
+and controls with `distinctUntilChanged` (controls compared by content, `sameBinding`), so changing
+one key leaves the others' bindings (and a held gamepad button on them) alone - rebinding a whole
+`bindKeys` map would release and re-press every held key, a rising edge that jumps or shifts gear
+again. The same edge is why a control already pushed when it is assigned counts from its next push
+only: a controls menu captures a button from `controlPushed$` while it is still down, and a
+`bindKeys` made then would press the key on the spot (`followGamepadKey` binds, and
+`followGamepadPressed` starts reporting, once `GamepadInput.released$` fires - see below). Anything that
+switches on `option$` into a `combineLatest` of gamepad state (`FreeCameraController`'s pointer-lock
+gate) puts `distinctUntilChanged(sameBinding)` before the `switchMap`, since `option$` emits on
+every `setKeys` too.
+`CarHandlingController`/`GgCarHandlingController` copy the options object they are given, since
+`setKeys`/`setGamepad` write to it. `FreeCameraController` binds its zoom keys through `option$`
+returning `null` for a camera without a fov, so the `combineLatest` keeps a fixed shape.
+
+`DirectionInput.keymap` is a live setter: `bindKeys()`/`unbindKeys()` own one `Subscription`
+over `combineLatest` of the four directions' `bindMany`, shared by `start`/`stop` and the setter,
+so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardInput`'s private
+`bindings` lists are empty after stop). A keymap standing for the same codes as the current one
+(`'wasd'` over its codes spelled out, compared through `directionKeyCodes`) rebinds nothing: a
+controller's `setKeys` forwards whatever `keymap` it is given, and a controls menu applying a whole
+key set mid-game must not drop a held direction key. A direction with no codes binds `of(false)`,
+never `bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit
+at all. Unbinding emits `{}` on `output$` and zeroes the keys' share of `direction$`; on a stop the
+analog contributions are cleared first, so `direction$` goes straight to zero instead of reporting
+the contributions alone on the way. `DirectionInput.oppositeKeys` (constructor `options` or the
+live setter) decides an axis whose two keys are both held: `'cancel'` (default) or the winning
+direction, for `output$` and `direction$` alike. The bound subscription keeps the raw held states
+(`heldKeys`) so the setter can re-resolve them at once without rebinding; it applies to keys only -
+analog contributions (gamepad pedals, touch) are summed whatever it says. A new
+`KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
+held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
+`loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import
+time - `navigator` doesn't exist in every host. Its name tables are `Map`s, not object literals: a
+code comes from saved bindings, and `'constructor'` indexed into an object literal returns a
+function, not a label. Specs stub `navigator.keyboard` with
+`Object.defineProperty(..., { configurable: true })` and reset it by deleting the stub and calling
+`loadKeyboardLayout()` again.
+
 `MouseInput.delta$` reports each movement exactly once, from `pointermove` alone - a mouse fires
 `mousemove` for the same motion, and listening to both (as this class once did) doubled every
 mouse-look sensitivity against its documented "radians per 1000px". Keep it that way when touching
@@ -1211,11 +1411,165 @@ controllers then drop.
 All three are ignored while the input is not running, and a stopped `DirectionInput` drops
 its contributions. A controller that moves by direction keys subscribes to `direction$`, never to
 `output$`, and treats the vector as analog (normalizing only when it is longer than 1) - that is the
-whole of what makes it drivable by an on-screen stick or, later, a gamepad.
+whole of what makes it drivable by an on-screen stick or a gamepad.
 `CharacterController3dEntity` likewise scales its speed by a `moveDirection` shorter than 1.
 
 All three are also what `GgWorld.inputEnabled` relies on (see "Screens"): an input that is stopped
 ignores emulated keys, analog directions and emulated moves, so nothing has to gate them separately.
+
+### `GamepadInput`: the gamepad feeds the other inputs
+
+`GamepadInput` (`base/inputs/gamepad.input.ts`) is the one gamepad reader. `GgWorld` owns one
+(`gamepadInput`), started in the constructor, stopped and started with `inputEnabled` (the
+`inputEnabled` setter and `dispose()` handle it next to `keyboardInput`). While running it is
+polled on every tick of `GgGlobalClock` - not the world clock, on purpose: a paused world has no
+ticks, and a gamepad has to be able to unpause it. All running inputs are polled together from one
+static tick subscription (`pollAll`, a static `Set` of the running ones), so `navigator
+.getGamepads()` is read once per frame however many inputs run - a `ScreenManager`'s beside a
+world's, or several worlds'. `poll()` is public and reads on its own, and that is how specs drive
+it: `test/mocks/gamepad.mock.ts` stubs `navigator.getGamepads` (jsdom has none) with
+`stubGamepads()`/`fakeGamepad()`, and a test calls `input.poll()` after `pads.set({...})`; a spec
+of the shared read drives `(GgGlobalClock.instance as any)._tick$.next([t, dt])` instead.
+
+What it holds to:
+
+- **Which gamepad is read** is one decision for the whole page: `GamepadInput.choice` (static, a
+  `GamepadChoice` `{ id, nth }`) resolved on every poll by `select()` (`selectedGamepad()` for a
+  menu) - the chosen one if connected, else the gamepad in use, else the first with a button
+  pressed, else the first standard-mapping gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
+  index there is a position in `navigator.getGamepads()`, as before). The gamepad in use is a
+  static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time the gamepad read by
+  default is used - a button pressed or an axis moved from where it rests, the same test as
+  `inUse$`, never "a control past half way": pedals and axis triggers rest at -1 and would lock
+  in on their first read - and cleared when a poll finds it gone (`findGamepad`, the polling
+  path only - `select()` itself is pure, since `selectedGamepad()`/`chooseNext()` call it from a
+  menu, and a label refresh during a momentary disconnection must not forget the device) or a
+  `choice` is assigned: without
+  it a standard pad whose button is pressed mid-game would displace a non-standard wheel being
+  driven with (the first standard pad is preferred over the first listed one, since keyboards and
+  pedals list themselves as gamepads), while a device merely listed first and never pushed must
+  still give way to a pad plugged back in - a browser lists it because of a press on it. A choice
+  by id survives a reconnect and a reload, an index does not; `nth` tells
+  several pads of one model apart, and a choice whose `nth` is gone takes the last of that id.
+  `Gamepad` objects are snapshots, so a device is told apart by `index` and `id`, never identity.
+  When the polled device changes from one gamepad to another while one was connected (a new
+  choice), `readGamepad` reports nothing on `controlPushed$` for that poll: what is already held
+  on the new one was not pushed now. A gamepad read after a poll with none - the first ever, or
+  one plugged back in - is not a switch: a browser lists a gamepad only once a button was pressed
+  on it, that press is the one meant, and a "press any button" menu is waiting for exactly it.
+  That is why `device` keeps the last gamepad over a disconnection and the test is on the previous
+  poll's `_connected$`. Whether a browser needs a new press to list a replugged pad was not checked
+  on hardware; if it doesn't, a control held on it reports as pushed once - the smaller harm,
+  against swallowing the press a menu waits for. Change this only with a hardware test behind it.
+  `test/mocks/gamepad.mock.ts`'s `fakeGamepad` takes `id`/`index` (default `'fake'`/0) for this.
+- **A stopped `GamepadInput` reads every control as released** (`stopInternal` clears the button
+  and axis values and emits `polled$`), which says nothing about the hand on the gamepad - and a
+  controls menu runs with the world's `inputEnabled` off, i.e. with that very input stopped. So
+  "a control held when it is assigned counts from its next push" (`followGamepadKey`,
+  `followGamepadPressed`) cannot go by `pressed$` reading `false`: it would bind at once and the
+  button still held on the menu's close would fire the action on the restart. They wait on
+  `GamepadInput.released$(controls)` instead, which only counts a poll of the gamepad itself (the
+  private `read$`, emitted by `readGamepad` and not by a stop) and only once the values are those
+  of a read (`hasRead`: `false` from a start until the first poll, when the values are still empty,
+  and after a stop) - `running` alone would bind at once in the frame a world's input is switched
+  on and a captured binding applied, before the first poll, and the button still held from the
+  menu would act. A spec therefore polls once with nothing pushed after starting a gamepad input
+  before its first press. Anything else that must tell "released" from "not read" goes the same way.
+- **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
+  standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
+  pad numbers its buttons differently. `GamepadInput.controlName` turns one into a menu label. A
+  direction is a `GamepadDirectionBinding` of `{ negative, positive }` control lists per axis, so
+  a stick, the d-pad and both together are the same shape (`GAMEPAD_LEFT_STICK`,
+  `GAMEPAD_RIGHT_STICK`, `GAMEPAD_DPAD`, `GAMEPAD_LEFT_STICK_OR_DPAD`); a stick's `y` is inverted
+  there, since the Gamepad API reports up as negative and `DirectionInput` wants up positive.
+- **It never drives an entity itself.** `bindKeys(keyboard, { code: controls })` presses keys
+  through `emulateKeyDown`/`emulateKeyUp`, `bindDirection(directionInput, binding)` calls
+  `setAnalogDirection` with itself as the source; both return an unbind function.
+  `bindDirection` re-applies on every poll while the stick is off center, so a `DirectionInput`
+  restarted meanwhile gets the direction back. `bindKeys` does not: a key the keyboard let go of
+  (the world's input switched off and on for a menu) is pressed again only by the control's next
+  push, since the button that closed the menu must not act in the game (see "Screens" for this
+  and for `edge`). `repeat`
+  releases and presses a held key again after `repeatDelay`, then every `repeatInterval` (wall
+  time, `performance.now()` - menus run without a world; specs stub it with `jest.spyOn`). Stopping the gamepad input clears every control's value and emits one last poll,
+  so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,
+  `standardMapping` and `inUse` stay as of the last poll, so a menu shown while the world's input
+  is off still names the buttons and `connected$` does not flicker over the stop. The world's
+  `inputEnabled` therefore covers a gamepad through the inputs it feeds; a
+  controller that reads `value`/`direction` on its own tick (the look stick) gates on
+  `directionsInput.running` for the same effect.
+- **Every built-in input controller takes a `gamepad` option** (`CarGamepadBinding`,
+  `GgCarGamepadBinding`, `CharacterGamepadBinding`, `Character2dGamepadBinding`,
+  `FreeCameraGamepadBinding`, `ObjectGrabGamepadBinding`, each with a `DEFAULT_*_GAMEPAD_BINDING`
+  that is the default) and binds in `onSpawned` against `world.gamepadInput`, guarded by its
+  presence (specs spawn controllers into `{} as any` worlds) and unbound on `_onRemoved$`. `null`
+  turns it off, for an app with gamepad code of its own. Buttons go through the controller's own
+  key codes on its `keyboard` (so a `TouchButton`, a key and a gamepad button are one path); the
+  look stick is applied per tick, scaled by the tick's delta (`lookSpeed` is radians per second),
+  onto the controller's look state - `PlayerCharacterController` writes `_spherical` through
+  `clampPitch`, `FreeCameraController` feeds the pixel equivalent into its mouse-delta path, after
+  the pointer-lock gate, so elasticity applies alike. A new controller with keys and a direction
+  binds both the same way.
+- `inUse$` turns `true` on any button pushed or any axis that is past the stick dead zone *and
+  moved since the poll before* (a pad reporting its triggers as axes rests them at -1, and must
+  not read as in use by merely being listed), and `false` on a real `keydown`/`pointerdown` on
+  `window` (emulated keys fire no DOM event) or when the gamepad is gone. Stopping the input
+  (`inputEnabled` off for a menu) keeps the value, so a menu still shows gamepad hints. It is a
+  "which device did the player touch last" signal, not "is the gamepad pushed right now": a stick
+  held still through a key tap reads as not in use until it moves again, so a controller that
+  wants to know whether the gamepad is pushed reads `direction$`/`pressed$` of its own binding.
+  `controlPushed$` emits each control the moment it passes half way (`RAW_PUSH_THRESHOLD`), raw,
+  for a controls menu capturing the player's choice - except an axis direction towards where that
+  axis rests, which is never a push: a trigger resting at -1 swings straight to -1 on release,
+  and a capture of two actions in a row would bind the release to the second. Where each axis
+  rests is one model, the static `knownGamepads` list (index, id, rests), shared by
+  `controlPushed$` and `inUse` (`axisMoved` measures the dead zone from the rest). It is kept up
+  to date in `pollGamepads`, the one read behind both `pollAll` and `poll()`: a gamepad missing
+  from a poll is forgotten, then every input reads, then each connected gamepad not known yet is
+  learned - so a pad listed while another is read is learned when the browser lists it, not
+  once it is chosen with the gas held. Learning: the standard mapping's four stick axes rest at
+  0 whatever is held; any other axis past half way rests at that end, else 0 - the same
+  threshold as a push, so an axis resting at -0.85 (a worn trigger) is never pushed towards its
+  rest. Rests are kept over stops and switches (what is held when an input restarts says
+  nothing about the rest) and relearned on a replug; value-only signals can't tell a resting
+  trigger from a held one, and time-based ones (which side the axis sat on longer) learn a gas
+  trigger held through a race as resting pulled. Known gaps, written in the doc and limited to
+  axes outside the standard sticks: one held on the learning poll, and a trigger read as 0 until
+  first touched (Linux; its release reads as a push). The same list tells a gamepad seen before
+  from a new one: the first read after an input starts reports nothing when the gamepad is not
+  `fresh` (learned on an earlier poll) - like `bindKeys`, a control held through a stop and
+  restart is not pushed now - while a gamepad new on that poll reports what is held, the press
+  the browser listed it for. Specs clear the list in `afterEach`
+  (`(GamepadInput as any).knownGamepads.length = 0`).
+- `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
+  the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
+  per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.
+- `KeyboardInput` remembers the codes held through `emulateKeyDown` (until `emulateKeyUp` or
+  `resetAllKeys`) and ignores a real `keyup` of such a code. Without this, a gamepad button holding
+  `Space` plus a tap on the physical `Space` would emit `false` on the keyup and `true` again on
+  the next poll's re-press: a phantom rising edge that fires every edge-triggered action (jump,
+  grab, gear shift) a second time. Symmetrically, it remembers the codes held on the physical
+  keyboard (real `keydown` to real `keyup`) and ignores an `emulateKeyUp` of such a code: a
+  sprint held on `ShiftLeft` survives a tap on the gamepad button bound to it. A key goes up when
+  the last of its holders lets go. Emulated holders are told apart by the optional `holder` token
+  of `emulateKeyDown(code, holder)`/`emulateKeyUp(code, holder)`: `GamepadInput.bindKeys` passes
+  a token of its own per binding, a mobile-controls touch button/axis passes itself, so two
+  bindings on one key (a touch button and a gamepad button both on `Space`, or two controllers'
+  default gamepad buttons on `KeyE`) never release each other's hold - repeated `emulateKeyDown`
+  by one holder is one hold, which is what lets `bindKeys` re-press on every poll. Calls without a
+  token count as one shared holder. Anything that holds a key through `emulateKeyDown` for longer
+  than a call should pass a token.
+- The default gamepad bindings of controllers that are meant to run together share no button:
+  `ObjectGrabController` pairs with `PlayerCharacterController` (X grabs, RT throws; A/B/Y/L3 are
+  the character's) or with `FreeCameraController` (RB/LB fly up/down, L3 boosts). Check a new
+  controller's defaults against the ones it will be spawned next to.
+- `FreeCameraController`'s `ignoreKeyboardUnlessPointerLocked` gate also opens while
+  `gamepadInput.inUse`, or while the gamepad's `move` direction or one of its `up`/`down`/`boost`
+  controls is pushed (all part of the controls `combineLatest`): the gamepad's moves and keys
+  arrive through the same direction input and keyboard, and the gate is against stray typing over
+  the page, not against a gamepad - the look stick already bypasses it. `inUse` alone is not
+  enough there: a key tap hands it over to the keyboard while the stick is still held, and the
+  camera would stop until the stick moved again.
 
 `packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
 (`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry
@@ -1229,18 +1583,50 @@ changing one:
   `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d`,
   `FreeCameraController` and `ObjectGrabController` - the layouts read key codes from them
   (`options.jumpKey`, `options.gearUpDownKeys`, `options.grabKey`, ...) and emulate on that same
-  `keyboard`. `FreeCameraController`'s up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`)
-  in both places. `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
+  `keyboard`. A layout reads the keys when it is built; `MobileControls` rebuilds a shown one when
+  the controller's `bindingsChanged$` reports a `'keys'` change (`isRebindableController` from core,
+  so an app's controller implementing `IRebindableController` gets the same) - not on a `'gamepad'`
+  change, which the layout doesn't read and whose rebuild would release the button a finger holds.
+  `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
   into a release button and show a throw button while something is held) and calls `throwHeld()`.
 - `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look
   areas bind to. A new option-driven key on a controller needs a button in its layout
   (`packages/mobile-controls/src/layouts/`) to be reachable on a phone.
 - `CarHandlingController` is registered both on its own and as the child of
   `GgCarHandlingController`; `carLayout` returns nothing for the child, so a controller that
-  nests another built-in controller needs the same guard.
+  nests another built-in controller needs the same guard. A bare `CarHandlingController` (on its
+  own, or the child of an app's entity that drives the handbrake and gearbox itself) has no
+  handbrake or gear keys in its options, so its handbrake/gear buttons press the keys of
+  `CarLayoutOptions.keys` (static, or a function of the controller re-run on every build) on the
+  controller's `keyboard`; a button without a key is left out. Core needs no accessor for this -
+  the keys are the app's, not the controller's.
+- Overlay-wide settings live on the overlay element, not in each placement: `inset` is written as
+  the unitless `--gg-mc-inset-<edge>` custom properties, and `applyControlPlacement` folds them into
+  every numeric edge (`calc(var(--gg-mc-unit) * (N + var(--gg-mc-inset-<edge>, 0)) + env(...))`),
+  so layout controls, `extra` and `addControls` controls all move, a stylesheet can set the inset
+  too, and a control outside an overlay reads 0. String placements and the look area's `0` edges
+  are untouched. A spec asserts on the inline style strings (jsdom keeps the `calc` as written).
 
 Pitfalls met building it:
 
+- **A touch grants user activation on the finger lifting, not on it going down.** The HTML spec's
+  activation-triggering events are `keydown`, `mousedown`, `pointerdown` of a *mouse*, `pointerup`
+  of any other pointer, and `touchend` - so `requestFullscreen()` (or audio unlock, orientation
+  lock) called from `TouchButton.onPress` (inside the touch's `pointerdown`) is refused on a phone
+  while working with a mouse. `TouchButton.onTap` runs inside the `pointerup` handler instead
+  (`onPointerEnd` gets the event; a `reset` passes `null`, a `pointercancel` is not a tap), and the
+  fullscreen button uses it. Listening to `click` is no alternative: the controls `preventDefault`
+  `touchstart`, which suppresses the synthesized click on touch.
+- `toggleFullscreen` must never throw: iPhone Safari has no element fullscreen at all
+  (`fullscreenEnabled`/`webkitFullscreenEnabled` absent or `false`, no `requestFullscreen`), older
+  Safari only has the `webkit`-prefixed methods, whose request returns `undefined` rather than a
+  promise and reports the result only through `webkitfullscreenchange`, and a request without a
+  gesture rejects. jsdom has no Fullscreen API; specs define the members on `document`/the element
+  with `Object.defineProperty(..., { configurable: true })` and delete them afterwards.
+- The pause button's default toggles `pauseWorld()`/`resumeWorld()` (not for `localPauseAllowed ===
+  false`), and the overlay stays shown in a paused world (its input is still on), so the same
+  button resumes. An app with a `ScreenManager` pause menu replaces it with `onPress`: the manager
+  only resumes on uncover what covering paused, so a world the button paused stays paused.
 - A control must call `stopPropagation` on its pointer events, not only capture the pointer: a
   `MouseInput` created without a `canvas` listens on `window`, and would otherwise turn the camera
   with the very finger that is on a stick.
@@ -1249,9 +1635,52 @@ Pitfalls met building it:
 - jsdom never computes layout: a spec gives an element a box by replacing its
   `getBoundingClientRect`, and dispatches pointer events as `MouseEvent`s with `pointerId`/
   `pointerType` defined on them (see `packages/mobile-controls/test/helpers.ts`).
+- The default stylesheet (`src/styles.ts`) sits over a WebGL canvas, often on a weak mobile GPU
+  (a press stutter was reported on a Samsung A16 while a gamepad on the same phone stayed smooth).
+  On Android the GPU main thread runs the WebGL commands, the compositor's drawing and GPU raster
+  alike, so whatever the overlay costs there is taken from the game. Three rules hold its cost down,
+  and `test/styles.spec.ts` checks them on real control elements:
+  - **Animate only `transform`/`opacity`, on an element with `will-change` for them.** A transition
+    on an element without it makes Chrome create its layer at each press and drop it afterwards, a
+    re-raster each time. A transitioned `background` repaints on every frame of the transition. The
+    knob is a layer because an inline transform on a non-composited element repaints on every
+    pointermove. The floating base moves by `transform` (not `left`/`top`, which is a layout).
+  - **Never put an element that is a layer of its own (`will-change`) under one with `opacity` below
+    1.** An opacity over two or more layers needs a render surface: an offscreen pass drawn on every
+    frame, pressed or not. A pressed-colour `::before` layer inside a translucent button is exactly
+    this, as is the knob inside a translucent stick. So `--gg-mc-opacity` is on `.gg-mc-control` but
+    `opacity: 1` on `.gg-mc-stick`; the stick dims its knob and the base's `::before` (which draws
+    the base's border and background) separately; and nothing sets `opacity` on the overlay.
+  - **Colour changes are instant.** A button's or d-pad arm's pressed background is one small
+    repaint per press and release. The alternative, a pressed-colour layer, needs the button's
+    opacity off the button and onto each of its parts, three layers per button.
+  To measure a change here, trace headless Chrome (`--use-angle=swiftshader`, a WebGL canvas under
+  the overlay, touches sent with `Input.dispatchTouchEvent`). Compare per phase (idle, taps, stick
+  drag) the `DirectRenderer::DrawRenderPass` count per `DirectRenderer::DrawFrame` (render surfaces)
+  and the duration of `RasterDecoderImpl::DoEndRasterCHROMIUM` (GPU raster). Frame rate there tells
+  nothing: a desktop GPU keeps 60 fps either way, and `--disable-frame-rate-limit` decouples
+  `requestAnimationFrame` from drawn frames.
 - Device orientation at `beta` = 90 is a gimbal singularity; `TiltInput` works from the gravity
   direction within the screen plane instead of reading `gamma`/`beta` as a roll angle directly. Its
   screen-rotation handling is covered by specs only, not yet by a hardware test.
+
+## Renderer size and resolution are resolved by `IRendererEntity`
+
+`IRendererEntity.onSpawned` (`base/entities/i-renderer.entity.ts`) turns `RendererOptions.size`
+into `resizeRenderer` calls and an observable `forceResolution` into `setResolution` calls (values
+that are not a positive finite number are dropped, repeats skipped), both ended by `_onRemoved$`,
+so an adapter only implements the two methods and an entity removed and added again subscribes
+afresh. `'fullscreen'` and the function form follow `viewportSize$()`
+(`base/components/rendering/viewport.ts`): `measureViewport()` reads `window.visualViewport` times
+its `scale` (a pinch zoom must not shrink the canvas) and falls back to `innerWidth`/`innerHeight`
+where it is missing - jsdom has none, and a spec stubs one with an `EventTarget` carrying
+`width`/`height`/`scale` via `Object.defineProperty(window, 'visualViewport', { configurable: true
+})`. Each `orientationchange` measures twice, at once and `VIEWPORT_REMEASURE_DELAY` later, because
+an iOS home-screen app reports the pre-rotation size during the event; `distinctUntilChanged` makes
+the second measurement free when the first was already right. Observables are detected by shape
+(`subscribe` + `pipe`), not `instanceof`, since an app can carry a second copy of rxjs. Specs:
+`test/base/entities/i-renderer.entity.spec.ts`, `test/base/components/rendering/viewport.spec.ts`
+(fake timers).
 
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 

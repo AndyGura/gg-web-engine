@@ -1,4 +1,5 @@
-import { AxisDirection3, Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
+import { Observable, Subject, takeUntil } from 'rxjs';
+import { AxisDirection3, Box, CollisionEvent, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
 import { Entity3d } from './entity-3d';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import {
@@ -8,7 +9,7 @@ import {
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
-import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
+import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
 export type WheelDisplayOptions = {
   displayObject?: IDisplayObject3dComponent;
@@ -64,6 +65,66 @@ export type RVEntityProperties = {
       sharedWheelOptions?: RVEntitySharedWheelOptions;
     }
 );
+
+/**
+ * A hit of a raycast vehicle's chassis against another rigid body, emitted by
+ * `RaycastVehicle3dEntity.impact$`: what hit sounds, damage, camera shake and sparks read.
+ */
+export type RaycastVehicleImpact<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  /** The entity owning `otherBody`, or `null` when it has none. */
+  entity: (IEntity<Point3, Point4> & IPositionable3d) | null;
+  /** The body the chassis hit. */
+  otherBody: TypeDoc['pTypeDoc']['rigidBody'];
+  /**
+   * How fast the chassis and the other body came together along `normal`, in m/s, before the
+   * physics step that started the contact resolved it (never negative). See `impact$` for where
+   * each body's velocity comes from.
+   */
+  speed: number;
+  /** World-space point of contact. */
+  position: Point3;
+  /** Contact normal at `position`, pointing away from the vehicle towards `otherBody`. */
+  normal: Point3;
+  /** The physics adapter's collision impulse - see `CollisionEvent.impulse` (only comparable within one adapter). */
+  impulse: number;
+  /**
+   * `true` on the second of the two events a hit between two raycast vehicles produces (each
+   * vehicle reports the hit, with the same `speed`): a pair-wide reaction (one crash sound, one
+   * burst of sparks) skips mirrored events, a per-car one (damage, camera shake) takes them all.
+   * Always `false` for a hit on anything that is not a `RaycastVehicle3dEntity`.
+   */
+  mirrored: boolean;
+};
+
+/** A raycast vehicle's touchdown after being airborne, emitted by `RaycastVehicle3dEntity.landed$`. */
+export type RaycastVehicleLanding = {
+  /**
+   * How fast the chassis came down into the ground, in m/s (never negative): its velocity before
+   * the physics step that put the wheels back on the ground, along the ground normal under the
+   * wheels that touched down. On flat ground, the downward speed.
+   */
+  speed: number;
+  /** How long every wheel was off the ground, in milliseconds of world time (at least `airborneDelay`). */
+  airTime: number;
+};
+
+/**
+ * One wheel's settings as `RaycastVehicle3dEntity` resolved them: the physics options handed to
+ * the vehicle component (shared and per-axle settings merged over the defaults) plus the merged
+ * display settings - what `RaycastVehicle3dEntity.createWheelEntity` is given.
+ */
+export type RVEntityWheelFullOptions = WheelOptions & { display: WheelDisplayOptions };
+
+/**
+ * What `RaycastVehicle3dEntity.createWheelEntity` returns for a wheel that is shown: the entity
+ * the vehicle places at the wheel's transform every tick, and a rotation combined onto that
+ * transform first (to turn a wheel mesh modelled along another axis, or for the other side of the
+ * car), `null` for none.
+ */
+export type RVEntityWheelEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  entity: Entity3d<TypeDoc>;
+  localRotation: Point4 | null;
+};
 
 // see RVEntitySharedWheelOptions; maxTravel's default depends on the suspension, so it's filled in
 // the constructor
@@ -194,6 +255,74 @@ export class RaycastVehicle3dEntity<
     );
   }
 
+  /**
+   * How long, in milliseconds of world time, every wheel has to stay off the ground before the
+   * vehicle counts as airborne (`airborne$`, `isAirborne`): long enough that a bump or a crest
+   * lifting the wheels for a moment is not a jump. Default 250.
+   */
+  public airborneDelay: number = 250;
+
+  private readonly _impact$: Subject<RaycastVehicleImpact<TypeDoc>> = new Subject<RaycastVehicleImpact<TypeDoc>>();
+  private readonly _airborne$: Subject<void> = new Subject<void>();
+  private readonly _landed$: Subject<RaycastVehicleLanding> = new Subject<RaycastVehicleLanding>();
+  private _isAirborne: boolean = false;
+  private _offGroundMs: number = 0;
+  // the chassis velocities as of the end of the last tick: what the next physics step starts from
+  private _velocityBeforeStep: Point3 = Pnt3.O;
+  private _angularVelocityBeforeStep: Point3 = Pnt3.O;
+  // vehicles this one reported a hit with in the current step, whose own report of it is still to
+  // come (it is then `mirrored`) - cleared every tick
+  private readonly _unmirroredImpacts: Set<RaycastVehicle3dEntity<any>> = new Set();
+
+  /**
+   * Fires once each time the chassis begins touching another rigid body (one event per body pair
+   * and contact, whatever the shapes - see `IRigidBodyComponent.onCollisionStart`). `speed` is the
+   * approach speed along the contact normal from the velocities before the physics step that
+   * started the contact: this vehicle's as of the end of the previous tick (linear plus angular,
+   * at the contact point), likewise for another `RaycastVehicle3dEntity`, and the current
+   * velocity of any other body - exact for static and kinematic bodies, while a dynamic prop the
+   * hit has already pushed reads its velocity after the step, so a light prop knocked away reads a
+   * lower speed than the car hit it at. The collision event's own `relativeVelocity` is not used:
+   * adapters read it after the contact resolved.
+   *
+   * Contacts of the wheels are not collisions (the wheels are rays) - see `landed$` for those. A
+   * hard landing that bottoms the chassis out on the road fires both.
+   *
+   * @example
+   * ```ts
+   * car.raycastVehicle.impact$.subscribe(hit => {
+   *   if (!hit.mirrored && hit.speed > 2) {
+   *     playCrashSound(hit.position, hit.speed);
+   *   }
+   * });
+   * ```
+   */
+  public get impact$(): Observable<RaycastVehicleImpact<TypeDoc>> {
+    return this._impact$.asObservable();
+  }
+
+  /**
+   * Fires when every wheel has been off the ground for `airborneDelay` ms of world time: the
+   * vehicle jumped or fell (also when it lies on its side or roof).
+   */
+  public get airborne$(): Observable<void> {
+    return this._airborne$.asObservable();
+  }
+
+  /**
+   * Fires on the first tick a wheel touches the ground again after `airborne$`, with how fast the
+   * chassis came down and how long it was in the air. A wheel leaving the ground for less than
+   * `airborneDelay` fires neither. `resetTo` ends the airborne state without a landing.
+   */
+  public get landed$(): Observable<RaycastVehicleLanding> {
+    return this._landed$.asObservable();
+  }
+
+  /** Whether the vehicle is airborne: every wheel off the ground for at least `airborneDelay` ms (see `airborne$`). */
+  public get isAirborne(): boolean {
+    return this._isAirborne;
+  }
+
   /** car mesh and physics body direction has to be pointing: y front, z up*/
   constructor(
     public readonly carProperties: RVEntityProperties,
@@ -205,7 +334,7 @@ export class RaycastVehicle3dEntity<
       ...o,
       maxTravel: o.maxTravel ?? carProperties.suspension.restLength,
     });
-    let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
+    let wheelFullOptions: RVEntityWheelFullOptions[] =
       'wheelBase' in carProperties
         ? [
             carProperties.wheelBase.front,
@@ -254,46 +383,79 @@ export class RaycastVehicle3dEntity<
     this.tractionWheelRadius =
       wheelFullOptions[this.frontWheelsIndices[0]].tyreRadius * this.carProperties.tractionBias +
       wheelFullOptions[this.rearWheelsIndices[0]].tyreRadius * (1 - this.carProperties.tractionBias);
-    for (const options of wheelFullOptions) {
-      const display = options.display || {};
-      if (!display.displayObject) {
+    wheelFullOptions.forEach((options, i) => {
+      const wheel = this.createWheelEntity(options, i);
+      if (!wheel) {
         this.wheels.push(null);
         this.wheelLocalRotation.push(null);
-        continue;
+        return;
       }
-      const displayObj = display.displayObject.clone();
-      if (display.autoScaleMesh) {
-        const boundingBox = Box.expandByPoint(displayObj.getBoundings(), Pnt3.O);
-        const scale = { ...Pnt3.O };
-        const wheelObjectDirection = display.wheelObjectDirection || 'x';
-        for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
-          const isNormal = wheelObjectDirection.includes(dir);
-          scale[dir] = isNormal
-            ? options.tyreWidth / (boundingBox.max[dir] - boundingBox.min[dir])
-            : (options.tyreRadius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
-        }
-        displayObj.scale = scale;
-      }
-      const direction = display.wheelObjectDirection || 'x';
-      const flip = direction.includes('-') ? options.isLeft : !options.isLeft;
-      let localRotation: Point4 | null = null;
-      if (direction.includes('x')) {
-        // rotate PI around Z if opposite position (x is correct for left wheel, -x is correct for right wheel)
-        if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
-      } else if (direction.includes('y')) {
-        // rotate PI/2 around Z
-        localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
-      } else if (direction.includes('z')) {
-        // rotate PI/2 around Y
-        localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
-      }
-      this.wheelLocalRotation.push(localRotation);
-      const wheelEntity = new Entity3d<TypeDoc>({ object3D: displayObj });
-      wheelEntity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
-      this.wheels.push(wheelEntity);
-    }
+      wheel.entity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
+      this.wheels.push(wheel.entity);
+      this.wheelLocalRotation.push(wheel.localRotation);
+    });
     this.addChildren(...(this.wheels.filter(x => !!x) as (IEntity & IPositionable3d)[]));
     this.vehicleComponent.entity = this;
+  }
+
+  /**
+   * Builds the entity that shows wheel `index`, or returns `null` for a wheel shown by nothing.
+   * The vehicle names it (`<vehicle name>__wheel_<f|r><l|r>`, kept in step when the vehicle is
+   * renamed), adds it as a child and moves it to the wheel's transform from the physics adapter
+   * every tick (after `localRotation`). The default clones `options.display.displayObject` (none:
+   * `null`), scaled to the tyre with `autoScaleMesh` and turned per `wheelObjectDirection` and the
+   * side of the car.
+   *
+   * Override it for wheels of your own - an empty node whose transform a mesh controller reads, a
+   * wheel entity class with behaviour of its own. It runs from the constructor, once per wheel in
+   * order, before the subclass's own constructor body and field initializers: read only
+   * `options`/`index` (and what the base class has set up), not the subclass's own fields.
+   * @param options - The wheel's resolved settings
+   * @param index - The wheel's index in the vehicle component (the order the wheels were added in)
+   *
+   * @example
+   * ```ts
+   * class MarkerWheelsVehicle extends RaycastVehicle3dEntity {
+   *   // an empty node per wheel (`emptyNode()`: an empty display object of your visual adapter),
+   *   // whose transform the game's own car model reads to place its wheel meshes
+   *   protected createWheelEntity(): RVEntityWheelEntity {
+   *     return { entity: new Entity3d({ object3D: emptyNode() }), localRotation: null };
+   *   }
+   * }
+   * ```
+   */
+  protected createWheelEntity(options: RVEntityWheelFullOptions, index: number): RVEntityWheelEntity<TypeDoc> | null {
+    const display = options.display || {};
+    if (!display.displayObject) {
+      return null;
+    }
+    const displayObj = display.displayObject.clone();
+    if (display.autoScaleMesh) {
+      const boundingBox = Box.expandByPoint(displayObj.getBoundings(), Pnt3.O);
+      const scale = { ...Pnt3.O };
+      const wheelObjectDirection = display.wheelObjectDirection || 'x';
+      for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
+        const isNormal = wheelObjectDirection.includes(dir);
+        scale[dir] = isNormal
+          ? options.tyreWidth / (boundingBox.max[dir] - boundingBox.min[dir])
+          : (options.tyreRadius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
+      }
+      displayObj.scale = scale;
+    }
+    const direction = display.wheelObjectDirection || 'x';
+    const flip = direction.includes('-') ? options.isLeft : !options.isLeft;
+    let localRotation: Point4 | null = null;
+    if (direction.includes('x')) {
+      // rotate PI around Z if opposite position (x is correct for left wheel, -x is correct for right wheel)
+      if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
+    } else if (direction.includes('y')) {
+      // rotate PI/2 around Z
+      localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
+    } else if (direction.includes('z')) {
+      // rotate PI/2 around Y
+      localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
+    }
+    return { entity: new Entity3d<TypeDoc>({ object3D: displayObj }), localRotation };
   }
 
   protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void {
@@ -349,5 +511,114 @@ export class RaycastVehicle3dEntity<
     }
     this.steeringAngle = 0;
     this.vehicleComponent.resetMotion();
+    this.resetMotionTracking();
+  }
+
+  onSpawned(world: Gg3dWorld<TypeDoc>) {
+    super.onSpawned(world);
+    this.resetMotionTracking();
+    // until removed: an entity may be removed from the world and added again
+    this.vehicleComponent.onCollisionStart
+      .pipe(takeUntil(this._onRemoved$))
+      .subscribe(event => this.reportImpact(event));
+    // after the transform binding (subscribed in the constructor), i.e. after the physics step
+    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
+      this.updateAirborne(delta);
+      this._unmirroredImpacts.clear();
+      this.sampleVelocities();
+    });
+  }
+
+  dispose(): void {
+    super.dispose();
+    this._impact$.complete();
+    this._airborne$.complete();
+    this._landed$.complete();
+  }
+
+  /** Forgets the airborne state and pending impacts, and samples the chassis velocities anew. */
+  protected resetMotionTracking(): void {
+    this._isAirborne = false;
+    this._offGroundMs = 0;
+    this._unmirroredImpacts.clear();
+    this.sampleVelocities();
+  }
+
+  private sampleVelocities(): void {
+    this._velocityBeforeStep = this.vehicleComponent.linearVelocity;
+    this._angularVelocityBeforeStep = this.vehicleComponent.angularVelocity;
+  }
+
+  /** Velocity of the chassis at world point `point` before the current physics step. */
+  private pointVelocityBeforeStep(point: Point3): Point3 {
+    return Pnt3.add(
+      this._velocityBeforeStep,
+      Pnt3.cross(this._angularVelocityBeforeStep, Pnt3.sub(point, this.position)),
+    );
+  }
+
+  private reportImpact(event: CollisionEvent<Point3, IRigidBody3dComponent>): void {
+    const other = event.otherBody;
+    const entity = other.entity;
+    const otherVehicle = entity instanceof RaycastVehicle3dEntity && entity !== this ? entity : null;
+    const otherVelocity = otherVehicle
+      ? otherVehicle.pointVelocityBeforeStep(event.position)
+      : Pnt3.add(other.linearVelocity, Pnt3.cross(other.angularVelocity, Pnt3.sub(event.position, other.position)));
+    const speed = Math.max(
+      0,
+      Pnt3.dot(Pnt3.sub(this.pointVelocityBeforeStep(event.position), otherVelocity), event.normal),
+    );
+    let mirrored = false;
+    if (otherVehicle) {
+      mirrored = otherVehicle._unmirroredImpacts.delete(this);
+      if (!mirrored) {
+        this._unmirroredImpacts.add(otherVehicle);
+      }
+    }
+    this._impact$.next({
+      entity: (entity ?? null) as (IEntity<Point3, Point4> & IPositionable3d) | null,
+      otherBody: other as TypeDoc['pTypeDoc']['rigidBody'],
+      speed,
+      position: event.position,
+      normal: event.normal,
+      impulse: event.impulse,
+      mirrored,
+    });
+  }
+
+  private updateAirborne(delta: number): void {
+    const wheelCount = this.wheelCount('both');
+    if (wheelCount === 0) {
+      return;
+    }
+    let groundNormal = Pnt3.O;
+    let touching = false;
+    for (let i = 0; i < wheelCount; i++) {
+      if (this.vehicleComponent.isWheelTouchesGround(i)) {
+        touching = true;
+        const contact = this.vehicleComponent.getWheelContact(i);
+        if (contact) {
+          groundNormal = Pnt3.add(groundNormal, contact.normal);
+        }
+      }
+    }
+    if (!touching) {
+      this._offGroundMs += delta;
+      // tolerance: 15 ticks of 1000 / 60 ms add up to just under 250
+      if (!this._isAirborne && this._offGroundMs >= this.airborneDelay - 1e-6) {
+        this._isAirborne = true;
+        this._airborne$.next();
+      }
+      return;
+    }
+    if (this._isAirborne) {
+      this._isAirborne = false;
+      const normal = Pnt3.len(groundNormal) > 1e-6 ? Pnt3.norm(groundNormal) : Pnt3.Z;
+      this._landed$.next({
+        speed: Math.max(0, -Pnt3.dot(this._velocityBeforeStep, normal)),
+        airTime: this._offGroundMs,
+      });
+    }
+    this._offGroundMs = 0;
   }
 }

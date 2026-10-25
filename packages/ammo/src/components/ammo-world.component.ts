@@ -76,9 +76,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   public readonly kinematicVelBodies: Set<AmmoRigidBodyComponent> = new Set();
 
   /**
-   * Every currently-in-world raycast vehicle, whose brake forces `simulate()` converts into
-   * Bullet's per-substep brake impulses before stepping (see
-   * `AmmoRaycastVehicleComponent.applyBrakeImpulses()`). Maintained by
+   * Every currently-in-world raycast vehicle, which `simulate()` prepares before stepping: brake
+   * forces into Bullet's per-substep brake impulses, and the steering the step uses (see
+   * `AmmoRaycastVehicleComponent.prepareStep()`). Maintained by
    * `AmmoRaycastVehicleComponent.addToWorld`/`removeFromWorld` - not meant to be written to directly.
    */
   public readonly raycastVehicles: Set<AmmoRaycastVehicleComponent> = new Set();
@@ -152,7 +152,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    * against the camera and changes what `position` means for every consumer. Measured with this
    * package's own raycast vehicle at 30/60/90/100/144 FPS, the variable substep changes vehicle
    * behavior by under 2% (braking distance, cornering yaw, suspension travel on a landing) once
-   * brakes are converted per substep (`AmmoRaycastVehicleComponent.applyBrakeImpulses()`), which
+   * brakes are converted per substep (`AmmoRaycastVehicleComponent.prepareStep()`), which
    * doesn't justify that. An app that needs bit-identical physics across frame rates can use
    * `GgWorld`'s `fixedPhysicsStep` option, which calls `simulate()` with a constant `delta`.
    *
@@ -285,7 +285,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     if (dt > 0 && this._dynamicAmmoWorld) {
       const subStep = dt / subSteps;
       for (const vehicle of this.raycastVehicles) {
-        vehicle.applyBrakeImpulses(subStep);
+        vehicle.prepareStep(subStep);
       }
       // half a substep extra, so Bullet's float accumulator fits exactly `subSteps` substeps
       // (`dt / subStep` alone can round to just below `subSteps`)...
@@ -396,12 +396,19 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
 
     // Started touching this frame: a pair with contacts now that had none (or didn't exist) last
     // frame. Emitted reciprocally, once per side, each with its own frame-correct normal/position.
+    // Every event is built before the first one is emitted: a subscriber may remove or dispose a
+    // body, which frees its native body and the contact manifolds it is in, and the events still to
+    // emit would then read freed WASM memory (which doesn't throw, it reads garbage).
+    const startEvents: [AmmoRigidBodyComponent, CollisionEvent<Point3, AmmoRigidBodyComponent>][] = [];
     for (const [key, { compA, compB, cp, impulse }] of bestContacts) {
       if (this.previousContactPairs.has(key)) {
         continue;
       }
-      this.emitCollisionStart(compA, compB, cp, impulse, true);
-      this.emitCollisionStart(compB, compA, cp, impulse, false);
+      startEvents.push([compA, this.buildCollisionStart(compA, compB, cp, impulse, true)]);
+      startEvents.push([compB, this.buildCollisionStart(compB, compA, cp, impulse, false)]);
+    }
+    for (const [self, event] of startEvents) {
+      self.emitCollisionStart(event);
     }
 
     // Stopped touching this frame: a pair that had contacts last frame but doesn't now. `null` is
@@ -422,18 +429,18 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   /**
-   * Builds and emits one body's own `CollisionEvent` for a just-started contact - `selfIsBody0`
+   * Builds one body's own `CollisionEvent` for a just-started contact - `selfIsBody0`
    * says which side of the manifold `self` is on (Bullet decides this internally per pair, not by
    * creation/call order), which is what `position`/`normal` need to be expressed correctly in
    * `self`'s own frame.
    */
-  private emitCollisionStart(
+  private buildCollisionStart(
     self: AmmoRigidBodyComponent,
     other: AmmoRigidBodyComponent,
     cp: Ammo.btManifoldPoint,
     impulse: number,
     selfIsBody0: boolean,
-  ): void {
+  ): CollisionEvent<Point3, AmmoRigidBodyComponent> {
     const n = cp.get_m_normalWorldOnB();
     const rawNormal: Point3 = { x: n.x(), y: n.y(), z: n.z() };
     // `m_normalWorldOnB` always points from the manifold's body1 ("B") towards its body0 ("A") -
@@ -463,7 +470,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       relativeVelocity,
       impulse,
     };
-    self.emitCollisionStart(event);
+    return event;
   }
 
   protected lockedCollisionGroups: number[] = [];

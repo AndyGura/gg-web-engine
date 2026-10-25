@@ -1,5 +1,5 @@
 import { GgWorld, GgWorldTypeDocRepo } from '../gg-world';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription, takeUntil } from 'rxjs';
 import { IWorldComponent } from '../components/i-world-component';
 
 /**
@@ -260,6 +260,58 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
 
   public get onRemoved$(): Observable<void> {
     return this._onRemoved$.asObservable();
+  }
+
+  /**
+   * `source`, ending the next time this entity is removed from its world - for a subscription made
+   * in `onSpawned` (after `super.onSpawned(world)`), which has to end in `onRemoved`: an entity can
+   * be removed and added again, and each `onSpawned` then subscribes anew, so one that outlived the
+   * removal would run once more per re-add. Disposing the entity removes it first, so that ends it
+   * too. Called while the entity is not in a world (e.g. in the constructor), the result runs until
+   * the entity is first removed - for a subscription meant to last as long as the entity, subscribe
+   * to `source` directly instead.
+   * @param source - Any observable: `tick$`, an input's events, an observable of another entity
+   * @returns `source` piped through `takeUntil` of this entity's next removal
+   *
+   * @example
+   * ```ts
+   * class Blinker extends IEntity {
+   *   static readonly entityTypeName: string = 'Blinker';
+   *   readonly tickOrder = TickOrder.CONTROLLERS;
+   *
+   *   onSpawned(world: GgWorld<any, any>) {
+   *     super.onSpawned(world);
+   *     this.whileSpawned(world.keyboardInput.bind('KeyB')).subscribe(pressed => this.setLit(pressed));
+   *   }
+   * }
+   * ```
+   */
+  protected whileSpawned<T>(source: Observable<T>): Observable<T> {
+    return source.pipe(takeUntil(this._onRemoved$));
+  }
+
+  /**
+   * Runs `handler` on every tick this entity gets until it is next removed from its world: the
+   * {@link whileSpawned} form of `tick$.subscribe(...)`, so calling it from `onSpawned` (after
+   * `super.onSpawned(world)`) subscribes exactly once per spawn, however often the entity is removed
+   * and added again. Ticks only arrive while the entity is in a world and `active`.
+   * @param handler - Receives the world clock's elapsed time and this tick's delta, both in
+   * milliseconds - the same pair `tick$` emits
+   * @returns The subscription, for ending it earlier than the next removal
+   *
+   * @example
+   * ```ts
+   * onSpawned(world: Gg3dWorld) {
+   *   super.onSpawned(world);
+   *   // turn around the up axis at 1 rad/s
+   *   this.onTick((_, delta) => {
+   *     this.rotation = Qtrn.combineRotations(this.rotation, Qtrn.fromAngle(Pnt3.Z, delta / 1000));
+   *   });
+   * }
+   * ```
+   */
+  protected onTick(handler: (elapsed: number, delta: number) => void): Subscription {
+    return this.whileSpawned(this.tick$).subscribe(([elapsed, delta]) => handler(elapsed, delta));
   }
 
   public onSpawned(world: GgWorld<D, R, TypeDoc>) {

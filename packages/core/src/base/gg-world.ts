@@ -12,6 +12,7 @@ import {
   IRigidBodyComponent,
   ITriggerComponent,
   IVisualSceneComponent,
+  GamepadInput,
   KeyboardInput,
   PausableClock,
   TickOrder,
@@ -150,12 +151,18 @@ export abstract class GgWorld<
 
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
+  /**
+   * The gamepad of this world, polled on every frame while `inputEnabled` (also while the world is
+   * paused). The built-in input controllers bind their keys and directions to it by default; see
+   * `GamepadInput` for reading it directly.
+   */
+  public readonly gamepadInput: GamepadInput = new GamepadInput();
 
   private readonly _inputEnabled$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
 
   /**
    * Whether this world reacts to the player. Switching it off stops `keyboardInput` (releasing
-   * every held key), and with it everything that follows `inputEnabled$`: the built-in input
+   * every held key) and `gamepadInput` (releasing what it holds), and with it everything that follows `inputEnabled$`: the built-in input
    * controllers stop their mouse and direction inputs and let go of pointer lock, and
    * `@gg-web-engine/mobile-controls` takes its touch overlay off the screen. The world itself keeps
    * running - this is independent of pausing. `ScreenManager` switches it off for the worlds of a
@@ -174,7 +181,9 @@ export abstract class GgWorld<
     }
     if (value) {
       this.keyboardInput.start();
+      this.gamepadInput.start();
     } else {
+      this.gamepadInput.stop();
       this.keyboardInput.stop();
     }
     this._inputEnabled$.next(value);
@@ -421,6 +430,7 @@ export abstract class GgWorld<
     this.fixedPhysicsStep = args.fixedPhysicsStep;
     this.maxPhysicsStepsPerTick = args.maxPhysicsStepsPerTick ?? 8;
     this.keyboardInput.start();
+    this.gamepadInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
     } else {
@@ -640,6 +650,7 @@ export abstract class GgWorld<
       this.visibilityChangeListener = null;
     }
     this.worldClock.stop();
+    this.gamepadInput.stop();
     this.keyboardInput.stop();
     this.tickStarted$.complete();
     this.tickForwardTo$.complete();
@@ -894,6 +905,63 @@ export abstract class GgWorld<
       throw new Error(`No entity named "${name}" found in the world`);
     }
     return found as T;
+  }
+
+  /**
+   * The entity named `name` in this world, created with `factory` and added on the first call - for
+   * one-per-world services several entities share (one skid-mark mesh for every car, one particle
+   * pool, a director), which every user gets with the same call instead of an app-side
+   * `WeakMap<world, entity>`. The name is the key: the created entity is renamed to `name` before
+   * it is added, whatever name `factory` gave it. Only what is in the world now counts - after the
+   * entity has been removed (e.g. with the level that brought it), the next call creates a new one.
+   * @param name - The world-unique name the entity is (or will be) registered under
+   * @param factory - Builds the entity when there is none named `name`; called at most once per
+   * call, never for an existing one. Must return an entity that is not in a world.
+   * @param type - The class the entity must be an instance of. With it, an existing entity of
+   * another class throws instead of being returned; without it the existing entity is returned as
+   * whatever it is, unchecked. Any class works, an abstract one or one with a private constructor
+   * included.
+   * @returns The existing entity, or the one `factory` built, now spawned in this world
+   * @throws if `type` is given and the existing entity named `name` is not an instance of it
+   * @throws if `factory` returns an entity that is already in a world, or adding it fails (a name
+   * inside its subtree is taken, say) - a created entity that could not be added is disposed
+   *
+   * @example
+   * ```ts
+   * class SkidMarks extends Entity3d {
+   *   static readonly entityTypeName: string = 'SkidMarks';
+   *   static of(world: Gg3dWorld): SkidMarks {
+   *     return world.getOrAddEntity('SkidMarks', () => new SkidMarks(), SkidMarks);
+   *   }
+   *   // ...
+   * }
+   *
+   * // from every car, however many there are:
+   * SkidMarks.of(world).addMark(wheelPosition);
+   * ```
+   */
+  public getOrAddEntity<T extends IEntity>(name: string, factory: () => T, type?: Function & { prototype: T }): T {
+    const existing = this.entitiesByName.get(name);
+    if (existing) {
+      if (type && !(existing instanceof type)) {
+        throw new Error(
+          `Entity "${name}" already exists in this world but is not an instance of the requested class - give the per-world entity a name no other entity uses`,
+        );
+      }
+      return existing as T;
+    }
+    const entity = factory();
+    if (entity.world) {
+      throw new Error(`getOrAddEntity("${name}"): the factory returned an entity that is already in a world`);
+    }
+    try {
+      entity.name = name;
+      this.addEntity(entity);
+    } catch (e) {
+      entity.dispose();
+      throw e;
+    }
+    return entity;
   }
 
   /**

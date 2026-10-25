@@ -43,6 +43,16 @@ gets you install *and* future updates, which a one-off manual download doesn't.)
 | Format | Only "GLB + .meta" exists today. See "Planned: exporting directly to Level JSON" below. |
 | Export Materials | Uncheck to skip textures/materials entirely (faster export for a collision/layout-only pass). |
 | Copyright | Written into the `.glb`'s glTF `asset.copyright` field. Empty by default - fill in your own if you want one. |
+| Include: UVs | On by default. Uncheck to write no texture coordinates (`TEXCOORD_n`), and so no tangents either. |
+| Include: Normals | On by default. Uncheck for meshes rendered unlit (e.g. `MeshBasicMaterial`): no `NORMAL`, no `TANGENT` either (Blender's glTF exporter skips tangents without normals), and vertices are no longer split along hard edges, so meshes get fewer vertices. three.js's `GLTFLoader` turns on `flatShading` for a lit material on a mesh without normals. |
+| Include: Tangents | On by default. Only needed by normal maps; written only with Normals and UVs on, and for meshes with a UV map. |
+| Include: Lights | On by default. Uncheck to leave lights out of the `.glb` (`KHR_lights_punctual`). |
+| Vertex Colors | `Material` (default, the glTF exporter's own: the color attributes the materials use), `Active` (the active color attribute) or `None` (no `COLOR_n`). |
+
+The `.meta` sidecar is the same whatever these options say. The same options exist as keyword
+arguments of `exporter.export_glb_meta` (`export_materials`, `copyright`, `export_texcoords`,
+`export_normals`, `export_tangents`, `export_lights`, `export_vertex_color`) and as flags of the
+headless CLI below, all with the same defaults.
 
 Picking a filename `foo.glb` writes `foo.glb` and `foo.meta` next to each other; point
 `Gg3dLoader.loadGgGlb('.../foo')` (no extension) at that pair.
@@ -77,11 +87,16 @@ artist gets from the menu and what a build pipeline produces), and doesn't requi
 installed - point `--python` at it from a checkout of this repo (or a copy of `blender-addon/`):
 
 ```bash
-blender --background --python blender-addon/scripts/export_cli.py -- path/to/scene.blend [more.blend ...] [--skip-textures]
+blender --background --python blender-addon/scripts/export_cli.py -- path/to/scene.blend [more.blend ...] [options]
 ```
 
 Each `.blend` is opened, exported to a `.glb`/`.meta` pair next to it, and the next one is loaded in
-the same background process.
+the same background process. The options apply to every file and match the export panel's:
+`--skip-textures` (Export Materials off), `--no-texcoords`, `--no-normals`, `--no-tangents`,
+`--no-lights` and `--vertex-color MATERIAL|ACTIVE|NONE`; `-h` lists them.
+
+A pipeline that needs more control (or runs its own Blender script) can import `exporter.py`
+itself and call `export_glb_meta(path, ...)` with the keyword arguments listed above.
 
 ### Equirectangular → cubemap conversion (`tools/spherical_to_cube_texture.py`)
 

@@ -48,6 +48,13 @@ attenuation), with a
 slight preference for the sources already heard so near-equal ones don't swap back and forth. A
 virtual one-shot stays virtual until it would have ended, then fires `ended$` as usual.
 
+A budget works the same on a scene no world drives (a menu scene of its own, with `MusicPlayer` and
+`playOneShot` on it): while any source is virtual and no `update()` comes, the scene re-ranks its
+voices itself every `VOICE_UPKEEP_INTERVAL_MS` (50 ms), so a freed voice still goes to the best
+virtual source and a virtual one-shot still ends. A world's `update()` takes precedence (the scene
+only checks every `VOICE_UPKEEP_WATCH_MS`, 250 ms, that the world still ticks); a paused scene
+(`setPaused(true)`) waits.
+
 `source.isPlaying` stays `true` while virtual; `source.isVirtual` tells whether it is heard.
 `world.audioScene.voiceCounts` gives `{ playing, audible, virtual }`, and the dev console command
 `audio_voices [int|inf]` reads or sets the budget and prints those counts.
@@ -130,6 +137,83 @@ if (isMobile) {
 const horn = world.audioScene!.factory.createSource({ clip: hornClip, panningModel: 'HRTF' });
 horn.panningModel = 'equalpower'; // also writable at runtime
 ```
+
+`applyMobileAudioDefaults(world.audioScene!)` (from core) does both mobile settings at once on a
+touch device - `'equalpower'` and a 16-voice budget (`MOBILE_AUDIO_DEFAULTS`) - and nothing
+elsewhere; its second argument overrides the touch detection.
+
+### Fades, UI sounds and music
+
+```typescript
+import { MusicPlayer } from '@gg-web-engine/core';
+
+// a timed fade on the audio clock (pauses with the world); `volume` reads 0 at once
+if (await theme.fadeTo(0, 800)) {
+  theme.stop(); // only if nothing faded it back in meanwhile
+}
+
+// a sound with no place in the world, on a scene that needs no world at all
+const menuAudio = new WebAudioScene3dComponent();
+await menuAudio.init();
+menuAudio.playOneShot({ clip: await menuAudio.factory.loadClip('click.ogg'), bus: 'ui' });
+
+// music: crossfades, shuffle without repeats, a "now playing" feed, on the "music" bus
+const music = new MusicPlayer(menuAudio);
+music.nowPlaying$.subscribe(track => showNowPlaying(track));
+music.play([{ url: 'track1.ogg' }, { url: 'track2.ogg' }], { shuffle: true, crossfadeMs: 1500 });
+```
+
+`fadeTo` is a linear ramp on the source's gain, scheduled on the `AudioContext` clock: it holds
+while the context is suspended, continues through `stop()`/`play()`, and a virtual source picks it
+up where it has got to when heard again. It resolves `false` when a `volume` write, another
+`fadeTo` or `dispose()` took over. `MusicPlayer` decodes each track whole before playing it.
+
+### Sharing one AudioContext between a menu scene and its worlds
+
+An app with a long-lived menu scene (above) can build every world's scene on that scene's
+`AudioContext` instead of a new one:
+
+```typescript
+const menuAudio = new WebAudioScene3dComponent(); // owns the context, for the app's lifetime
+await menuAudio.init(); // unlocks it on the first user gesture
+
+// later, for each race / level
+const world = new Gg3dWorld({
+  visualScene: /* ... */,
+  physicsWorld: /* ... */,
+  audioScene: new WebAudioScene3dComponent({ context: menuAudio.context }),
+});
+world.audioScene!.ownsContext; // false - menuAudio owns it
+```
+
+Why: browsers start an `AudioContext` only after a user gesture, and iOS lets a new context start
+on its own only if it is created within a moment of a tap. A world created at the end of a level
+load gets a context that stays silent until the player taps again (holding an on-screen control
+does not count), while the menu's context, unlocked once, keeps running. On iOS, suspending
+(pause) and closing (world disposal) a second context also disturbs the first one's audio. On the
+shared context no new context ever needs permission, and nothing is suspended or closed under the
+menu.
+
+Every scene on a context leaves the others playing:
+
+- `dispose()` disposes the scene's sources (the idle ones never play again) and disconnects the
+  nodes it created; other scenes' nodes and sources are untouched. The owner (`ownsContext`, the
+  scene that created the context) closes it only if no other scene is on it; otherwise it hands the
+  context to one of them, which closes it once disposed itself, last.
+- `setPaused` (the world pausing) pauses only that scene's sources while other scenes are on the
+  context: they stop where they are and continue from there on resume; a source played while
+  paused starts on resume; timed fades (`fadeTo`) hold, as they do on a suspended context. An owner
+  alone on its context suspends the context instead.
+- Only the owner binds autoplay gesture listeners - it unlocks the context for every scene on it.
+- A context the app suspends itself (`context.suspend()`) stays suspended - no gesture and no end of
+  a pause resumes it - until the app calls `context.resume()`.
+- A context the app created itself and passed as `context` belongs to no scene: none of them ever
+  suspends, resumes or closes it.
+- Master volume, buses, bus parents, reverbs and the voice budget are per scene; apply the app's audio
+  settings to each new world's scene as usual. Both master gains feed the context's output.
+- The context has one native `listener`. A 3D scene writes it only while it has an active listener
+  and is updated by a world, so a world's scene (its camera) and a world-less menu scene (no
+  positional sources) never compete; don't give two updated scenes on one context a listener each.
 
 See the root repo's audio design write-up and the `gg-engine-audio-adapter` skill for the full
 architecture (static/attached/one-shot sources, the listener-selection rules for multi-renderer

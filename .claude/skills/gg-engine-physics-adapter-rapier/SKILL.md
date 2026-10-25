@@ -625,7 +625,7 @@ sensor) - read that note first, everything in it applies here too (the collider-
 handle distinction, `ActiveEvents.COLLISION_EVENTS` needing to be set on plain rigid-body colliders
 too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `contactPair`/
 `TempContactManifold.contactImpulse(i)` approach to a real solved impulse rather than a
-`CONTACT_FORCE_EVENTS` force-times-`dt` estimate). Three points worth calling out specifically for the
+`CONTACT_FORCE_EVENTS` force-times-`dt` estimate). Four points worth calling out specifically for the
 3D package:
 
 - **Naming differs, behavior doesn't**: this package's dispatch methods are
@@ -645,14 +645,24 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   touching"** by emitting `null` for the latter, per `CollisionEvent`'s own doc convention (mirroring
   `ITriggerComponent.onEntityLeft`'s same optional-null convention, which `Rapier3dTriggerComponent`
   itself doesn't actually exercise - it always passes the real body reference, even on removal-
-  triggered exit). Implemented via a `collidingWith: Set<Rapier3dRigidBodyComponent>` on
-  `Rapier3dRigidBodyComponent` itself, added to on every `notifyCollisionStart`/removed on every
-  `notifyCollisionEnd`, and walked by `removeFromWorld()`: every partner still in the set when a body
+  triggered exit). Implemented via `collidingWith` on `Rapier3dRigidBodyComponent` itself (see the
+  next point for what it counts), walked by `removeFromWorld()`: every partner still in it when a body
   is removed gets `notifyCollisionEnd(null)` and has this body dropped from its own `collidingWith` in
   turn. This is necessary because Rapier does not reliably emit a native collision-stop event for a
   collider that's simply deleted mid-contact (the same reason `Rapier3dTriggerComponent.checkOverlaps`
   needs its own manual `!body.nativeBody` cleanup pass instead of trusting the event queue for that
   case) - without it, the partner body would simply never hear that the contact ended at all.
+- **Collision events are per collider, `onCollisionStart`/`onCollisionEnd` per body pair.**
+  `drainCollisionEvents` reports each touching collider pair, and a `COMPOUND` body is one collider
+  per part, so a two-box body landing flat on a floor gets two native starts, and a native stop
+  whenever one box bounces off while the other still rests. `collidingWith` is therefore a
+  `Map<Rapier3dRigidBodyComponent, number>` of touching collider pairs per partner:
+  `notifyCollisionStart` emits only when a partner's count goes from 0 to 1, `notifyCollisionEnd`
+  only when it drops back to 0 (and ignores a stop for a partner with no count). `collectCollisionEvents`
+  never drops a native start - when `computeContactGeometry` finds no manifold it falls back to
+  `fallbackContactGeometry` (midpoint, direction between the bodies, no impulse) - since a skipped
+  start would leave the count one short of the stops to come. Regression: the 3D contract suite's
+  "fires onCollisionStart once per body pair, for a compound body".
 - **`relativeVelocity` reads each body's `linvel()` *after* the step that produced the `started` event
   has already fully resolved the contact** (both `drainCollisionEvents` and `contactPair` are read
   right after the `world.step()` the contact started in, there is no earlier point to read from without re-deriving the pre-solve state
@@ -762,6 +772,57 @@ colliders (see below) and has no such offset.
 `setWheelFrictionSlip(i, v)` writes both the native wheel (`setWheelFrictionSlip`) and the stored
 `WheelEntry.options`, since `addToWorld` rebuilds the native vehicle from the entries; the getter
 reads the native wheel first and falls back to the entry while the vehicle is out of a world.
+
+`getWheelContact(i)` reads `wheelIsInContact`, `wheelContactPoint`, `wheelContactNormal`,
+`wheelSuspensionForce` (Newtons) and `wheelMaxSuspensionForce` of the last `updateVehicle`, i.e.
+the last substep, and the world centre of mass from `worldCom()`, and hands them to core's
+`buildWheelContact`. `wheelSuspensionForce` is the spring's force before the controller clamps it
+to `wheelMaxSuspensionForce` for the impulse, so on a hard landing it reads several times what was
+applied; `buildWheelContact` clamps it. `skid` is `null`: the controller keeps a skid value
+internally but the JS bindings expose no getter, and `wheelForwardImpulse`/`wheelSideImpulse`
+are read after the controller has already scaled them down to the grip limit, so how far over the
+grip the wheel was cannot be recovered from them.
+
+**Every world-space point `updateVehicle` stores is one substep old.** `updateVehicle` runs before
+`world.step()` (see below), so `wheelContactPoint` and `wheelHardPoint` come from the chassis pose
+before the step, while `translation()`/`rotation()`/`linvel()`/`worldCom()` read afterwards are the
+pose after it: taken as stored, both sit behind the chassis by speed × substep length (0.25 m at
+30 m/s with 60 FPS frames), and the velocity at the contact point gets a wrong lever arm.
+`currentWheelRay(wheel)` therefore places each wheel's ray from the chassis' current pose
+instead: the hard point is `translation() + rotation() * connectionPointCs` (what `updateVehicle`
+computes from the body's isometry, not its centre of mass) and the direction `directionCs` rotated
+by `rotation()`. `getWheelTransform` uses that hard point. For the contact, the cast contact's
+distance from the stored `wheelHardPoint` along the current ray gives the contact carried with the
+chassis; it is off the ground whenever the chassis moved along the normal (on its springs, or still
+falling during the first contact substep of a landing, which the capped wheel impulse slows by well
+under 1 m/s): the ground doesn't move with the chassis. `getWheelContact` slides it along the
+current ray back onto the ground plane through the cast contact. Projecting it straight onto the plane along the normal instead is
+only right while the ray is parallel to the normal: on a rolled chassis landing while sliding
+sideways it left the point 0.5 mm off the wheel's ray. For a ray within ~6° of the ground plane the
+intersection runs far away, so that case falls back to the projection. The contact normal is the
+ground's and stays as cast. Calling `updateVehicle` after `world.step()` instead would also line
+them up, but it changes the simulation (inputs act one substep later). Regressions: the 3D contract
+suite's `raycast vehicle` "driving fast" test (wheel and contact point under their chassis corner
+at 30 m/s), "drops onto its springs" test (contact points stay at ground height) and "rolled
+chassis lands" test (contact point on the wheel's ray to 0.1 mm).
+
+`currentWheelRay` reads the chassis pose from the native body on every
+`getWheelTransform`/`getWheelContact` call, not cached between steps: a cache cleared only by this
+class's own setters would leave the wheel meshes at the old pose after a write through `nativeBody`
+(`rapier-3d-raycast-vehicle.component.spec.ts`, "write through nativeBody").
+
+`getWheelContact`'s axle uses each wheel's `stepSteering`, the `steering` value `setSteering`
+stored on the `WheelEntry`, copied by `stepVehicleController` right before `updateVehicle`: an app
+steering between `simulate()` and reading the contact must not turn the axle of a contact the step
+produced with the old steering. `attachWheel` also restores the stored steering, so a re-added
+vehicle keeps its wheels' steering like its other wheel settings.
+
+`resetSuspension()` (called by `resetMotion()`, so by `RaycastVehicle3dEntity.resetTo` and a network
+snap) sets `wheelContactsReset` until the next `stepVehicleController`: `isWheelTouchesGround` reads
+`false`, `getWheelContact` returns `null` and `getWheelTransform` hangs each wheel at its
+`restLength` instead of the last cast's `wheelSuspensionLength`. The old contacts, carried to the
+new pose, would sit on the old ground's plane and report touching, and the old suspension lengths
+would draw the wheels compressed against ground that isn't there.
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
@@ -950,9 +1011,9 @@ compensation for this at the adapter level either way - it's already handled ada
 
 **`getWheelTransform` has no single native call to read from.**
 Rapier's controller only exposes the individual pieces, composed by hand:
-- **Position**: `wheelHardPoint(i)` is already world-space (the wheel ray-cast's own fixed start
-  point) - `wheelDirectionCs(i)` (chassis-local) rotated by the chassis's current rotation, then scaled
-  by `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
+- **Position**: the hard point and world-space direction at the chassis' current pose
+  (`currentWheelRay`, see `getWheelContact` above), the direction scaled by
+  `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
   grounded alike) and added to the hard point, lands exactly on the wheel's current center.
 - **Rotation**: composed as chassis rotation ∘ steering (`Qtrn.rotAround(Qtrn.O, Pnt3.Z, wheelSteering(i))`
   - `Pnt3.Z` because `indexUpAxis` is set to `2`) ∘ roll (`Qtrn.rotAround(Qtrn.O, Pnt3.X,
@@ -964,11 +1025,12 @@ as a known limitation rather than chasing exactness, same spirit as
 sound (all four wheels sit at their configured corner offsets and translate/rotate along with the
 chassis) and visually plausible in the `3d/raycast-vehicle` example.
 
-**`resetSuspension()` is a documented no-op.** Rapier exposes no way to directly set a wheel's *current*
-suspension length (only the rest length/travel bounds that shape it). Not load-bearing here, either -
-the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
+**`resetSuspension()` leaves the suspension alone.** Rapier exposes no way to directly set a wheel's
+*current* suspension length (only the rest length/travel bounds that shape it). Not load-bearing here,
+either - the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
 fresh ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
-within one tick even without an explicit reset.
+within one tick even without an explicit reset. Until that tick it drops the wheel contacts and
+draws the wheels at rest length (see `getWheelContact` above).
 
 **`clone()` must also re-add every wheel.** An earlier version's `clone()` only forwarded the chassis
 body, producing a vehicle with zero wheels - `addWheel` must be replayed for each entry in this

@@ -33,6 +33,428 @@ where one exists.
 - Examples: a prompt-to-level demo (`examples/3d/prompt-to-level`). It plays an obstacle course an
   agent wrote as level JSON from the prompt shown beside it, lists the one fix the draft needed,
   and loads any level JSON pasted into the page.
+- core: `DirectionInput` takes `options.oppositeKeys` (`DirectionOppositeKeys`, per axis
+  `'cancel'`/`'up'`/`'down'` and `'cancel'`/`'left'`/`'right'`): what both opposite direction keys
+  held give, in `direction$` and `output$` alike. `'cancel'` (neither direction) stays the default;
+  the `oppositeKeys` property changes it while the input runs. `CarHandlingController` and
+  `GgCarHandlingController` pass on an `oppositeKeys` option, e.g. `{ upDown: 'down' }` for a brake
+  that overrides the throttle. Keys only: gamepad and on-screen directions are summed as before.
+
+### Fixed
+- pixi: a renderer no longer draws while its WebGL context is lost (`render()` returns early, a
+  WebGPU renderer keeps drawing). Drawing then compiled pixi's shader programs without uniforms
+  ("Could not retrieve shader source (WebGL context may be lost)"), and once the context came back
+  the uniform sync functions pixi keeps across the restore threw on every frame (`Cannot read
+  properties of undefined (reading 'value')` / `(reading 'location')`), seen on Opera Mobile for
+  Android.
+
+## [0.0.87] - 2026-10-22
+
+### Added
+- audio: an audio scene can run on an existing `AudioContext`:
+  `new WebAudioScene3dComponent({ context })` (and `WebAudioScene2dComponent`) builds the scene's
+  graph on it without owning it (`ownsContext` is `false`). Scenes on one context leave each other
+  playing: while more than one is on it, `setPaused` pauses only the scene's own sources instead of
+  suspending the context (playing sources stop where they are and continue on resume, a source
+  played while paused starts on resume, timed fades hold), and the owner's `dispose()` hands the
+  context to another scene on it instead of closing it - the last one closes it. Only the owner
+  binds autoplay gesture listeners. A disposed scene's idle sources never play again. A context the
+  app created and passed in is never suspended, resumed or closed by a scene. Volumes, buses,
+  reverbs and the voice budget stay per scene. Meant for building every world's scene on an app's long-lived menu scene's context:
+  iOS starts a new context on its own only shortly after a tap, so a world created after a long
+  load stayed silent until the next tap, and suspending or closing a second context disturbed the
+  first one's audio there.
+
+### Fixed
+- audio: a voice budget (`maxVoices`, also set by `applyMobileAudioDefaults` on touch devices) now
+  works on a scene no world updates, such as a menu scene with `MusicPlayer` and `playOneShot`.
+  Such a scene never re-ranked its voices, so once more sources played than the budget allowed,
+  the outranked ones stayed virtual for good (virtual one-shots never ended or got disposed) and
+  every later sound and music track started virtual: the scene went silent. While any source is
+  virtual and no `update()` comes, the scene now does its voice bookkeeping itself every 50 ms
+  (`VOICE_UPKEEP_INTERVAL_MS`); while a world updates it, it only checks every 250 ms
+  (`VOICE_UPKEEP_WATCH_MS`) that the world still does.
+- audio: a scene whose `AudioContext` was created without a user gesture (a world created while a
+  level loads) now starts on the next gesture on iOS too. The scene only listened while the
+  context was `'suspended'` (WebKit reports one it holds back as `'interrupted'`, and iOS
+  interrupts running contexts later), with bubbling listeners that touches on
+  `@gg-web-engine/mobile-controls` never reached (they stop propagation), and only once, so a
+  gesture while paused or one iOS does not accept for audio (`pointerdown`) used them up: every
+  sound stayed silent until WebKit started the context by chance. For its whole life, the scene now
+  listens in the capture phase for `pointerdown`, `pointerup`, `touchend`, `click` and `keydown`
+  (`RESUME_GESTURE_EVENTS`); each one finding the context neither running nor closed while the
+  scene is not paused resumes it and starts a silent one-sample buffer within the gesture. A
+  context the app suspended itself (`context.suspend()`) is left suspended until the app's own
+  `context.resume()` - neither a gesture nor the end of a pause resumes it. The scene no longer
+  sets `context.onstatechange`.
+
+## [0.0.86] - 2026-10-22
+
+
+### Added
+- 2D cameras have an `origin` (`Camera2dOrigin`: `'center'`, the default, or `'top-left'`).
+  With `'top-left'` the camera's `position` is the view's top-left corner, and the view zooms and
+  rotates around it, so a camera at `{ x: 0, y: 0 }` makes world coordinates canvas pixels (y
+  down). This is for a HUD or menu drawn by a physics-less `Gg2dWorld` on a transparent renderer
+  over another canvas. It can be changed at any time; pixi reads it on every frame.
+- Pixi: `PixiRendererComponent.initialized$` emits once pixi's asynchronous `Application.init`
+  has finished, also to a later subscriber, and completes without emitting when the renderer is
+  disposed first. `initialized` reads the same as a flag. Wait for it before using
+  `application.renderer` directly.
+- `RendererOptions.forceResolution` takes an `Observable<number>` as well as a number: every value
+  it emits while the renderer is in a world is applied in place through the new
+  `IRendererComponent.setResolution(resolution)`, keeping the CSS size - for a game's resolution or
+  quality setting. Three resizes the post-processing composer of a `ThreeComposerRendererComponent`
+  along with the renderer; Pixi applies a change made before its async init once init is done.
+  Until the observable's first value the device resolution is used.
+- `measureViewport()` and `viewportSize$(remeasureDelay?)`: the page's visible area as a
+  `'fullscreen'` renderer measures it, for app code laying out its own DOM around the game.
+- `IDisplayObject3dComponent.makeUnique(resources?)`: gives a display object its own copies of the
+  materials (`'materials'`, the default), also the geometry (`'meshes'`) or also the textures
+  (`'all'`, `UniqueResources3d`) it shares with other copies of the same model, so one copy can be
+  recolored, re-textured or have its geometry edited without changing the others. A resource used
+  several times within the object maps to one copy, calling it again with the same or a lower
+  level does nothing, and `dispose()` frees exactly the copies it made, never the cached original's
+  resources - disposing the original does not touch them either. On three, a skinned mesh keeps its
+  skinning attributes, morph targets and skeleton binding, and `resourceOwnership` gains a
+  `'materials'` level (`ThreeResourceOwnership`).
+- `unique` option of `world.loader.loadModel` (`LoadModelOptions`) and `world.loader.loadGgGlb`
+  (`LoadOptions`, props included): calls `makeUnique` on the returned copies. It is not part of the
+  cache key, so unique and shared loads of one file still parse it once.
+- Mobile controls: `car.pedals: 'stick'` replaces the accelerate and brake buttons of the car layout
+  with one analog stick (`'pedal-stick'`, up for throttle, down for brake).
+- Mobile controls: `car.keys` (`{ handbrake?, gearUp?, gearDown? }`, or a function of the
+  controller called each time the layout is built) gives a bare `CarHandlingController` handbrake
+  and gear buttons pressing those keys on its `keyboard`, for a game whose own entity drives the
+  vehicle's handbrake and gearbox. `GgCarHandlingController`'s buttons keep pressing its own keys.
+- Mobile controls: `MobileControlsOptions.inset` (and `MobileControls.inset`) moves every control
+  placed by numbers away from or towards the overlay's edges, in placement units, per edge or for
+  all four; also settable from CSS as `--gg-mc-inset-left`/`-right`/`-top`/`-bottom`.
+- Mobile controls: `pauseButton` and `fullscreenButton` options (`MobileControls.pauseButton`/
+  `fullscreenButton`). The pause button pauses the world and resumes it on the next press (never a
+  world whose `localPauseAllowed` is `false`), or runs the app's `onPress` instead; the fullscreen
+  button toggles fullscreen of the overlay's container and is hidden where fullscreen is not
+  available. New icons `pause`, `resume`, `fullscreen`, `exitFullscreen` in `MobileControlsIcons`.
+- Mobile controls: `toggleFullscreen(element?)`, `isFullscreenAvailable(element?)`,
+  `fullscreenElement()`, `isFullscreen()` and `fullscreen$()`, covering the standard and the
+  WebKit-prefixed Fullscreen API; `toggleFullscreen` never throws or rejects and resolves `false`
+  where fullscreen is unavailable (an iPhone) or refused.
+- Mobile controls: `TouchButton.onTap(callback)`, called inside the `pointerup` of the finger
+  lifting (not on a reset or a cancelled pointer) - the moment a browser grants a touch the user
+  gesture that fullscreen and similar APIs need.
+- Mobile controls: `MobileControlsOptions.visible$` gates the overlay by an observable (hidden until
+  it first emits `true`), releasing everything held when it turns `false`.
+- Mobile controls: `mergeControlPlacement(defaults, custom)`, the edge-by-edge placement merge the
+  built-in layouts apply to `placements`.
+- Particle sprite anchors: `ParticleSimulationOptions.anchor` (live) is the point of every sprite
+  that sits at the particle's position and that a rotating sprite turns around, in fractions of the
+  sprite as its image shows it (`{ x: 0.5, y: 0.5 }`, the center, by default; `{ x: 0.5, y: 1 }`
+  stands smoke, dust, grass or a flame on its base). `ParticleFrame.anchor` overrides it per atlas
+  frame, so sprites with different pivots share one atlas and a frame sequence can move the pivot;
+  `ParticleFrames.fromPixels` takes a region's anchor in pixels. Drawn by `@gg-web-engine/three`
+  (camera-facing and vertical billboards) and `@gg-web-engine/pixi`. `ParticleRenderBuffers` has a
+  new `anchor` array (2 floats per particle) that a rendering adapter's particle system reads.
+- `@gg-web-engine/three`: `extendThreeParticleVertexShader(material, { declarations?, mainEnd? })`
+  inserts an app's own GLSL into the particle material's vertex shader at the stable markers of
+  `THREE_PARTICLE_VERTEX_HOOKS` (file scope, and the end of `main()` with `gl_Position`, `mvPosition`
+  and `corner` in scope), for use from the `material` option instead of matching the shader's text.
+- `IAudioSourceComponent.fadeTo(volume, durationMs): Promise<boolean>`: a timed volume fade (menu
+  music fading out, a crossfade) on the audio clock. `volume` reads back the target at once; the
+  fade holds while the world is paused or audio is not yet allowed to start, keeps running through
+  `stop()`/`play()` and while the source is virtual, and resolves `true` when it reaches the
+  target or `false` when a `volume` write, another `fadeTo` or `dispose()` takes over. The voice
+  budget ranks a fading source by the level it is heard at.
+- `IAudioSceneComponent.playOneShot(descriptor)`: plays a clip once, non-positional, on a bus, and
+  disposes the source when it ends - for UI sounds on a scene with no world or entity.
+  `AudioOneShotDescriptor` is its descriptor type and `playAudioOneShot(factory, descriptor)`
+  implements it over any adapter's factory.
+- `MusicPlayer` (core, works with any audio adapter and needs no world): plays a playlist on the
+  `"music"` bus with crossfades on `play`/`next`/`stop`, optional shuffle that never repeats a
+  track back to back, repeat, per-track volume and loop region, and `nowPlaying$`. A track that
+  fails to load is skipped.
+- `MOBILE_AUDIO_DEFAULTS` and `applyMobileAudioDefaults(scene, mobile?)`: on a touch device
+  (`MouseInput.isTouchDevice()` unless the app passes its own answer), a 16-voice budget and
+  `'equalpower'` panning for new 3D sources.
+- `RaycastVehicle3dEntity.impact$`: one `RaycastVehicleImpact` each time the chassis begins touching
+  another rigid body, with the other body and its entity, contact point and normal, the adapter's
+  impulse, and `speed`, the approach speed along the normal from the velocities before the step
+  that resolved the hit (the chassis spin at the contact point included, and the other vehicle's
+  own pre-step velocity for a hit between two raycast vehicles). A hit between two vehicles is
+  reported by both with the same speed, the second one flagged `mirrored`, so a pair-wide effect
+  (one crash sound) skips it while per-car damage takes both. Works on Ammo and Rapier.
+- `RaycastVehicle3dEntity.airborne$`, `landed$` and `isAirborne`: the vehicle is airborne once
+  every wheel has been off the ground for `airborneDelay` ms of world time (default 250, so a bump
+  doesn't count); `landed$` reports the speed the chassis came down at along the ground normal and
+  the time spent in the air. `resetTo` ends the airborne state without a landing.
+- `IEntity.whileSpawned(source)` and `IEntity.onTick(handler)` (protected): an observable that ends
+  the next time the entity is removed from its world, and a `tick$` subscription built on it. Called
+  from `onSpawned`, they subscribe once per spawn however often the entity is removed and added
+  again - the `tick$.pipe(takeUntil(this._onRemoved$)).subscribe(...)` pattern in one call.
+- `GgWorld.getOrAddEntity(name, factory, type?)`: the entity named `name` in the world, built by
+  `factory`, named and added on the first call - a per-world singleton (one skid-mark mesh, one
+  particle pool shared by every car) without an app-side `WeakMap<world, entity>`. With `type`, an
+  existing entity of another class throws instead of being returned.
+- `loadCubeTexture` takes `filter` (`'linear'`/`'nearest'`), like `loadTexture`: on
+  `world.loader.loadCubeTexture(faces, { filter })` (cached per faces and filter), on the 3D
+  loader interface (`loadCubeTexture`/`cubeTextureFromData`, optional parameter) and in
+  `@gg-web-engine/three`. A `cubeTexture` `AssetRef` takes `options` for `preload`.
+- `IDisplayObjectComponent.getLocalBoundings()`: bounds of a display object and its children in
+  the object's own frame (as if its position were the origin, rotation identity and scale 1), for
+  measuring a model along its own axes (a car's footprint) once it has been turned. Implemented by
+  `@gg-web-engine/three` and `@gg-web-engine/pixi`; nested children hidden with `visible = false`
+  are left out.
+- `RaycastVehicle3dEntity.createWheelEntity(options, index)` (protected): builds the entity
+  shown at each wheel (the default clones `display.displayObject`), for a subclass supplying its
+  own wheel entities - the vehicle names, adopts and moves them as before. `RVEntityWheelFullOptions`
+  and `RVEntityWheelEntity` type its parameter and result.
+- `replaceCanvas(canvas)`: puts a blank copy of a canvas (same id, classes, attributes, inline
+  style) in its place in the page and returns it. A disposed renderer releases its canvas's WebGL
+  context for good, so an app that keeps one `<canvas>` for world after world calls this before
+  adding the next world's renderer.
+- Multiplayer: a room directory and lobby above signaling. `RoomDirectory` lists rooms (`rooms$`:
+  name, capacity, member count, metadata, `started`, `joinable`) and creates or joins one, one
+  operation at a time with a fresh peer id per join; the `Lobby` it returns has the members
+  (`members$`), the host (`host$`/`isHost$`: the senior member, the next one when it leaves), the
+  host-written shared state (`state$`/`setState`), each member's own data (`setMemberData`), a match
+  that locks the roster and closes the room to joins (`startMatch`/`endMatch`/`match$`), a ready
+  barrier (`setReady`/`readiness`/`waitForReady`), a start time on the backend's clock
+  (`serverNow`/`scheduleStart`/`startsAt$`), results written once per round (`writeResult`/
+  `results$`) and `closed$` (`'left'`/`'lost'`). Backends: `FirebaseLobbyBackend` (Realtime Database
+  under `gg-lobby`, capacity enforced by seat transactions, members removed on disconnect - deploy
+  the updated `firebase/database.rules.json`) and `BroadcastChannelLobbyBackend` (tabs of one
+  browser); `ILobbyBackend` for others.
+- `NetworkController.waitForPeers(peersOrCount, timeoutMs)`: resolves `true` once the links to the
+  given peers (or that many) are open, `false` on timeout or when the session ends.
+- `resolveFirebaseApp`/`signInToFirebase` and `FirebaseConnectionOptions`, shared by
+  `FirebaseSignaling` and `FirebaseLobbyBackend`; App Check is initialized once per Firebase app.
+
+### Changed
+- **Breaking** (custom 2D visual adapters only): `ICamera2dComponent` has a new required `origin`
+  property, which the adapter's renderer must honor. Apps using `@gg-web-engine/pixi` need no
+  change.
+- **Breaking** (custom visual adapters only): `IRendererComponent` has a new abstract method,
+  `setResolution(resolution)`. A third-party renderer component no longer compiles until it adds
+  one; start from the protected `initialResolution` instead of reading `forceResolution`, which can
+  now be an observable. Apps using `@gg-web-engine/three` or `@gg-web-engine/pixi` need no change.
+- A `'fullscreen'` renderer (and the function form of `size`) measures the page through
+  `window.visualViewport` where available (falling back to `innerWidth`/`innerHeight`), ignores a
+  pinch zoom, and measures again 300 ms after an `orientationchange`, so an iOS home-screen app no
+  longer keeps the size from before a rotation.
+- **Breaking** (custom visual adapters only): `IDisplayObject3dComponent` (and so
+  `ICamera3dComponent`) has a new required method, `makeUnique(resources?)`. A third-party 3D
+  display object implementation no longer compiles until it adds one (a no-op is correct for an
+  object that never shares resources). Apps using `@gg-web-engine/three` need no change.
+- Mobile controls: over a stick (`steering: 'stick'` for the gear buttons, `pedals: 'stick'` for
+  the handbrake) the car layout's small buttons sit at `bottom: 20` instead of 16, clear of the
+  stick.
+- **Breaking** (custom audio adapters only): `IAudioSourceComponent` has a new required method,
+  `fadeTo`, and `IAudioSceneComponent` a new required method, `playOneShot`. A third-party audio
+  adapter no longer compiles until it adds both; `playOneShot` can delegate to
+  `playAudioOneShot(this.factory, descriptor)`. Apps using `@gg-web-engine/audio` need no change.
+- `@gg-web-engine/ammo`: `AmmoRaycastVehicleComponent` adds and removes its chassis' native body
+  itself, so the vehicle is the one component of that body in the world - `children`,
+  `added$`/`removed$`, collision and trigger events only ever name the vehicle. The `chassisBody`
+  component it was created from is never added to the world any more (forces applied to it are
+  ignored); use the vehicle component instead.
+- **Breaking** (custom visual adapters only): `IDisplayObjectComponent` has a new required method,
+  `getLocalBoundings()`. A third-party rendering adapter no longer compiles until its display
+  objects implement it. Apps using `@gg-web-engine/three` or `@gg-web-engine/pixi` need no change.
+- `addRenderer` (2D and 3D worlds) throws, naming `replaceCanvas`, when given a canvas whose
+  previous renderer was disposed (removed with `dispose`, or with its world). Such a canvas has no
+  usable WebGL context left; before, the new renderer failed later in an adapter-specific way.
+- `@gg-web-engine/pixi`: disposing a renderer leaves a canvas the app passed in its place in the
+  page (pixi still releases its WebGL context); only a canvas pixi created itself is removed.
+
+### Fixed
+- Pixi: a number `forceResolution` other than 1 no longer changes the canvas's size on the page;
+  the canvas keeps the renderer's CSS size at any resolution (`autoDensity` is always on, as it was
+  without `forceResolution`).
+- Ammo: a rigid body removed or disposed from an `onCollisionStart` subscriber no longer makes the
+  rest of that step's collision events (the other body's own event among them) read freed native
+  memory, which gave garbage contact data and could corrupt the WASM heap.
+- Ammo: `Trigger3dEntity.onEntityLeft` emitted `null` instead of the vehicle entity for a raycast
+  vehicle (a `GgCarEntity`'s) removed from the world while inside the trigger.
+- Ammo: disposing a body, trigger, character controller or raycast vehicle component a second time
+  (directly, or after `removeFromWorld(world, true)`) freed its native objects again; it does nothing.
+- Ammo: every raycast vehicle leaked a native `btVehicleTuning`; vehicles share one.
+- `@gg-web-engine/rapier3d`: a `COMPOUND` body touching another body with several of its parts got
+  one `onCollisionStart` per part, and an `onCollisionEnd` whenever one part let go while another
+  still touched. Both now fire once per body pair (`Rapier3dRigidBodyComponent.collidingWith` maps
+  each partner to its number of touching collider pairs).
+
+## [0.0.85] - 2026-10-21
+
+### Added
+- `IRaycastVehicleComponent.getWheelContact(wheelIndex)`: where and how a wheel touches the ground
+  after the last physics step, as a `WheelContact` with the contact point, ground normal, steered
+  axle, the chassis velocity at the contact point and its sideways part (`sideSlipSpeed`, m/s), the
+  suspension force in Newtons and `skid` (Bullet's share of the needed grip the tyre gave; `null`
+  on Rapier, which does not report it). `null` while the wheel is in the air, and after a reset
+  (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) until the next step. Tyre
+  marks, squeal, smoke and grip assists can read this on Ammo and Rapier instead of reaching into
+  `btRaycastVehicle`'s wheel info.
+- `buildWheelContact(...)`: builds a `WheelContact` from what a physics engine reports for one
+  wheel, for an adapter implementing `getWheelContact`.
+- `AudioListenerBasis` (`'camera'` | `'body'`): which local axes of the 3D audio listener's rotation
+  are its forward and up. `IAudioScene3dComponent.setActiveListener(target, basis?)` takes one and
+  `activeListenerBasis` reads it back; without one, a camera (`Camera3dEntity`, or a camera
+  component) is read as `'camera'` (forward local -Z, up local +Y) and anything else as `'body'`
+  (forward local +Y, up local +Z), so a listener bound to a player or vehicle entity faces the way
+  that entity does. `AUDIO_LISTENER_AXES` and `defaultAudioListenerBasis` expose the same rules to
+  audio adapters.
+
+### Changed
+- **Breaking** (custom physics adapters only): `IRaycastVehicleComponent` has a new required
+  method, `getWheelContact(wheelIndex)`. A third-party adapter implementing the interface no
+  longer compiles until it adds one; build the result with `buildWheelContact` so its derived
+  fields match the built-in adapters. Apps using `@gg-web-engine/ammo` or
+  `@gg-web-engine/rapier3d` need no change.
+- Raycast vehicles (Ammo and Rapier): `isWheelTouchesGround` reports `false` after
+  `resetSuspension()` (so after `resetMotion()`, `RaycastVehicle3dEntity.resetTo` and a network
+  snap) until the next physics step, instead of the ground under the pose the car was reset from.
+- **Breaking** (subclasses of `AmmoRaycastVehicleComponent` only):
+  `applyBrakeImpulses(subStepLength)` is now `prepareStep`; it also records the steering each step
+  uses. `AmmoWorldComponent.simulate()` calls `prepareStep`, so an override of
+  `applyBrakeImpulses` is no longer called: override `prepareStep` instead and call `super`.
+- **Breaking** (custom audio adapters only): `IAudioScene3dComponent` has a new required
+  `activeListenerBasis` property and its `setActiveListener` takes an optional `basis`. Apps using
+  `@gg-web-engine/audio` need no change.
+- Audio: a 3D source's directional cone points along its local +Y, a body's forward, instead of
+  local -Z. A source with the identity rotation, or riding an upright car or character, aims level
+  the way it faces; it used to aim at the ground. A cone source given a rotation to aim it along
+  local -Z needs that rotation changed.
+
+### Fixed
+- Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
+  the last physics substep, behind the car by its speed × the substep length (up to 0.3 m at
+  30 m/s).
+- Rapier: a raycast vehicle removed from the world and added back lost its wheels' steering.
+- Ammo: `isWheelTouchesGround` kept reporting the last step's ground contact after the vehicle was
+  removed from the world, and after it was added back until the next step; it reports `false`, as
+  on Rapier.
+- Ammo: a raycast vehicle's wheel methods (`setSteering`, `applyEngineForce`,
+  `setWheelFrictionSlip`, `getWheelFrictionSlip`, `isWheelTouchesGround`) given an index past its
+  wheels read and wrote WASM memory outside the wheel array; they ignore it, as on Rapier.
+- Ammo: `isWheelTouchesGround` on a raycast vehicle disposed without being removed from the world
+  first read the freed native vehicle; it reports `false`.
+- Rapier: after a reset (`resetSuspension`, `resetMotion`, `RaycastVehicle3dEntity.resetTo`) a
+  raycast vehicle's wheels were drawn compressed as on the ground the car was reset from until the
+  next step; they hang at their suspension rest length, as on Ammo.
+- `GamepadInput.controlPushed$` no longer reports a trigger axis returning to its rest as a push
+  of the axis's other direction: rebinding two actions one after another on a trigger reported as
+  an axis (an XInput pad without the standard mapping) bound the second to the trigger's release.
+  Where each axis rests is learned per gamepad when the browser lists it (the standard mapping's
+  sticks always rest at 0) and learned again when it is plugged in again; sticks and a shared
+  axis resting at 0 still report both directions. `inUse` no longer turns on when such an axis
+  returns to its rest.
+- `GamepadInput.controlPushed$` no longer reports a control held through a restart of the input
+  (the world's `inputEnabled` off and on for a menu), or held when a new input starts, as pushed:
+  a controls menu opened while the gas trigger is held doesn't capture it. A gamepad seen for the
+  first time still reports the press the browser listed it for.
+- Audio: the 3D scene's listener up vector was the active listener's local +Z, the exact opposite
+  of its forward (local -Z), so the listener had no left/right: positional sources panned
+  meaninglessly, and on iOS Safari every positional source played as broken, pitch-garbled audio.
+  Up is the listener's local +Y, the camera convention.
+- Audio: the 3D listener no longer eases through a degenerate orientation on a turn of more than
+  90° in one tick (a camera cut, a snap turn) or a switch to another listener. Easing each
+  component on its own took forward and up through near-zero length on the way, which on iOS
+  Safari garbled every positional source for the length of the ramp; such a turn, and a new
+  listener's position, now apply at once.
+- Audio: in Firefox and older Safari, which have no `AudioParam`-based listener, the 3D listener
+  snapped to the camera every tick, which can be heard as zipper noise on a moving camera. It eases
+  in the same way it does in other browsers.
+
+## [0.0.84] - 2026-10-19
+
+### Added
+- `MapGraph3dEntity.prepareChunk(node, loaded, entities, signal)`: an overridable hook awaited
+  after a chunk's GLB loads and before the chunk is added to the world, for per-chunk work such as
+  shared materials or loading props. The extra entities it returns are added with the chunk and
+  removed and disposed when it unloads. The chunk stays "loading" until the hook resolves, so it
+  can't be unloaded meanwhile; if the map graph leaves the world or the hook throws, the chunk and
+  the extras are disposed. Use it instead of overriding `loadChunk` and awaiting after
+  `super.loadChunk(node)`: such an override could put a chunk back into `loaded` after it had
+  already been unloaded, leaving an entry without its terrain that never loaded again (or a second
+  copy of the chunk).
+- Custom key codes in direction keymaps: `DirectionKeymap` (every built-in input controller's
+  `keymap` option) also takes `{ up, down, left, right }`, each a `KeyboardEvent.code` or a list
+  of them, and `DirectionInput.keymap` can be assigned while the input runs to rebind the keys at
+  once. `directionKeyCodes(keymap)` lists the codes a keymap stands for.
+- Rebinding controls while the game runs: `setKeys(partial)` and `setGamepad(partial | null)` on
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `CarHandlingController`,
+  `GgCarHandlingController`, `FreeCameraController` and `ObjectGrabController` write the given
+  keys or gamepad controls to `options` and rebind them at once (`null` turns the gamepad off). A
+  control already held when it is assigned (the button a controls menu just captured) counts from
+  its next push. `bindingsChanged$` (`IRebindableController`, `isRebindableController`) emits
+  `'keys'` or `'gamepad'` after either. `followKey`, `followGamepadKey`, `followGamepadPressed`
+  and `followGamepadDirection` do the same for an app's own actions, and
+  `GamepadInput.released$(controls)` tells when controls are read released.
+- Choosing which gamepad drives: `GamepadInput.choice` (`{ id, nth }`, plain data to save) is read
+  by every `GamepadInput` without a `gamepadIndex` of its own and finds the same device again
+  after a reconnect or a reload. `connectedGamepads()`, `selectedGamepad()`, `chooseNext(step)`,
+  `choiceOf(gamepad)`, `gamepadName(gamepad)` and `choice$` are there for a controls menu.
+- `FreeCameraController` options `upDownKeys` (`['KeyE', 'KeyQ']`), `zoomOutInKeys`
+  (`['KeyZ', 'KeyC']`) and `boostKey` (`'ShiftLeft'`) for the keys it had built in.
+- `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller reports a
+  `'keys'` change, so its buttons press the new keys, once no finger is on it.
+- Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
+  "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
+  (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
+  for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
+- Gamepad menu navigation for screens: `Screen.bindGamepadKeys(keys = GAMEPAD_MENU_KEYS)` has the
+  gamepad press keys of the screen's `keyboard` while the screen is on top (d-pad or left stick as
+  the arrows, repeating while held, A as Enter, B as Escape), only for a button pushed while the
+  screen is on top. A game screen binds only its pause key (`this.bindGamepadKeys({ Escape: 'b9' })`).
+  `ScreenManager.gamepadInput` is the input it reads. `GamepadInput.bindKeys` takes the options
+  behind it: `edge` (press like a real key) and `repeat`/`repeatDelay`/`repeatInterval`.
+  `KeyboardInput.isHeldBy(code, holder)` tells whether an emulated hold is still in place.
+
+### Changed
+- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` keeps reading the gamepad
+  in use (a button pressed or an axis moved on it) while it stays connected, so a gamepad listed
+  later doesn't take over mid-game. Before that it reads the first gamepad with a button pressed,
+  else the first with the standard mapping, else the first connected one: some keyboards and wheel
+  pedals list themselves as gamepads and could come first. All running `GamepadInput`s share one
+  `navigator.getGamepads()` read per frame.
+- `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to
+  them as `options`, instead of that object itself, with `options.gamepad` holding the default
+  binding when it was left out.
+- `DirectionInput.output$` emits `{}` when the input stops, as it does when its keys are rebound:
+  nothing is held any more.
+- `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,
+  instead of loading them only to unload them right after (a device loading chunks slower than
+  the cursor moves).
+
+### Fixed
+- `GamepadInput.controlPushed$` no longer reports the controls already held on a gamepad it
+  switched to (another choice) as pushed, so a controls menu capturing a control doesn't take
+  them. A gamepad read after none was (the first ever, or one plugged back in) still reports
+  them: the browser lists it because of that very press.
+- `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
+  class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`
+  built around such an object adopted that label as its world-unique entity name, so adding a
+  second unnamed primitive of the same kind to a world failed with
+  `Cannot add entity - name "Graphics" is already in use`.
+- `@gg-web-engine/three`: a display object built without a name reports an empty `name` instead
+  of the mesh's `uuid`, so an `Entity3d` built around an unnamed mesh keeps its readable
+  `Entity3d_N` default name rather than adopting a generated id.
+
+## [0.0.83] - 2026-10-17
+
+### Added
+- Gamepad input. Every world has a `gamepadInput` (`GamepadInput`, started and stopped with
+  `inputEnabled`) that polls the Gamepad API on every frame, also while the world is paused, and
+  reports controls by index (`'b7'`, `'a0-'`): `value$`/`pressed$`/`direction$`, `connected$`,
+  `inUse$` (gamepad used more recently than keyboard or mouse), `controlPushed$` for a controls menu
+  capturing a binding, `bindKeys(keyboard, { Space: 'b0' })` to hold keys while buttons are pressed
+  and `bindDirection(directionInput, binding)` to add a stick or the d-pad to a direction input.
+  The built-in input controllers (`CarHandlingController`, `GgCarHandlingController`,
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `FreeCameraController`,
+  `ObjectGrabController`) are driven by the world's gamepad out of the box with standard-mapping
+  defaults (left stick or d-pad moves/steers, triggers are the pedals, bumpers shift, right stick
+  looks, A jumps, ...), each through a new `gamepad` option taking a custom binding or `null` to
+  leave the gamepad alone. `CarHandlingControllerOptions.keymap` accepts `null` for a car driven
+  by analog sources only.
 - Examples: two small complete single-player games built on the screens API, each with a title
   screen, pause, a win screen, game over, three lives, checkpoints and particle effects.
   `examples/3d/tower-climb` is a third-person climb up floating pads to light a beacon (Ammo or
@@ -73,8 +495,31 @@ where one exists.
   `@gg-web-engine/audio` scenes add `getEffectiveBusVolume(bus)`, and the dev console has
   `audio_bus_parent`. `setBusParent`/`getBusParent` are required members of
   `IAudioSceneComponent`, so a third-party audio adapter has to add them.
+- Blender exporter add-on 1.1.0: options to leave vertex data and lights out of the `.glb`
+  (normals, tangents, UVs, vertex colors, lights), in the export panel, as `export_glb_meta`
+  keyword arguments and as `export_cli.py` flags (`--no-normals`, `--no-tangents`,
+  `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
+- `FreeCameraController`: with a camera that has no field of view (an orthographic one), the boost
+  key (`ShiftLeft`) zoomed instead of boosting and never boosted - the key was read from the slot
+  of the zoom keys, which are only bound for a camera with a fov.
+- `@gg-web-engine/mobile-controls`: a WebGL game stuttered on every touch-button press and release
+  on low-end phones (reported on a Samsung A16). The default stylesheet repainted the pressed
+  control on every frame of its transitions, made the browser create and drop a layer at each press,
+  and repainted the stick on every move of the finger. Now buttons, the stick knob and the floating
+  stick base are compositor layers for good, and only `transform` and `opacity` are animated. The
+  floating stick moves under the finger by `transform` instead of `left`/`top`. A press costs one small
+  repaint, and dragging the stick none. Changes in look and styling: the pressed colour of a
+  button or d-pad arm is instant rather than a 60 ms transition. `--gg-mc-opacity` dims each control (the stick: its knob and its base separately)
+  rather than the overlay as a whole. An `opacity` an app sets on the overlay now multiplies with it
+  instead of replacing it, and costs an offscreen pass on every frame: dim through
+  `--gg-mc-opacity` instead. The stick base's border and background are drawn by its `::before`.
+  Transitions are off under `prefers-reduced-motion: reduce`.
+- `@gg-web-engine/mobile-controls`: on browsers without the `inset` CSS shorthand (iOS Safari
+  before 14.5, Chrome before 87) the overlay collapsed to nothing and clipped every control, and a
+  `TouchLookArea` without a `placement` had no size, so it never reported drags or taps. The
+  overlay, the look area and the stick base now use the `top`/`right`/`bottom`/`left` longhands.
 - `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale
   with its `lengthUnit`, which the adapter left at 1 while working in pixels; it is now 100 (pixels
   per meter). Sleep thresholds and contact tolerances scale with it too, so they now match the 3D
@@ -96,6 +541,15 @@ where one exists.
 - `getBusVolume` and `masterVolume` on `@gg-web-engine/audio` scenes returned the level a volume
   change had faded to so far, so reading one right after setting it gave the old value. They return
   the value last set.
+
+### Changed
+- `KeyboardInput`: a key held through `emulateKeyDown` stays down across a real `keyup` of the same
+  key, until `emulateKeyUp` (or `resetAllKeys`), so an on-screen or gamepad button holding a key is
+  not let go of by a tap on the keyboard - and a key held on the physical keyboard stays down across
+  an `emulateKeyUp` of it, until its real `keyup`. A key goes up when its last holder lets go:
+  `emulateKeyDown`/`emulateKeyUp` take an optional `holder` token telling emulated holders apart,
+  so a touch button and a gamepad button bound to the same key (`GamepadInput.bindKeys` and the
+  mobile-controls bindings pass one) do not release each other's hold.
 
 ## [0.0.82] - 2026-10-10
 
@@ -1050,7 +1504,12 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...HEAD
+[0.0.87]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...0.0.87
+[0.0.86]: https://github.com/AndyGura/gg-web-engine/compare/0.0.85...0.0.86
+[0.0.85]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...0.0.85
+[0.0.84]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...0.0.84
+[0.0.83]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...0.0.83
 [0.0.82]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...0.0.82
 [0.0.81]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...0.0.81
 [0.0.80]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...0.0.80

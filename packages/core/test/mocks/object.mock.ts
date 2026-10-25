@@ -18,6 +18,7 @@ export const mock2DObject = (): IDisplayObject2dComponent => {
     removeFromWorld() {},
     clone: () => mock2DObject(),
     getBoundings: () => ({ min: Pnt2.O, max: { x: 10, y: 10 } }),
+    getLocalBoundings: () => ({ min: { x: -5, y: -5 }, max: { x: 5, y: 5 } }),
   } as unknown as IDisplayObject2dComponent;
 };
 
@@ -63,7 +64,9 @@ export const mock3DObject = (): IDisplayObject3dComponent => {
     addToWorld() {},
     removeFromWorld() {},
     clone: () => mock3DObject(),
+    makeUnique() {},
     getBoundings: () => ({ min: Pnt3.O, max: { x: 10, y: 10, z: 10 } }),
+    getLocalBoundings: () => ({ min: { x: -5, y: -5, z: -5 }, max: { x: 5, y: 5, z: 5 } }),
     enableRenderLayer: (layer: number) => {
       renderLayers.add(layer);
     },

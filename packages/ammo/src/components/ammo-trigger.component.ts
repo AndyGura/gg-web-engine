@@ -79,8 +79,12 @@ export class AmmoTriggerComponent
         if (Ammo.getPointer(overlap) === removedPointer) {
           this.overlaps.delete(overlap);
           // the component itself, not its pointer: a body removed with `dispose` is gone from
-          // `nativeBodyReverseMap` by the time the microtask runs
-          queueMicrotask(() => this.onLeft$.next(component as AmmoBodyComponent<any>));
+          // `nativeBodyReverseMap` by the time the microtask runs. Resolved through that map now,
+          // though, so the component reported leaving is the one `onEntityEntered` reported for
+          // this pointer even when another component sharing the native body carried `removed$`
+          const left =
+            AmmoBodyComponent.nativeBodyReverseMap.get(removedPointer) ?? (component as AmmoBodyComponent<any>);
+          queueMicrotask(() => this.onLeft$.next(left));
           break;
         }
       }

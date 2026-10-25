@@ -10,6 +10,10 @@
  * on PATH), or let `.github/workflows/blender_export_e2e.yml` do it. See
  * `../../fixture/build_scene.py`'s docstring for exactly what objects the fixture
  * contains and why (and what's deliberately left out).
+ *
+ * The last block reads the fixture's `scene_stripped` export (same scene, optional
+ * vertex attributes and lights switched off) straight from the files instead of
+ * loading it: it checks the exporter's options, not the loader.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,6 +25,7 @@ import { StaticFixtureServer } from './static-fixture-server';
 
 const FIXTURE_DIR = path.resolve(__dirname, '../../fixture/dist');
 const FIXTURE_NAME = 'scene';
+const STRIPPED_FIXTURE_NAME = 'scene_stripped';
 
 const server = new StaticFixtureServer();
 let world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>;
@@ -28,8 +33,9 @@ let entities: Entity3d[];
 let meta: GgMeta;
 
 beforeAll(async () => {
-  for (const ext of ['.glb', '.meta']) {
-    const p = path.join(FIXTURE_DIR, FIXTURE_NAME + ext);
+  for (const p of [FIXTURE_NAME, STRIPPED_FIXTURE_NAME].flatMap(name =>
+    ['.glb', '.meta'].map(ext => path.join(FIXTURE_DIR, name + ext)),
+  )) {
     if (!fs.existsSync(p)) {
       throw new Error(
         `Fixture not found: ${p}\nRun \`npm run export-fixture\` in e2e/blender-export/ first ` +
@@ -147,10 +153,43 @@ describe('rapier3d physics world', () => {
   });
 
   it('constructs bodies with the right shape kinds', () => {
-    const shapes = world.physicsWorld!.children
-      .filter((b): b is Rapier3dRigidBodyComponent => b instanceof Rapier3dRigidBodyComponent)
+    const shapes = world
+      .physicsWorld!.children.filter((b): b is Rapier3dRigidBodyComponent => b instanceof Rapier3dRigidBodyComponent)
       .map(b => b.shape.shape)
       .sort();
     expect(shapes).toEqual(['BOX', 'COMPOUND', 'SPHERE']);
+  });
+});
+
+/** The glTF JSON chunk of a `.glb`: 12-byte header, then the chunk's length and type, then the JSON. */
+function readGlbJson(name: string): any {
+  const bytes = fs.readFileSync(path.join(FIXTURE_DIR, name + '.glb'));
+  const length = bytes.readUInt32LE(12);
+  return JSON.parse(bytes.subarray(20, 20 + length).toString('utf8'));
+}
+
+function meshPrimitiveAttributes(gltf: any, meshName: string): string[] {
+  const node = gltf.nodes.find((n: any) => n.name === meshName);
+  return gltf.meshes[node.mesh].primitives.flatMap((p: any) => Object.keys(p.attributes));
+}
+
+describe('export options', () => {
+  it('writes normals, tangents, UVs and lights by default', () => {
+    const gltf = readGlbJson(FIXTURE_NAME);
+    expect(meshPrimitiveAttributes(gltf, 'ExportedCube')).toEqual(
+      expect.arrayContaining(['POSITION', 'NORMAL', 'TANGENT', 'TEXCOORD_0']),
+    );
+    expect(gltf.extensionsUsed).toContain('KHR_lights_punctual');
+  });
+
+  it('leaves out normals, tangents, UVs, vertex colors and lights when switched off', () => {
+    const gltf = readGlbJson(STRIPPED_FIXTURE_NAME);
+    expect(meshPrimitiveAttributes(gltf, 'ExportedCube')).toEqual(['POSITION']);
+    expect(gltf.extensionsUsed ?? []).not.toContain('KHR_lights_punctual');
+  });
+
+  it('writes the same .meta whatever the options say', () => {
+    const read = (name: string) => fs.readFileSync(path.join(FIXTURE_DIR, name + '.meta'), 'utf8');
+    expect(read(STRIPPED_FIXTURE_NAME)).toEqual(read(FIXTURE_NAME));
   });
 });

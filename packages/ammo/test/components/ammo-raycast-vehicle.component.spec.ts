@@ -1,5 +1,6 @@
 import { SuspensionOptions, WheelOptions } from '@gg-web-engine/core';
 import { AmmoFactory, AmmoRaycastVehicleComponent, AmmoRigidBodyComponent, AmmoWorldComponent } from '../../src';
+import Ammo from '../../src/ammo.js/ammo';
 
 // Shared suspension/wheel setup mirroring examples/3d/raycast-vehicle, known to produce a
 // stable, quickly-settling vehicle - see that example for the full car setup.
@@ -170,15 +171,52 @@ describe('AmmoRaycastVehicleComponent', () => {
     expect(vehicle.getWheelFrictionSlip(0)).not.toBeCloseTo(0.3, 6);
   });
 
-  it('should not throw when disposed twice', () => {
-    // regression test: dispose() used to free nativeVehicle/vehicleTuning/raycaster/
-    // wheelDirectionCS0/wheelAxleCS with no try/catch at all (unlike every other Ammo component's
-    // dispose()), so a second call - reachable in practice via Gg3dWorld.removeEntity(entity, true)
-    // being called twice for the same entity - threw "Cannot destroy object" on the very first
-    // handle and left the rest leaked.
+  it('ignores a wheel index past its wheels', () => {
+    const floor = createFloor(factory, 0);
+    floor.addToWorld({ physicsWorld: world } as any);
     const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
     vehicle.addToWorld({ physicsWorld: world } as any);
-    vehicle.removeFromWorld({ physicsWorld: world } as any, true);
-    expect(() => vehicle.dispose()).not.toThrow();
+    for (let i = 0; i < 100; i++) {
+      world.simulate(60);
+    }
+    for (const index of [4, -1]) {
+      vehicle.setSteering(index, 0.3);
+      vehicle.applyEngineForce(index, 1000);
+      vehicle.setWheelFrictionSlip(index, 0.3);
+      expect(vehicle.getWheelFrictionSlip(index)).toBe(0);
+      expect(vehicle.isWheelTouchesGround(index)).toBe(false);
+    }
+    expect(vehicle.isWheelTouchesGround(0)).toBe(true);
+  });
+
+  it('reports no ground once disposed without a removal', () => {
+    const floor = createFloor(factory, 0);
+    floor.addToWorld({ physicsWorld: world } as any);
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    for (let i = 0; i < 100; i++) {
+      world.simulate(60);
+    }
+    expect(vehicle.isWheelTouchesGround(0)).toBe(true);
+    // the native vehicle is freed: reading it would read freed WASM memory, which doesn't throw
+    vehicle.dispose();
+    expect(vehicle.isWheelTouchesGround(0)).toBe(false);
+    expect(vehicle.getWheelContact(0)).toBeNull();
+  });
+
+  it('frees its native objects once when disposed twice', () => {
+    // a second Ammo.destroy of an object doesn't throw, it runs the native destructor again
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    const destroy = jest.spyOn(Ammo as any, 'destroy');
+    try {
+      vehicle.removeFromWorld({ physicsWorld: world } as any, true);
+      const freed = destroy.mock.calls.length;
+      expect(freed).toBeGreaterThan(0);
+      expect(() => vehicle.dispose()).not.toThrow();
+      expect(destroy.mock.calls.length).toBe(freed);
+    } finally {
+      destroy.mockRestore();
+    }
   });
 });

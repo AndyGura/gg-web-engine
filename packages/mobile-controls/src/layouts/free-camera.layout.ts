@@ -63,7 +63,6 @@ export function freeCameraLayout(
         }).bindLook(controller.mouseInput, 900 * (options.lookSensitivity ?? 1)),
       );
     }
-    // the keys `FreeCameraController` moves up/down and boosts with are fixed
     b.add('ascend', () =>
       new TouchButton({
         id: 'ascend',
@@ -73,7 +72,7 @@ export function freeCameraLayout(
           'ascend',
           stick ? { right: 4, bottom: 20, width: 8, height: 8 } : { right: 4, bottom: 15, width: 9, height: 9 },
         ),
-      }).bindKey(controller.keyboard, 'KeyE'),
+      }).bindKey(controller.keyboard, controller.options.upDownKeys[0]),
     );
     b.add('descend', () =>
       new TouchButton({
@@ -84,7 +83,7 @@ export function freeCameraLayout(
           'descend',
           stick ? { right: 14, bottom: 20, width: 8, height: 8 } : { right: 4, bottom: 4, width: 9, height: 9 },
         ),
-      }).bindKey(controller.keyboard, 'KeyQ'),
+      }).bindKey(controller.keyboard, controller.options.upDownKeys[1]),
     );
     b.add('boost', () =>
       new TouchButton({
@@ -96,7 +95,7 @@ export function freeCameraLayout(
           'boost',
           stick ? { right: 24, bottom: 20, width: 8, height: 8 } : { right: 15, bottom: 4, width: 8, height: 8 },
         ),
-      }).bindKey(controller.keyboard, 'ShiftLeft'),
+      }).bindKey(controller.keyboard, controller.options.boostKey),
     );
     return b.finish(controller, context);
   };

@@ -4,6 +4,7 @@ import {
   IDisplayObject3dComponentLoader,
   LoadGlbOptions,
   LoadTextureOptions,
+  TextureOptions,
   warnOnce,
 } from '@gg-web-engine/core';
 import {
@@ -84,9 +85,9 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
    * engine's Z-up faces go into the slots of the same sky turned a quarter around X - up `pz` into
    * `py`, down `nz` into `ny`, `ny` into `pz` and `py` into `nz` - with `px`/`nx` in each other's
    * slot, and `ThreeSceneComponent` turns the texture back by that quarter when it is used as a
-   * background or environment map.
+   * background or environment map. `options.filter` sets the sampling filters as `loadTexture`'s does.
    */
-  public async loadCubeTexture(faces: CubeTextureFaces): Promise<CubeTexture> {
+  public async loadCubeTexture(faces: CubeTextureFaces, options: TextureOptions = {}): Promise<CubeTexture> {
     const texture = await this.cubeTextureLoader.loadAsync([
       faces.nx,
       faces.px,
@@ -96,13 +97,17 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
       faces.py,
     ]);
     texture.colorSpace = SRGBColorSpace;
+    applyTextureOptions(texture, options);
     return texture;
   }
 
   /** `loadCubeTexture` for faces that are already fetched. */
-  public async cubeTextureFromData(faces: Record<keyof CubeTextureFaces, Blob>): Promise<CubeTexture> {
+  public async cubeTextureFromData(
+    faces: Record<keyof CubeTextureFaces, Blob>,
+    options: TextureOptions = {},
+  ): Promise<CubeTexture> {
     return withObjectUrl([faces.px, faces.nx, faces.py, faces.ny, faces.pz, faces.nz], ([px, nx, py, ny, pz, nz]) =>
-      this.loadCubeTexture({ px, nx, py, ny, pz, nz }),
+      this.loadCubeTexture({ px, nx, py, ny, pz, nz }, options),
     );
   }
 

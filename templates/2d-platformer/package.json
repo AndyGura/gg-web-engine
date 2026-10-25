@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.82",
-    "@gg-web-engine/mobile-controls": "0.0.82",
-    "@gg-web-engine/pixi": "0.0.82",
-    "@gg-web-engine/rapier2d": "0.0.82",
+    "@gg-web-engine/core": "0.0.87",
+    "@gg-web-engine/mobile-controls": "0.0.87",
+    "@gg-web-engine/pixi": "0.0.87",
+    "@gg-web-engine/rapier2d": "0.0.87",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

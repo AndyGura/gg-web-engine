@@ -259,6 +259,9 @@ export class MapGraph3dEntity<
         canBeLoaded = haveToBeLoaded;
       }
       lastCanBeLoaded = canBeLoaded;
+      // a chunk still waiting in the queue that is already out of range would only be loaded to be
+      // unloaded right after - it falls behind the cursor on a device that loads slower than it moves
+      loadList = loadList.filter(n => canBeLoaded.has(n));
       for (const loadedNode of this.loaded.keys()) {
         if (!canBeLoaded.has(loadedNode)) {
           if (!unloadList.includes(loadedNode)) {
@@ -343,11 +346,30 @@ export class MapGraph3dEntity<
     this.loaderCursor$.next(Pnt3.O);
   }
 
+  /**
+   * Loads one chunk: its GLB (with props), then {@link prepareChunk}, then adds everything as
+   * children, records it in `loaded` and fires `chunkLoaded$`. Called by the tick loop for each
+   * node entering the load window; the node stays in `loadingNodes` (never queued again, never
+   * unloaded) until this settles.
+   *
+   * Per-chunk work an app adds belongs in {@link prepareChunk}, not in an override of this method
+   * that awaits something after `super.loadChunk(node)`: by the time `super.loadChunk` returns, the
+   * chunk is already in `loaded` and no longer loading, so the unload scan can dispose it while the
+   * override is still awaiting, and whatever the override then puts back (`loaded.set`,
+   * `addChildren`, `attachToChunk`) resurrects a chunk that is gone - a `loaded` entry without its
+   * terrain that never loads again, or a second copy if the node re-entered the window meanwhile.
+   * @param node - The node to load
+   * @returns The chunk's own entities (the GLB's and its props', without `prepareChunk`'s extras)
+   * and the load result
+   */
   protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]> {
     this.loadingNodes.add(node);
     // the chunk holds its assets on its own, so unloading it frees what no other chunk uses
     const scope = this.world!.loader.createAssetScope();
     const signal = this.chunkLoads?.signal;
+    let entities: Entity3d<TypeDoc>[] = [];
+    let extras: (IEntity & IPositionable3d)[] = [];
+    let committed = false;
     try {
       const loaded = await this.world!.loader.loadGgGlb(node.path, {
         position: node.position,
@@ -356,7 +378,7 @@ export class MapGraph3dEntity<
         scope,
         signal,
       });
-      const entities = [
+      entities = [
         ...loaded.entities,
         ...(loaded.props || [])
           .map(p => p.entities)
@@ -365,25 +387,64 @@ export class MapGraph3dEntity<
             return p;
           }, []),
       ];
-      if (signal?.aborted) {
-        // removed from the world while a load that ignored the signal was finishing
-        entities.forEach(e => e.dispose());
-        throwIfAborted(signal);
-      }
-      this.loaded.set(node, entities);
+      // removed from the world while a load that ignored the signal was finishing
+      throwIfAborted(signal);
+      extras = await this.prepareChunk(node, loaded, entities, signal);
+      // removed from the world while the chunk was being prepared
+      throwIfAborted(signal);
+      const chunkEntities: (IEntity & IPositionable3d)[] = [...entities, ...extras];
+      committed = true;
+      this.loaded.set(node, chunkEntities);
       this.chunkScopes.set(node, scope);
       entities.forEach(e => this.loadedWith.set(e, node));
-      this.addChildren(...entities);
+      this.addChildren(...chunkEntities);
       this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }, node]);
       return [entities, loaded];
     } catch (e) {
-      if (this.chunkScopes.get(node) !== scope) {
+      if (!committed) {
+        entities.forEach(entity => entity.dispose());
+        extras.forEach(entity => entity.dispose());
         scope.release();
       }
       throw e;
     } finally {
       this.loadingNodes.delete(node);
     }
+  }
+
+  /**
+   * Per-chunk work between loading a chunk's GLB and adding the chunk to the world: override it to
+   * adjust the loaded entities (shared materials, visibility, ...) and to load or build content
+   * that belongs to the chunk (props, signs, decals). Awaited while the node is still loading, so
+   * the chunk can't be unloaded or loaded a second time in the meantime; a chunk that left the
+   * load window while it was being prepared is added and then unloaded on the next tick, like any
+   * load that finished late. Override this rather than {@link loadChunk} - see its doc for the race
+   * an override awaiting after `super.loadChunk` runs into.
+   *
+   * The returned entities are added as children together with the chunk's own, are part of
+   * `loaded.get(node)` and are removed and disposed when the chunk unloads, exactly like content
+   * given to `attachToChunk`. They don't share the chunk's cached assets (nothing loaded with the
+   * chunk's scope), so `detachFromChunk` doesn't make them hold those.
+   *
+   * If the map graph leaves the world meanwhile (`signal` aborted) or this throws, the chunk is
+   * thrown away: its entities and the returned ones are disposed, its assets released, and the
+   * error is passed on (an abort is not reported). Entities this creates and doesn't return (it
+   * threw before) are its own to dispose. The loaded entities share geometry and materials with
+   * the loader's cached originals (unless loaded with `CachingStrategy.Nothing`): clone a material
+   * before changing it for one chunk only.
+   * @param node - The node being loaded
+   * @param loaded - The chunk's load result (as `chunkLoaded$` will carry it)
+   * @param entities - The chunk's own entities: the GLB's and its props'
+   * @param signal - Aborted when the map graph leaves the world; pass it on to loads made here
+   * @returns Extra entities belonging to the chunk; the default returns none
+   */
+  protected async prepareChunk(
+    node: MapGraphNodeType,
+    loaded: LoadResultWithProps<TypeDoc>,
+    entities: Entity3d<TypeDoc>[],
+    signal: AbortSignal | undefined,
+  ): Promise<(IEntity & IPositionable3d)[]> {
+    return [];
   }
 
   /**

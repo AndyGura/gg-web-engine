@@ -100,6 +100,16 @@ describe('ParticleFrames', () => {
     expect(frames[0]).toEqual({ x: 0, y: 0, width: 75 / 139, height: 38 / 64 });
     expect(frames[1]).toEqual({ x: 75 / 139, y: 0, width: 64 / 139, height: 1 });
   });
+
+  it('turns a pixel anchor into a fraction of its own region', () => {
+    const [frame] = ParticleFrames.fromPixels(
+      [{ x: 75, y: 0, width: 75, height: 38, anchor: { x: 18, y: 19 } }],
+      150,
+      38,
+    );
+    expect(frame.anchor).toEqual({ x: 18 / 75, y: 0.5 });
+    expect(ParticleFrames.fromPixels([{ x: 0, y: 0, width: 4, height: 4 }], 4, 4)[0]).not.toHaveProperty('anchor');
+  });
 });
 
 describe('ParticleSimulation', () => {
@@ -320,6 +330,48 @@ describe('ParticleSimulation', () => {
       expect(b.size[0]).toBeCloseTo(4);
       expect(b.size[1]).toBeCloseTo(2);
       expect(b.extra[2]).toBe(7);
+    });
+
+    it('writes the center as the anchor by default', () => {
+      const s = sim3();
+      s.emit(2);
+      const b = s.writeRenderBuffers();
+      expect(Array.from(b.anchor.subarray(0, 4))).toEqual([0.5, 0.5, 0.5, 0.5]);
+    });
+
+    it("writes the system's anchor, overridden by the frame's own, live", () => {
+      const frames = [
+        { x: 0, y: 0, width: 0.5, height: 1 },
+        { x: 0.5, y: 0, width: 0.5, height: 1, anchor: { x: 0.25, y: 0 } },
+      ];
+      const s = sim3({ frames, anchor: { x: 0.5, y: 1 } });
+      s.emit(1);
+      s.emit(1, p => (p.frame = 1));
+      let b = s.writeRenderBuffers();
+      expect(Array.from(b.anchor.subarray(0, 4))).toEqual([0.5, 1, 0.25, 0]);
+      s.options.anchor = { x: 0, y: 0.5 };
+      b = s.writeRenderBuffers();
+      expect(Array.from(b.anchor.subarray(0, 4))).toEqual([0, 0.5, 0.25, 0]);
+    });
+
+    it('moves the anchor with a frame sequence', () => {
+      const frames = [
+        { x: 0, y: 0, width: 0.5, height: 1, anchor: { x: 0.5, y: 1 } },
+        { x: 0.5, y: 0, width: 0.5, height: 1, anchor: { x: 0.5, y: 0.75 } },
+      ];
+      const s = sim3({ frames, lifetime: 1, frameSequence: [0, 1] });
+      s.emit(1);
+      expect(Array.from(s.writeRenderBuffers().anchor.subarray(0, 2))).toEqual([0.5, 1]);
+      s.step(0.6);
+      expect(Array.from(s.writeRenderBuffers().anchor.subarray(0, 2))).toEqual([0.5, 0.75]);
+    });
+
+    it('writes anchors in 2D', () => {
+      const s = new ParticleSimulation<Point2>(4, 2, { anchor: { x: 0.5, y: 1 } });
+      s.emit(1);
+      const b = s.writeRenderBuffers();
+      expect(b.anchor.length).toBe(8);
+      expect(Array.from(b.anchor.subarray(0, 2))).toEqual([0.5, 1]);
     });
   });
 

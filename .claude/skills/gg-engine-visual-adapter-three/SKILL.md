@@ -42,6 +42,18 @@ mirror-like sphere.
   traversal written as if it only visited descendants silently skips the root and leaves it on the
   wrong layer. The `castShadow` write skips lights embedded in the subtree (a loaded model can carry
   them): on a light that flag turns shadow map rendering on or off, which is the light's own setting.
+- **`getLocalBoundings()`** walks the subtree carrying local matrices (`node.matrix`, refreshed
+  with `updateMatrix()` where `matrixAutoUpdate` is on) from each node up to `nativeMesh`, never
+  `matrixWorld`: inverting the root's world matrix fails for a zero scale and drags in whatever the
+  object is parented to. Each node contributes what `Box3.expandByObject` would: its own
+  `boundingBox` when it has one (`InstancedMesh`, `SkinnedMesh` - all instances / the posed skin),
+  else its geometry's. Children with `visible = false` are skipped; `getBoundings()` (plain
+  `Box3.setFromObject`) still counts them.
+- **`name` is the native `Object3D.name`**, `''` until something names the object - never the
+  mesh's `uuid`. Core's `Entity3d` adopts a named display object's `name` as its own world-unique
+  entity name, so any always-truthy fallback there (a generated id, a class name) replaces the
+  readable `entityTypeName`-based default (`Entity3d_N`) with noise. `popChild(name)` matches a
+  child on its `name` or `userData.name`.
 - **Render layers** are three.js `Layers` bitmasks: `ThreeSceneComponent.mainRenderLayer` is `0`
   (a fresh `Object3D`'s default layer), `registerRenderLayer`/`deregisterRenderLayer` hand out
   indices from `lockedRenderLayers`, and a new camera calls `nativeCamera.layers.enableAll()` so it
@@ -53,6 +65,22 @@ mirror-like sphere.
   file and hands out a `clone()` per use, so a copy that freed shared geometry would pull it out
   from under its siblings. A subclass overriding `clone()` (`ThreeAnimatedDisplayObjectComponent`)
   has to set `'none'` on its copy too.
+- **`makeUnique(resources)` raises `resourceOwnership` along `none < materials < meshes < all`**
+  (`ThreeResourceOwnership`; `'materials'` frees materials only, not geometry) and copies exactly
+  the categories between the current and the wanted level: materials when below `'materials'`,
+  geometry when below `'meshes'`, textures for `'all'`. That ordering is what makes a second call a
+  no-op and lets `dispose()` keep reading one field. Copies go through a `Map` per kind, so a
+  material shared by several meshes (or appearing in several material arrays) becomes one copy;
+  textures are found by value on the material's own properties, like `materialTextures`. Safe for a
+  `SkinnedMesh`: `BufferGeometry.clone()` copies `skinIndex`/`skinWeight` and `morphAttributes`,
+  and the skeleton, bind matrix and `morphTargetInfluences` live on the mesh, which is kept.
+  `Texture.clone()` shares `Texture.source`, and `WebGLTextures` reference-counts the GPU texture
+  per source and sampling settings, so disposing either the copy or the original never frees the
+  other's upload. Known gaps, both documented on the method: an `AnimationMixer` property binding
+  to `.material.*` holds the material it resolved when the action was created, and textures in a
+  `ShaderMaterial`'s `uniforms` are copied by three's own `ShaderMaterial.clone()` and owned by
+  nothing. `ThreeParticleSystemComponent` overrides it as a no-op: its geometry holds the attribute
+  buffers the component writes to, and is always its own anyway.
 - **Cloning a `SkinnedMesh` needs `SkeletonUtils.clone()`**
   (`three/examples/jsm/utils/SkeletonUtils.js`), never the inherited plain `Object3D.clone()` - the
   latter clones the bone hierarchy but leaves the mesh's own `skeleton.bones` array pointing at the
@@ -91,7 +119,7 @@ its hierarchy.
 `ThreeParticleSystemComponent` (`components/three-particle-system.component.ts`) extends
 `ThreeDisplayObjectComponent` around one `Mesh` of an `InstancedBufferGeometry`: a unit quad
 (`position.xy` in `-0.5..0.5`, `uv`) plus per-instance `particleCenter`/`particleSize`/
-`particleRotation`/`particleColor`/`particleUv`/`particleExtra` attributes (`DynamicDrawUsage`,
+`particleRotation`/`particleColor`/`particleUv`/`particleAnchor`/`particleExtra` attributes (`DynamicDrawUsage`,
 `addUpdateRange` over the live count), `instanceCount` = particles drawn (three skips the draw call
 at `0`). Not named `instanceColor`: three.js gives that name a meaning of its own for
 `InstancedMesh`. `frustumCulled = false` (the bounds change every frame), `raycast` is a no-op, and
@@ -99,7 +127,17 @@ the `castShadow`/`receiveShadow` setters are ignored. The `ShaderMaterial`
 (`createThreeParticleMaterial`, shaders exported as `THREE_PARTICLE_VERTEX_SHADER`/
 `THREE_PARTICLE_FRAGMENT_SHADER`) switches features with defines (`GG_USE_MAP`,
 `GG_BILLBOARD_VERTICAL`, `GG_TEXTURE_ALPHA_BRIGHTNESS`, `GG_PREMULTIPLIED_INPUT`, `GG_FOG_FADE`);
-the `material` extra option receives it and returns the material to use. Pitfalls met:
+the `material` extra option receives it and returns the material to use. App code that adjusts
+the built-in vertex shader goes through `extendThreeParticleVertexShader`, which inserts GLSL before
+the two marker comments of `THREE_PARTICLE_VERTEX_HOOKS` (file scope after the declarations, and
+the end of `main()`); keep both markers, at those places, in any rewrite of the shader - they are
+the stable contract that lets an app stop matching the shader's text. Pitfalls met:
+
+- **The anchor offsets the quad before the rotation.** `corner = (position.xy + vec2(0.5 -
+  anchor.x, anchor.y - 0.5)) * particleSize`, then rotated: the quad's `y` is up while the anchor
+  (image coordinates, like `particleUv`) is `y` down, and offsetting first is what makes a rotating
+  sprite turn around its anchor rather than its center. The same `corner` feeds both billboard
+  modes, so a vertical billboard anchored at `y = 1` stands on its point.
 
 - **Sorting can't happen in the mesh's own `onBeforeRender`.** `WebGLRenderer.render` uploads
   changed attributes in `projectObject` (`objects.update`, once per render call) *before* it calls
@@ -127,10 +165,11 @@ the `material` extra option receives it and returns the material to use. Pitfall
   map right.
 
 The jest spec (`test/components/three-particle-system.component.spec.ts`) covers material options,
-the hook, sorting order and clone. Shader compilation and blending were verified by rendering in
+the scene hook, sorting order (anchors included), the shader hooks and clone. Shader compilation and blending were verified by rendering in
 headless Chromium (SwiftShader) and reading pixels back: blend formulas over known backgrounds,
 sorted vs unsorted overlap, atlas regions (both axes), rotation of a non-square sprite, vertical
-billboards, fog fade, local space. Repeat that for any shader change: a GLSL error only shows up
+billboards, fog fade, local space, anchors (bottom/top-left/per frame, with a rotation, on both
+billboard modes) and code inserted at the hooks. Repeat that for any shader change: a GLSL error only shows up
 in a real context.
 
 ## Loading and `prepare()`
@@ -139,6 +178,9 @@ in a real context.
   loaders `loadTexture(url)` uses (so orientation, color space and HDR handling can't differ between
   the two paths), revoking the url whether decoding succeeds or throws. `options.url` is the original
   url, for anything decided by file extension - a blob has none.
+- `loadCubeTexture(faces, { filter })`/`cubeTextureFromData(faces, { filter })` run the same
+  `applyTextureOptions` as `loadTexture` after decoding (a `CubeTexture` takes `magFilter`/
+  `minFilter` like any texture); `cubeTextureFromData` forwards its options to `loadCubeTexture`.
 - `createTextureFromCanvas` returns a `CanvasTexture` with `colorSpace = SRGBColorSpace`, like an
   image file; `utils/texture-options.ts` holds the `mapping`/`filter`/`repeat` mapping shared with
   `loadTexture` (`repeat` sets the wrap mode to repeat as well as the repeat count).
@@ -154,12 +196,25 @@ in a real context.
   Re-check `three`'s `package.json` `"exports"` map on a version bump before adding any import from
   a new addon path.
 
+## Renderer resolution
+
+`ThreeRendererComponent` starts at `initialResolution` and `setResolution` is
+`WebGLRenderer.setPixelRatio`, which re-applies the last `setSize` itself (with `updateStyle`
+false, so the CSS size stays). `ThreeComposerRendererComponent.setResolution` also calls
+`EffectComposer.setPixelRatio`: the composer keeps a pixel ratio of its own (read from the
+renderer once, at construction) for its render targets and passes, and would otherwise keep
+rendering at the old resolution into a canvas of the new one. A new subclass owning more
+pixel-sized targets resizes them there too.
+
 ## Renderer disposal
 
 `ThreeRendererComponent.dispose()` ends with `forceContextLoss()`. A browser allows a page about 16
 WebGL contexts and frees a discarded one only at garbage collection, so an app that creates a world
 per game session (menu → game → menu → ...) runs out without it. The price: a canvas whose context
-was force-lost can't host another renderer, so each renderer gets a canvas of its own. Anything a
+was force-lost can't host another renderer, so each renderer gets a canvas of its own (core's
+`replaceCanvas`). Skipping `forceContextLoss` to let a canvas be reused is not an option either: a
+`WebGLRenderer` built on a canvas that already has a context gets that context back with its
+original creation attributes (antialias, alpha), whatever the new renderer asked for. Anything a
 subclass disposes that lives in the context (`ThreeComposerRendererComponent`'s render targets)
 goes before `super.dispose()`. Verified in Chrome with more than 20 create/dispose round trips of a
 full world: every old context reports `isContextLost()`, the live one keeps rendering.

@@ -5,14 +5,14 @@
  *   leaves out the props/scenes the meta references, `propsPath` is where to find them.
  * - `glb`: a plain `.glb`, as `loadModel` (`url` without extension).
  * - `texture`: as `loadTexture`, with the same options.
- * - `cubeTexture`: as `loadCubeTexture` (3D only).
+ * - `cubeTexture`: as `loadCubeTexture` (3D only), with the same options.
  * - `clip`: an audio clip, as `loadClip`.
  */
 export type AssetRef =
   | { kind: 'ggGlb'; url: string; loadProps?: boolean; propsPath?: string }
   | { kind: 'glb'; url: string; options?: Record<string, any> }
   | { kind: 'texture'; url: string; options?: Record<string, any> }
-  | { kind: 'cubeTexture'; faces: Record<string, string> }
+  | { kind: 'cubeTexture'; faces: Record<string, string>; options?: Record<string, any> }
   | { kind: 'clip'; url: string };
 
 /** Stable JSON of plain option objects, for cache keys: key order does not matter. */

@@ -7,7 +7,11 @@ const clips = ['idle', 'walk', 'run', 'crouch', 'jump'];
 describe('CharacterAnimation2dController', () => {
   it('plays "idle" by default when grounded and not moving', () => {
     const object2D = mockAnimatedObject2d(clips);
-    const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, mockCharacterController2d());
+    const character = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      object2D,
+      mockCharacterController2d(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimation2dController(character);
     controller.onSpawned({} as any);
@@ -19,7 +23,11 @@ describe('CharacterAnimation2dController', () => {
 
   it('switches to "walk"/"run" based on moveDirection and isRunning', () => {
     const object2D = mockAnimatedObject2d(clips);
-    const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, mockCharacterController2d());
+    const character = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      object2D,
+      mockCharacterController2d(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimation2dController(character);
     controller.onSpawned({} as any);
@@ -127,7 +135,11 @@ describe('CharacterAnimation2dController', () => {
   });
 
   it('is a no-op when there is no object2D at all', () => {
-    const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
+    const character = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController2d(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimation2dController(character);
     controller.onSpawned({} as any);
@@ -139,7 +151,11 @@ describe('CharacterAnimation2dController', () => {
     it('flips scale.x to match character.facing by default', () => {
       const object2D = mockAnimatedObject2d(clips);
       object2D.scale = { x: 2, y: 3 };
-      const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, mockCharacterController2d());
+      const character = new CharacterController2dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        object2D,
+        mockCharacterController2d(),
+      );
       character.onSpawned({} as any);
       const controller = new CharacterAnimation2dController(character);
       controller.onSpawned({} as any);
@@ -161,7 +177,11 @@ describe('CharacterAnimation2dController', () => {
     it('never flips when flipSpriteToFacing is false', () => {
       const object2D = mockAnimatedObject2d(clips);
       object2D.scale = { x: 2, y: 3 };
-      const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, mockCharacterController2d());
+      const character = new CharacterController2dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        object2D,
+        mockCharacterController2d(),
+      );
       character.onSpawned({} as any);
       const controller = new CharacterAnimation2dController(character, { flipSpriteToFacing: false });
       controller.onSpawned({} as any);

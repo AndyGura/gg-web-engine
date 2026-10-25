@@ -71,7 +71,11 @@ describe('setup errors', () => {
 
     it('accepts matching scenes and scenes whose dimension it cannot infer', () => {
       const worlds = [
-        new Gg3dWorld({ visualScene: visual3d() as any, physicsWorld: physics3d() as any, audioScene: audio3d() as any }),
+        new Gg3dWorld({
+          visualScene: visual3d() as any,
+          physicsWorld: physics3d() as any,
+          audioScene: audio3d() as any,
+        }),
         new Gg2dWorld({ visualScene: visual2d() as any, physicsWorld: physics2d() as any }),
         new Gg3dWorld({ visualScene: { ...lifecycle } as any, physicsWorld: { ...lifecycle } as any }),
       ];

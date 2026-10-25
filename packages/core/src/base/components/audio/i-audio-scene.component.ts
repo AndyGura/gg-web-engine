@@ -2,6 +2,16 @@ import { IComponent } from '../i-component';
 import { AudioTypeDocRepo } from '../../gg-world';
 import { IPositionable } from '../../interfaces/i-positionable';
 import { AudioReverbSettings, ResolvedAudioReverbSettings } from '../../models/audio-reverb';
+import { AudioSourceDescriptor } from './i-audio-source.component';
+
+/**
+ * Settings for {@link IAudioSceneComponent.playOneShot}: an `AudioSourceDescriptor` without what a
+ * one-shot fixes itself - it never loops, always starts at once and is never positional.
+ */
+export type AudioOneShotDescriptor<Clip = unknown> = Omit<
+  AudioSourceDescriptor<Clip>,
+  'loop' | 'loopStart' | 'loopEnd' | 'autoplay' | 'spatial'
+>;
 
 /**
  * How many sources of one audio scene are playing, and how many of those are heard - see
@@ -44,7 +54,7 @@ export interface IAudioSceneComponent<
   /**
    * Master output volume, 0-1, applied on top of every bus's own volume. Most backends can only
    * apply this once a user gesture has resumed the native audio context (browser autoplay
-   * policy) - see `gg-engine-audio-adapter` for the resume-on-first-input pattern. Reads return
+   * policy) - see `gg-engine-audio-adapter` for the resume-on-gesture pattern. Reads return
    * the volume last set, like `getBusVolume`.
    */
   masterVolume: number;
@@ -109,7 +119,9 @@ export interface IAudioSceneComponent<
    * (or rendered at a fixed neutral pan, depending on the adapter) while non-spatial sources
    * (ambient/music/UI, `AudioSourceDescriptor.spatial: false`) are unaffected. `GgWorld` binds
    * this automatically when exactly one renderer is present - see its `addEntity` doc - and warns
-   * (without guessing) once more than one renderer exists and no listener has been set.
+   * (without guessing) once more than one renderer exists and no listener has been set. A 3D
+   * scene reads its rotation as a camera's or a body's local axes - see
+   * `IAudioScene3dComponent.activeListenerBasis`.
    */
   readonly activeListener: IPositionable<D, R> | null;
 
@@ -118,7 +130,8 @@ export interface IAudioSceneComponent<
    * ranked and the lowest ones are made virtual (`IAudioSourceComponent.isVirtual`): silent and
    * free of audio processing, their playback position still advancing, and faded back in where
    * they would be once they rank inside the budget again. Ranking, re-evaluated every `update()`
-   * and whenever a source starts: an audible source before a silent one (effective gain ~0 - a
+   * and whenever a source starts (on a scene no world updates, an adapter re-ranks on its own
+   * while any source is virtual, so a budget works there too): an audible source before a silent one (effective gain ~0 - a
    * muted loop never takes a voice from one that is heard), then higher
    * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x every
    * parent bus's volume x distance attenuation from the source's own distance model; cones are
@@ -133,6 +146,18 @@ export interface IAudioSceneComponent<
   readonly voiceCounts: AudioVoiceCounts;
 
   setActiveListener(target: IPositionable<D, R> | null): void;
+
+  /**
+   * Plays a clip once, non-positional, on `descriptor.bus` (`"sfx"` by default), and disposes the
+   * source the moment it ends - for sounds that belong to no place in a world: a menu click, a UI
+   * confirmation, a stinger. Needs no world and no entity, so it works on a scene that is not part
+   * of a world at all (an app-wide scene for the menus). The source counts against `maxVoices` like
+   * any other (give UI sounds a high `priority` under a budget). Returns the source, which nothing
+   * needs to keep: `dispose()` on it cuts the sound short. For a one-shot at a position in a world,
+   * use `AudioSource(2d|3d)Entity.playOneShot`. `playAudioOneShot` implements this over any
+   * adapter's factory.
+   */
+  playOneShot(descriptor: AudioOneShotDescriptor<ATypeDoc['clip']>): ATypeDoc['source'];
 
   /**
    * Freezes (`true`) or continues (`false`) everything this scene plays, every source keeping its

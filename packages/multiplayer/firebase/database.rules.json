@@ -26,6 +26,63 @@
           }
         }
       }
+    },
+    "gg-lobby": {
+      ".read": "auth != null",
+      "$room": {
+        ".write": "auth != null && ((!data.exists() && newData.child('info').child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && !data.child('members').exists()))",
+        ".validate": "$room.matches(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/) && newData.hasChild('info')",
+        "info": {
+          ".validate": "newData.hasChildren(['name', 'capacity', 'meta', 'createdAt', 'uid']) && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length <= 64 && newData.child('capacity').isNumber() && newData.child('capacity').val() >= 1 && newData.child('capacity').val() <= 32 && newData.child('meta').isString() && newData.child('meta').val().length <= 4000 && newData.child('createdAt').val() === now"
+        },
+        "members": {
+          "$peer": {
+            ".write": "auth != null && (data.exists() ? data.child('uid').val() === auth.uid : (!newData.exists() || (root.child('gg-lobby').child($room).child('info').exists() && !root.child('gg-lobby').child($room).child('match').exists())))",
+            ".validate": "$peer.matches(/^[0-9a-z]{1,32}$/) && newData.hasChildren(['uid', 'joinedAt', 'data']) && newData.child('uid').val() === auth.uid",
+            "joinedAt": {
+              ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)"
+            },
+            "data": {
+              ".validate": "newData.isString() && newData.val().length <= 4000"
+            },
+            "ready": {
+              ".validate": "newData.isString() && newData.val().length <= 64"
+            }
+          }
+        },
+        "seats": {
+          "$index": {
+            ".write": "auth != null && (data.exists() ? (!newData.exists() && (data.child('uid').val() === auth.uid || root.child('gg-lobby').child($room).child('members').child(data.child('peer').val()).child('uid').val() !== data.child('uid').val())) : (!newData.exists() || (root.child('gg-lobby').child($room).child('info').exists() && !root.child('gg-lobby').child($room).child('match').exists() && root.child('gg-lobby').child($room).child('members').child(newData.child('peer').val()).child('uid').val() === auth.uid)))",
+            ".validate": "$index.matches(/^(0|[1-9][0-9]?)$/) && newData.hasChildren(['peer', 'uid']) && newData.child('uid').val() === auth.uid && newData.child('peer').isString() && newData.child('peer').val().matches(/^[0-9a-z]{1,32}$/)"
+          }
+        },
+        "state": {
+          ".write": "auth != null && root.child('gg-lobby').child($room).child('info').exists() && (!newData.exists() || root.child('gg-lobby').child($room).child('members').child(newData.child('by').val()).child('uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['by', 'value']) && newData.child('by').isString() && newData.child('value').isString() && newData.child('value').val().length <= 16000"
+        },
+        "match": {
+          ".write": "auth != null && root.child('gg-lobby').child($room).child('info').exists() && (!newData.exists() || root.child('gg-lobby').child($room).child('members').child(newData.child('by').val()).child('uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['by', 'id', 'roster']) && newData.child('by').isString() && newData.child('id').isString() && newData.child('id').val().length <= 32",
+          "roster": {
+            "$i": {
+              ".validate": "$i.matches(/^(0|[1-9][0-9]?)$/) && newData.isString() && newData.val().matches(/^[0-9a-z]{1,32}$/)"
+            }
+          }
+        },
+        "start": {
+          ".write": "auth != null && root.child('gg-lobby').child($room).child('info').exists() && (!newData.exists() || root.child('gg-lobby').child($room).child('members').child(newData.child('by').val()).child('uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['by', 'round', 'at']) && newData.child('by').isString() && newData.child('round').isString() && newData.child('round').val().length <= 64 && newData.child('at').isNumber()"
+        },
+        "results": {
+          "$subject": {
+            ".write": "auth != null && root.child('gg-lobby').child($room).child('info').exists() && (!newData.exists() || root.child('gg-lobby').child($room).child('members').child(newData.child('by').val()).child('uid').val() === auth.uid)",
+            ".validate": "$subject.matches(/^[0-9A-Za-z_-]{1,64}$/) && newData.hasChildren(['by', 'round', 'value']) && newData.child('by').isString() && newData.child('round').isString() && newData.child('round').val().length <= 64 && newData.child('value').isString() && newData.child('value').val().length <= 4000"
+          }
+        },
+        "$other": {
+          ".validate": "false"
+        }
+      }
     }
   }
 }

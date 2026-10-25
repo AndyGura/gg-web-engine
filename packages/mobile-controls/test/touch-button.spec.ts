@@ -25,6 +25,29 @@ describe('TouchButton', () => {
     expect(button.element.classList.contains('gg-mc-active')).toBe(false);
   });
 
+  it('reports a tap on the finger lifting, inside the pointerup, but not a release by reset or cancel', () => {
+    const button = new TouchButton();
+    const taps: string[] = [];
+    button.onTap(e => taps.push(e.type));
+
+    pointer(button.element, 'pointerdown');
+    expect(taps).toEqual([]);
+    pointer(button.element, 'pointerup');
+    expect(taps).toEqual(['pointerup']);
+
+    pointer(button.element, 'pointerdown');
+    button.reset();
+    pointer(button.element, 'pointerup');
+    pointer(button.element, 'pointerdown');
+    pointer(button.element, 'pointercancel');
+    expect(taps).toEqual(['pointerup']);
+
+    button.dispose();
+    pointer(button.element, 'pointerdown');
+    pointer(button.element, 'pointerup');
+    expect(taps).toEqual(['pointerup']);
+  });
+
   it('follows only the pointer that pressed it', () => {
     const button = new TouchButton();
     pointer(button.element, 'pointerdown', 0, 0, 1);

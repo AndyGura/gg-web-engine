@@ -1,7 +1,13 @@
-import { filter, takeUntil } from 'rxjs';
+import { filter, Observable, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  IRebindableController,
+  GAMEPAD_LEFT_STICK_OR_DPAD,
+  GAMEPAD_RIGHT_STICK,
+  GamepadControls,
+  GamepadDirectionBinding,
   GgWorld,
   IEntity,
   KeyboardInput,
@@ -16,6 +22,7 @@ import {
   SELF_VIEW_HIDDEN_RENDER_LAYER,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
@@ -23,11 +30,46 @@ import { characterControllerSelfHitSkip } from './character-controller-self-hit-
 
 export type PlayerCharacterControllerViewMode = 'first-person' | 'third-person';
 
+/** Which gamepad controls move, look and act - see `GamepadControl` for the control names */
+export type CharacterGamepadBinding = {
+  /** The walk/strafe direction, added to the direction input */
+  move: GamepadDirectionBinding;
+  /** The look direction: turns the view at `lookSpeed` at full deflection */
+  look: GamepadDirectionBinding;
+  /** How fast `look` turns the view at full deflection, in radians per second */
+  lookSpeed: number;
+  /** Presses `jumpKey` */
+  jump: GamepadControls;
+  /** Presses `runKey` */
+  run: GamepadControls;
+  /** Presses `crouchKey` */
+  crouch: GamepadControls;
+  /** Presses `toggleViewKey`; `null` for none */
+  toggleView: GamepadControls | null;
+};
+
+/**
+ * Left stick or d-pad walks, right stick looks, A jumps, the left stick's click runs, B crouches,
+ * Y toggles the view
+ */
+export const DEFAULT_CHARACTER_GAMEPAD_BINDING: CharacterGamepadBinding = {
+  move: GAMEPAD_LEFT_STICK_OR_DPAD,
+  look: GAMEPAD_RIGHT_STICK,
+  lookSpeed: 3,
+  jump: 'b0',
+  run: 'b10',
+  crouch: 'b1',
+  toggleView: 'b3',
+};
+
 /**
  * Options for configuring a `PlayerCharacterController`.
  */
 export type PlayerCharacterControllerOptions = {
-  /** Keymap for walk/strafe direction. 'wasd+arrows' by default (both layouts work at once). */
+  /**
+   * Keymap for walk/strafe direction: `'wasd+arrows'` by default (both layouts work at once), or
+   * custom codes per direction. `setKeys` changes it while the game runs.
+   */
   keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. 'Space' by default. */
   jumpKey: string;
@@ -69,7 +111,22 @@ export type PlayerCharacterControllerOptions = {
   ignoreMouseUnlessPointerLocked: boolean;
   /** Options for the underlying `MouseInput` (e.g. `canvas` for pointer lock). `pointerLock: true` by default. */
   mouseOptions: Partial<MouseInputOptions>;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
+   * `look` turns the view (regardless of `ignoreMouseUnlessPointerLocked`), the buttons press the
+   * keys above on `keyboard`. `DEFAULT_CHARACTER_GAMEPAD_BINDING` by default; `null` leaves the
+   * gamepad alone. `setGamepad` changes it while the game runs.
+   */
+  gamepad: CharacterGamepadBinding | null;
 };
+
+/**
+ * The keys of a `PlayerCharacterController`, which `setKeys` changes while the game runs
+ */
+export type PlayerCharacterControllerKeys = Pick<
+  PlayerCharacterControllerOptions,
+  'keymap' | 'jumpKey' | 'runKey' | 'crouchKey' | 'toggleViewKey'
+>;
 
 const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
   keymap: 'wasd+arrows',
@@ -88,6 +145,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
   cameraCollisionMargin: 0.2,
   ignoreMouseUnlessPointerLocked: false,
   mouseOptions: { pointerLock: true },
+  gamepad: DEFAULT_CHARACTER_GAMEPAD_BINDING,
 };
 
 /**
@@ -123,7 +181,10 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  * // cutscene or menu: controller.active = false
  * ```
  */
-export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
+export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IEntity
+  implements IRebindableController
+{
   static readonly entityTypeName: string = 'PlayerCharacterController';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
@@ -131,6 +192,44 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
   public readonly mouseInput: MouseInput;
   public readonly directionsInput: DirectionInput;
+
+  private readonly bindings: ControllerBindings<PlayerCharacterControllerOptions, CharacterGamepadBinding>;
+
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
+  }
+
+  /**
+   * Rebinds keys while the game runs - for a controls menu. Only the keys given change; they are
+   * written to `options` and take effect at once, keyboard and gamepad alike (the gamepad presses
+   * whichever key its button is for). A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * controller.setKeys({ jumpKey: 'KeyJ', keymap: { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' } });
+   * ```
+   */
+  public setKeys(keys: Partial<PlayerCharacterControllerKeys>): void {
+    this.bindings.setKeys(keys);
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_CHARACTER_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
+   *
+   * @example
+   * ```ts
+   * controller.setGamepad({ jump: 'b1', run: ['b10', 'b6'] });
+   * ```
+   */
+  public setGamepad(binding: Partial<CharacterGamepadBinding> | null): void {
+    this.bindings.setGamepad(binding);
+  }
 
   /**
    * `this.camera.camera.fov` as it stood the moment this controller was constructed, before it ever
@@ -266,6 +365,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_GAMEPAD_BINDING, this._onRemoved$);
     // Captured before the `viewMode` setter below ever runs, so it reflects the camera's fov as the
     // app configured it, not anything this controller (or a third-person restore) already touched -
     // see `baseFov`'s own doc.
@@ -281,6 +381,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
     this.reset();
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
 
     this.directionsInput.direction$
       .pipe(
@@ -301,16 +402,16 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    this.keyboard
-      .bind(this.options.jumpKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.jumpKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
       )
       .subscribe(() => this.character?.jump());
 
-    this.keyboard
-      .bind(this.options.runKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.runKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -321,8 +422,8 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    this.keyboard
-      .bind(this.options.crouchKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.crouchKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -340,15 +441,13 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    if (this.options.toggleViewKey) {
-      this.keyboard
-        .bind(this.options.toggleViewKey)
-        .pipe(
-          takeUntil(this._onRemoved$),
-          filter(down => this.active && down),
-        )
-        .subscribe(() => this.toggleViewMode());
-    }
+    this.bindings
+      .followKey(this.keyboard, o => o.toggleViewKey)
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(down => this.active && down),
+      )
+      .subscribe(() => this.toggleViewMode());
 
     const isTouchScreen = MouseInput.isTouchDevice();
     this.mouseInput.delta$
@@ -365,12 +464,54 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         this._spherical.phi = this.clampPitch(this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000);
       });
 
+    const gamepadInput = world.gamepadInput;
+    if (gamepadInput) {
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.jumpKey,
+        g => g.jump,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.runKey,
+        g => g.run,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.crouchKey,
+        g => g.crouch,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.toggleViewKey,
+        g => g.toggleView,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
+    }
+
     this.tick$
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
       )
-      .subscribe(() => this.updateCamera());
+      .subscribe(([, delta]) => {
+        const gamepad = this.options.gamepad;
+        if (gamepad && gamepadInput && this.directionsInput.running) {
+          // the stick turns the view at a rate, so it is applied per tick, scaled by the tick's
+          // time; straight onto the look state, since the mouse path may wait for pointer lock
+          const look = gamepadInput.direction(gamepad.look);
+          if (look.x !== 0 || look.y !== 0) {
+            const angle = (gamepad.lookSpeed * delta) / 1000;
+            this._spherical.theta -= look.x * angle;
+            this._spherical.phi = this.clampPitch(this._spherical.phi - look.y * angle);
+          }
+        }
+        this.updateCamera();
+      });
 
     runWhileInputEnabled(
       world,

@@ -30,8 +30,9 @@ export type ParticleSystem2dRenderOptions<Tex = unknown> = Omit<
  * The drawing half of a 2D particle system, created by `IDisplayObject2dComponentFactory
  * .createParticleSystem` and driven by `ParticleSystem2dEntity` (which owns the simulation, in core,
  * so every adapter draws exactly the same particles). An adapter draws every particle as one
- * textured quad, reading `ParticleRenderBuffers` - sprite center, width and height, rotation, tint
- * and opacity, atlas region - in spawn order (oldest first, so a newer particle is drawn on top).
+ * textured quad, reading `ParticleRenderBuffers` - sprite position, width and height, rotation, tint
+ * and opacity, atlas region, and the anchor (the point of the sprite placed at its position, which a
+ * rotating sprite turns around) - in spawn order (oldest first, so a newer particle is drawn on top).
  *
  * As a display object it has a position and rotation: particle positions are relative to them.
  * `ParticleSystem2dEntity` keeps them at the origin for a world-space system and moves them with the

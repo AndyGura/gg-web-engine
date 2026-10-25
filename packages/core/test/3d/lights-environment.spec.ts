@@ -111,7 +111,7 @@ describe('environment', () => {
       },
       'L',
     );
-    expect(visualScene.loader.loadCubeTexture).toHaveBeenCalledWith(faces);
+    expect(visualScene.loader.loadCubeTexture).toHaveBeenCalledWith(faces, {});
     expect(visualScene.loader.loadTexture).toHaveBeenCalledWith('sky.hdr', { mapping: 'equirectangular' });
     const env = group.getChildEntityByName<Environment3dEntity>('Env');
     expect(env.environment).toEqual({ background: 'cube-texture', environmentMap: 'equirect-texture', fog: null });

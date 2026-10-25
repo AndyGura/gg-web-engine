@@ -1,5 +1,7 @@
+import { Subject } from 'rxjs';
 import {
   CarHandlingController,
+  FreeCameraController,
   GgCarHandlingController,
   IEntity,
   PlayerCharacterController2d,
@@ -54,7 +56,15 @@ describe('MobileControls', () => {
     world.addEntity(car);
     const controls = new MobileControls({ enabled: true });
     world.addEntity(controls);
-    expect(ids(controls)).toEqual(['steer-left', 'steer-right', 'accelerate', 'brake', 'handbrake', 'gear-down', 'gear-up']);
+    expect(ids(controls)).toEqual([
+      'steer-left',
+      'steer-right',
+      'accelerate',
+      'brake',
+      'handbrake',
+      'gear-down',
+      'gear-up',
+    ]);
 
     const player = new PlayerCharacterController2d(world.keyboardInput, null, {} as any);
     player.active = false;
@@ -102,6 +112,93 @@ describe('MobileControls', () => {
     const controls = new MobileControls({ enabled: true });
     world.addEntity(controls);
     expect(ids(controls)).toEqual(['steer-left', 'steer-right', 'accelerate', 'brake']);
+  });
+
+  it("rebuilds a shown layout when its controller's keys change, pressing the new key", () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const space: boolean[] = [];
+    const b: boolean[] = [];
+    world.keyboardInput.bind('Space').subscribe(v => space.push(v));
+    world.keyboardInput.bind('KeyB').subscribe(v => b.push(v));
+
+    const handbrake = control(controls, 'handbrake');
+    car.setKeys({ handbrakeKey: 'KeyB' });
+    expect(control(controls, 'handbrake')).not.toBe(handbrake);
+    pointer(control(controls, 'handbrake'), 'pointerdown');
+    pointer(control(controls, 'handbrake'), 'pointerup');
+    expect(b).toEqual([false, true, false]);
+    expect(space).toEqual([false]);
+  });
+
+  it("keeps a held button until the finger lifts when its controller's keys change, then rebuilds", () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const space: boolean[] = [];
+    const b: boolean[] = [];
+    world.keyboardInput.bind('Space').subscribe(v => space.push(v));
+    world.keyboardInput.bind('KeyB').subscribe(v => b.push(v));
+
+    const handbrake = control(controls, 'handbrake');
+    pointer(handbrake, 'pointerdown');
+    car.setKeys({ handbrakeKey: 'KeyB' });
+    tick(world);
+    // the same button, still held: not taken from under the finger
+    expect(control(controls, 'handbrake')).toBe(handbrake);
+    expect(space).toEqual([false, true]);
+    pointer(handbrake, 'pointerup');
+    expect(space).toEqual([false, true, false]);
+    tick(world);
+    expect(control(controls, 'handbrake')).not.toBe(handbrake);
+    pointer(control(controls, 'handbrake'), 'pointerdown');
+    pointer(control(controls, 'handbrake'), 'pointerup');
+    expect(b).toEqual([false, true, false]);
+    expect(space).toEqual([false, true, false]);
+  });
+
+  it("leaves a shown layout alone when only its controller's gamepad binding changes", () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const space: boolean[] = [];
+    world.keyboardInput.bind('Space').subscribe(v => space.push(v));
+    const handbrake = control(controls, 'handbrake');
+    pointer(handbrake, 'pointerdown');
+    car.setGamepad({ handbrake: 'b3' });
+    // the same button, still held
+    expect(control(controls, 'handbrake')).toBe(handbrake);
+    expect(space).toEqual([false, true]);
+    pointer(handbrake, 'pointerup');
+    expect(space).toEqual([false, true, false]);
+  });
+
+  it('presses the free camera keys set in its options', () => {
+    const renderer = {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0, w: 1 },
+      tick$: new Subject<[number, number]>(),
+      camera: { fov: 75, supportsFov: false },
+    } as any;
+    const camera = new FreeCameraController(world.keyboardInput, renderer, {
+      upDownKeys: ['Space', 'KeyC'],
+      boostKey: 'KeyB',
+    });
+    world.addEntity(camera);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const pressed: string[] = [];
+    for (const code of ['Space', 'KeyC', 'KeyB']) {
+      world.keyboardInput.bind(code).subscribe(v => v && pressed.push(code));
+    }
+    pointer(control(controls, 'ascend'), 'pointerdown', 0, 0, 1);
+    pointer(control(controls, 'descend'), 'pointerdown', 0, 0, 2);
+    pointer(control(controls, 'boost'), 'pointerdown', 0, 0, 3);
+    expect(pressed).toEqual(['Space', 'KeyC', 'KeyB']);
   });
 
   it('releases what is held when the layout goes away', () => {

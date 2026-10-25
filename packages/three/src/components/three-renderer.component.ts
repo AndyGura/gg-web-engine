@@ -45,7 +45,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     this.nativeRenderer.shadowMap.enabled = true;
     this.nativeRenderer.setClearColor(this.rendererOptions.background);
     this.nativeRenderer.shadowMap.type = PCFSoftShadowMap;
-    this.nativeRenderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
+    this.nativeRenderer.setPixelRatio(this.initialResolution);
   }
 
   addToWorld(world: ThreeGgWorld) {
@@ -79,6 +79,14 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     }
   }
 
+  /**
+   * Sets the native renderer's pixel ratio; its drawing buffer is resized to match, its CSS size
+   * stays as it is.
+   */
+  setResolution(resolution: number): void {
+    this.nativeRenderer.setPixelRatio(resolution);
+  }
+
   render(): void {
     this.nativeRenderer.render(this.scene.nativeScene!, this.camera.nativeCamera);
     if (this.physicsDebugViewActive) {
@@ -90,7 +98,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
    * Frees the renderer and gives its WebGL context back to the browser right away, instead of
    * leaving that to garbage collection - a page gets only so many contexts (about 16), and an app
    * that creates a world per game session would run out. The canvas can't be used for another
-   * renderer afterwards: create a new canvas for the next one.
+   * renderer afterwards: core's `replaceCanvas` puts a blank copy in its place for the next one.
    */
   dispose(): void {
     this.scene.renderers.delete(this);

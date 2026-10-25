@@ -238,8 +238,14 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
    * for a collider that's simply deleted mid-contact (same reason `Rapier3dTriggerComponent.
    * checkOverlaps` has its own manual `!body.nativeBody` cleanup pass instead of trusting the event
    * queue for that case).
+   *
+   * Each partner maps to how many collider pairs of the two bodies touch right now. Rapier reports
+   * contacts per collider, so a `COMPOUND` body (one collider per part) touching another body with
+   * two parts gets two native starts, and a stop whenever one part lets go while the other still
+   * touches. `onCollisionStart` fires only when the count goes from 0 to 1 and `onCollisionEnd`
+   * only when it returns to 0: one start and one end per body pair, as the contract says.
    */
-  public readonly collidingWith: Set<Rapier3dRigidBodyComponent> = new Set();
+  public readonly collidingWith: Map<Rapier3dRigidBodyComponent, number> = new Map();
 
   protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, Rapier3dRigidBodyComponent>> = new Subject<
     CollisionEvent<Point3, Rapier3dRigidBodyComponent>
@@ -262,14 +268,27 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
    * a subclass of this one; there's nothing else in this package it's meant to be called from.
    */
   public notifyCollisionStart(event: CollisionEvent<Point3, Rapier3dRigidBodyComponent>): void {
-    this.collidingWith.add(event.otherBody);
-    this.onCollisionStart$.next(event);
+    const touching = this.collidingWith.get(event.otherBody) ?? 0;
+    this.collidingWith.set(event.otherBody, touching + 1);
+    if (touching === 0) {
+      this.onCollisionStart$.next(event);
+    }
   }
 
   /** See `notifyCollisionStart`'s doc. `otherBody: null` signals the partner was removed from the
-   *  world while still in contact, per `onCollisionEnd`'s doc. */
+   *  world while still in contact, per `onCollisionEnd`'s doc. A stop of one collider pair while
+   *  another pair of the same two bodies still touches emits nothing (see `collidingWith`). */
   public notifyCollisionEnd(otherBody: Rapier3dRigidBodyComponent | null): void {
     if (otherBody) {
+      const touching = this.collidingWith.get(otherBody);
+      if (touching === undefined) {
+        // no start was reported for this pair (it began before a re-add, say)
+        return;
+      }
+      if (touching > 1) {
+        this.collidingWith.set(otherBody, touching - 1);
+        return;
+      }
       this.collidingWith.delete(otherBody);
     }
     this.onCollisionEnd$.next(otherBody);
@@ -475,7 +494,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
     // notify every body still touching this one that the contact ended because *this* body vanished
     // (not because they physically separated) - see `collidingWith`'s doc.
-    for (const other of this.collidingWith) {
+    for (const other of this.collidingWith.keys()) {
       other.collidingWith.delete(this);
       other.notifyCollisionEnd(null);
     }

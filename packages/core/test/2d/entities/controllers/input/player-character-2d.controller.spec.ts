@@ -1,4 +1,5 @@
-import { KeyboardInput, Pnt2, PlayerCharacterController2d } from '../../../../../src';
+import { GamepadInput, KeyboardInput, Pnt2, PlayerCharacterController2d } from '../../../../../src';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCharacter = (overrides: Partial<any> = {}) =>
   ({
@@ -28,6 +29,21 @@ describe('PlayerCharacterController2d', () => {
   };
 
   describe('movement mapping', () => {
+    it('moves and acts by the keys given to setKeys', async () => {
+      const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd' });
+      await controller.onSpawned({} as any);
+      controller.setKeys({ keymap: { up: [], down: 'KeyS', left: 'KeyJ', right: 'KeyL' }, jumpKey: 'KeyK' });
+
+      keyboard.emulateKeyDown('KeyA');
+      expect(character.moveDirection).toBe(0);
+      keyboard.emulateKeyDown('KeyJ');
+      expect(character.moveDirection).toBe(-1);
+      keyboard.emulateKeyDown('Space');
+      expect(character.jump).not.toHaveBeenCalled();
+      keyboard.emulateKeyDown('KeyK');
+      expect(character.jump).toHaveBeenCalledTimes(1);
+    });
+
     it('maps the left key to a negative moveDirection (left is against `right`)', async () => {
       const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd' });
       await controller.onSpawned({} as any);
@@ -200,6 +216,67 @@ describe('PlayerCharacterController2d', () => {
       await controller.onSpawned({} as any);
       expect(() => controller.tick$.next([0, 16])).not.toThrow();
       expect(camera.position).toEqual(Pnt2.O);
+    });
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    let gamepadInput: GamepadInput;
+    beforeEach(() => {
+      pads = stubGamepads();
+      gamepadInput = new GamepadInput();
+      gamepadInput.start();
+      gamepadInput.poll(); // a binding counts a control from the first read with it released
+    });
+    afterEach(() => {
+      gamepadInput.stop();
+      pads.restore();
+    });
+
+    it('acts by the controls given to setGamepad, and not at all after setGamepad(null)', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      controller.setGamepad({ jump: 'b3' });
+      expect(controller.options.gamepad!.jump).toBe('b3');
+      expect(controller.options.gamepad!.run).toBe('b2');
+      pads.set({ buttons: { 0: true } });
+      gamepadInput.poll();
+      expect(character.jump).not.toHaveBeenCalled();
+      pads.set({ buttons: { 3: true } });
+      gamepadInput.poll();
+      expect(character.jump).toHaveBeenCalledTimes(1);
+
+      controller.setGamepad(null);
+      pads.set({ axes: [-1, 0], buttons: { 2: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(0);
+      expect(character.isRunning).toBe(false);
+      // back on, over the default binding: the stick at once, the run button held at that moment
+      // from its next push
+      controller.setGamepad({});
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(-1);
+      expect(character.isRunning).toBe(false);
+      pads.set({ axes: [-1, 0] });
+      gamepadInput.poll();
+      pads.set({ axes: [-1, 0], buttons: { 2: true } });
+      gamepadInput.poll();
+      expect(character.isRunning).toBe(true);
+    });
+
+    it('moves by the left stick or d-pad and acts by the buttons', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      pads.set({ axes: [-1, 0], buttons: { 0: true, 2: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(-1);
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.isRunning).toBe(true);
+      pads.set({ buttons: { 15: true, 1: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(1);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(true);
     });
   });
 });

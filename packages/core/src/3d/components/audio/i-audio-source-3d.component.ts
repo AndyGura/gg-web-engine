@@ -45,7 +45,10 @@ export interface IAudioSource3dComponent<
   /**
    * Directional emission cone, in degrees. `coneInnerAngle: 360` (the default) is omnidirectional
    * - inside that angle the source plays at full gain regardless of `coneOuterGain`; beyond
-   * `coneOuterAngle` it plays at `coneOuterGain`, linearly interpolated between the two.
+   * `coneOuterAngle` it plays at `coneOuterGain`, linearly interpolated between the two. The cone
+   * points along the source's local +Y (`Pnt3.Y`), the forward axis of a body in this Z-up engine
+   * (`RaycastVehicle3dEntity`, `CharacterController3dEntity`), so a source with the identity
+   * rotation, or riding an upright entity, aims horizontally the way that entity faces.
    */
   coneInnerAngle: number;
   coneOuterAngle: number;

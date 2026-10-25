@@ -138,6 +138,27 @@ describe('PixiParticleSystemComponent', () => {
     expect(native.particleChildren[0]).toBe(first);
   });
 
+  it("sets each particle's anchor from the system's anchor or its frame's own", () => {
+    const system = new PixiParticleSystemComponent({ capacity: 4, texture: atlas(64, 32) });
+    const frames = [
+      { x: 0, y: 0, width: 0.5, height: 1 },
+      { x: 0.5, y: 0, width: 0.5, height: 1, anchor: { x: 0.25, y: 0.75 } },
+    ];
+    const simulation = new ParticleSimulation<Point2>(4, 2, { lifetime: 10, frames, anchor: { x: 0.5, y: 1 } });
+    simulation.emit(1, p => (p.frame = 0));
+    simulation.emit(1, p => (p.frame = 1));
+    system.setParticles(simulation.writeRenderBuffers());
+    const [a, b] = (system.nativeSprite as any).particleChildren;
+    expect([a.anchorX, a.anchorY]).toEqual([0.5, 1]);
+    expect([b.anchorX, b.anchorY]).toEqual([0.25, 0.75]);
+    // a pooled record shows the anchor of whatever particle it draws next
+    simulation.clear();
+    simulation.emit(1, p => (p.frame = 1));
+    system.setParticles(simulation.writeRenderBuffers());
+    expect((system.nativeSprite as any).particleChildren[0]).toBe(a);
+    expect([a.anchorX, a.anchorY]).toEqual([0.25, 0.75]);
+  });
+
   it('shows atlas regions through shared sub-textures of the system texture', () => {
     const system = new PixiParticleSystemComponent({ capacity: 4, texture: atlas(64, 32) });
     const simulation = new ParticleSimulation<Point2>(4, 2, { lifetime: 10, frames: ParticleFrames.grid(2, 1) });

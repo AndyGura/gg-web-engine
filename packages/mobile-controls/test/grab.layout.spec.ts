@@ -1,5 +1,5 @@
 import { KeyboardInput, MouseInput, ObjectGrabController } from '@gg-web-engine/core';
-import { MobileControls } from '../src';
+import { MobileControls, TouchButton } from '../src';
 import { pointer, TestWorld } from './helpers';
 
 describe('grab layout', () => {
@@ -52,9 +52,9 @@ describe('grab layout', () => {
 
     const grab = control(controls, 'grab');
     pointer(grab, 'pointerdown', 5, 5);
-    expect(down).toHaveBeenCalledWith('KeyF');
+    expect(down).toHaveBeenCalledWith('KeyF', expect.any(TouchButton));
     pointer(grab, 'pointerup', 5, 5);
-    expect(up).toHaveBeenCalledWith('KeyF');
+    expect(up).toHaveBeenCalledWith('KeyF', expect.any(TouchButton));
 
     (controller as any)._heldObject$.next({ release() {} } as any);
     pointer(control(controls, 'throw'), 'pointerdown', 5, 5);

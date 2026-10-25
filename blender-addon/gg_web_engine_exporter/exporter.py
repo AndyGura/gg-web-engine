@@ -200,12 +200,58 @@ def collect_scene_metadata():
     return metadata
 
 
-def export_glb_meta(filepath, export_materials=True, copyright=""):
+# `export_vertex_color` values accepted by `export_glb_meta` (Blender's glTF exporter's own
+# `export_vertex_color` enum, Blender 4.2+).
+VERTEX_COLOR_MODES = ("MATERIAL", "ACTIVE", "NONE")
+
+
+def export_glb_meta(
+    filepath,
+    export_materials=True,
+    copyright="",
+    export_normals=True,
+    export_tangents=True,
+    export_texcoords=True,
+    export_vertex_color="MATERIAL",
+    export_lights=True,
+):
     """Export whatever is currently loaded in `bpy.context` as a `.glb` + `.meta`
     pair at `filepath` (no extension - `.glb`/`.meta` are appended). Caller is
     responsible for opening the right `.blend` first (the interactive operator
     doesn't need to - it already has one open; the headless CLI does).
+
+    The keyword options map onto Blender's glTF exporter (`bpy.ops.export_scene.gltf`)
+    and only change the `.glb`; the `.meta` sidecar is the same either way. Their
+    defaults are this exporter's long-standing output, which is not the same as the
+    glTF exporter's own defaults (tangents are on here, off there):
+
+    - `export_materials`: False writes no materials/textures at all (glTF
+      `export_materials="NONE"`, which also merges each mesh's per-material
+      primitives into one).
+    - `copyright`: the glTF `asset.copyright` string.
+    - `export_normals`: write the NORMAL attribute. With False, Blender's glTF
+      exporter (checked against io_scene_gltf2 5.2) also skips TANGENT whatever
+      `export_tangents` says, and no longer splits vertices by normal: a vertex is
+      only duplicated where UVs, colors or materials differ, so hard-edged meshes
+      get fewer vertices. The loader then gets no normals (three.js's GLTFLoader
+      switches such a mesh's lit material to `flatShading`), so use it for meshes
+      rendered unlit (e.g. `MeshBasicMaterial`).
+    - `export_tangents`: write the TANGENT attribute (only needed by normal maps).
+      Only takes effect with `export_normals` and `export_texcoords`, and on
+      meshes that have a UV map: tangents follow the UVs, and without TEXCOORD_n
+      in the file nothing can use them.
+    - `export_texcoords`: write TEXCOORD_n (UV maps). False also turns tangents off.
+    - `export_vertex_color`: which color attributes become COLOR_n. "MATERIAL" is
+      the glTF exporter's default (the colors a material's node tree reads; with
+      its other defaults also the active color of a mesh without material, and the
+      remaining color attributes); "ACTIVE" forces the active color attribute;
+      "NONE" writes no COLOR_n at all. Passed to the glTF exporter only when it
+      isn't "MATERIAL", so the default call stays the same on every Blender version.
+    - `export_lights`: write lights (KHR_lights_punctual). Light objects are still
+      selected for export either way.
     """
+    if export_vertex_color not in VERTEX_COLOR_MODES:
+        raise ValueError(f"export_vertex_color must be one of {VERTEX_COLOR_MODES}, got {export_vertex_color!r}")
     out_dir = os.path.dirname(filepath)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -221,15 +267,18 @@ def export_glb_meta(filepath, export_materials=True, copyright=""):
         for modifier in obj.modifiers:
             bpy.ops.object.modifier_apply(modifier=modifier.name)
 
+    optional_gltf_args = {}
+    if export_vertex_color != "MATERIAL":
+        optional_gltf_args["export_vertex_color"] = export_vertex_color
     bpy.ops.export_scene.gltf(
         export_format="GLB",
         export_copyright=copyright,
-        export_texcoords=True,
-        export_normals=True,
-        export_tangents=True,
+        export_texcoords=export_texcoords,
+        export_normals=export_normals,
+        export_tangents=export_tangents and export_texcoords,
         export_materials="EXPORT" if export_materials else "NONE",
         export_cameras=False,
-        export_lights=True,
+        export_lights=export_lights,
         export_extras=True,
         export_yup=False,
         export_apply=False,
@@ -238,6 +287,7 @@ def export_glb_meta(filepath, export_materials=True, copyright=""):
         export_skins=False,
         export_morph=False,
         filepath=filepath + ".glb",
+        **optional_gltf_args,
     )
     with open(filepath + ".meta", "w") as outfile:
         json.dump(metadata, outfile)
