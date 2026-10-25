@@ -276,53 +276,7 @@ describe('DirectionInput', () => {
       brake.stop();
     });
 
-    it('give the winner over analog contributions and keys alike, with the winning side alone', () => {
-      const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
-      brake.start();
-      // on-screen throttle and brake buttons
-      brake.setAnalogDirection('throttle', { y: 1 });
-      brake.setAnalogDirection('brake', { y: -1 });
-      expect(brake.direction).toEqual({ x: 0, y: -1 });
-      brake.setAnalogDirection('brake', null);
-      expect(brake.direction).toEqual({ x: 0, y: 1 });
-      // a half-pressed brake trigger over the throttle key
-      keyboard.emulateKeyDown('KeyW');
-      brake.setAnalogDirection('trigger', { y: -0.5 });
-      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
-      brake.setAnalogDirection('trigger', null);
-      // the brake key over the throttle button
-      keyboard.emulateKeyDown('KeyS');
-      expect(brake.direction).toEqual({ x: 0, y: -1 });
-      keyboard.emulateKeyUp('KeyS');
-      keyboard.emulateKeyUp('KeyW');
-      // the axis left out sums them
-      brake.setAnalogDirection('left', { x: -1 });
-      brake.setAnalogDirection('right', { x: 0.5 });
-      expect(brake.direction).toEqual({ x: -0.5, y: 1 });
-      brake.stop();
-    });
-
-    it('sums a contribution set with oppositeKeys false on top of what the winner gives', () => {
-      const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
-      brake.start();
-      brake.setAnalogDirection('gamepad', { y: 0.5 }, { oppositeKeys: false });
-      expect(brake.direction).toEqual({ x: 0, y: 0.5 });
-      // not overridden by the brake key, nor overriding the throttle key
-      keyboard.emulateKeyDown('KeyS');
-      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
-      keyboard.emulateKeyDown('KeyW');
-      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
-      keyboard.emulateKeyUp('KeyS');
-      brake.setAnalogDirection('gamepad', { y: -0.25 }, { oppositeKeys: false });
-      expect(brake.direction).toEqual({ x: 0, y: 0.75 });
-      // replaced by a decided contribution of the same source
-      brake.setAnalogDirection('gamepad', { y: -0.25 });
-      expect(brake.direction).toEqual({ x: 0, y: -0.25 });
-      keyboard.emulateKeyUp('KeyW');
-      brake.stop();
-    });
-
-    it('applies at once to the keys and analog contributions when assigned while running', () => {
+    it('applies at once to the keys held when assigned while running, and only to the keys', () => {
       const outputs: any[] = [];
       input.output$.subscribe(o => outputs.push(o));
       input.setAnalogDirection('stick', { x: 0.5 });
@@ -342,12 +296,6 @@ describe('DirectionInput', () => {
       input.oppositeKeys = {};
       expect(input.direction).toEqual({ x: 0.5, y: 0 });
       expect(outputs.slice(before)).toEqual([{ upDown: false }, { upDown: true }, {}]);
-      // analog contributions alone, keys reporting nothing new
-      input.setAnalogDirection('wheel', { x: -1 });
-      expect(input.direction).toEqual({ x: -0.5, y: 0 });
-      input.oppositeKeys = { leftRight: 'left' };
-      expect(input.direction).toEqual({ x: -1, y: 0 });
-      expect(outputs.length).toBe(before + 3);
     });
 
     it('takes a setting assigned while stopped on the next start, and keeps it across a rebind', () => {

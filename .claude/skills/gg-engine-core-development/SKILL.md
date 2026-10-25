@@ -1301,12 +1301,10 @@ The input classes in `base/inputs/` are the single entry point for every input d
 keyboard and mouse they are named after. Anything else feeds them:
 
 - `KeyboardInput.emulateKeyDown`/`emulateKeyUp(code)` - a discrete action.
-- `DirectionInput.setAnalogDirection(source, { x?, y? } | null, { oppositeKeys? })` - an analog
-  direction. Each `source` (any value, normally the calling object) holds one contribution;
-  `direction$`/`direction` is the keys plus every contribution, each axis clamped to [-1, 1] (`x`
-  right, `y` up/forward), so several sources compose (a tilt sensor on `x`, a pedal button on `y`).
-  `{ oppositeKeys: false }` keeps the contribution out of the `oppositeKeys` winner (below) and sums
-  it on top; `GamepadInput.bindDirection` passes it. `output$` stays keys-only.
+- `DirectionInput.setAnalogDirection(source, { x?, y? } | null)` - an analog direction. Each
+  `source` (any value, normally the calling object) holds one contribution; `direction$`/`direction`
+  is the keys plus every contribution, each axis clamped to [-1, 1] (`x` right, `y` up/forward), so
+  several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
 **Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
@@ -1373,15 +1371,8 @@ analog contributions are cleared first, so `direction$` goes straight to zero in
 the contributions alone on the way. `DirectionInput.oppositeKeys` (constructor `options` or the
 live setter) decides an axis whose two keys are both held: `'cancel'` (default) or the winning
 direction, for `output$` and `direction$` alike. The bound subscription keeps the raw held states
-(`heldKeys`) so the setter can re-resolve them at once without rebinding. `direction$` applies it
-to the analog contributions too, so on-screen brake and throttle buttons follow it like the keys:
-`updateDirection` sums each axis' negative and positive pushes of keys and contributions apart,
-`resolveAnalogAxis` gives the winning side alone when it is pushed, and the contributions set with
-`{ oppositeKeys: false }` are added after it. The gamepad's are, because the winner has no
-threshold: any push of the winning side wins, so a brake trigger resting a little past its deadzone
-would hold off the throttle of every device (and, with `autoReverse`, back the car up with both
-triggers held); one gamepad binding is a single summed contribution, its triggers summed with each
-other. A new
+(`heldKeys`) so the setter can re-resolve them at once without rebinding; it applies to keys only -
+analog contributions (gamepad pedals, touch sticks, tilt) are summed whatever it says. A new
 `KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
 held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
 `loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import
@@ -1609,6 +1600,12 @@ changing one:
   `CarLayoutOptions.keys` (static, or a function of the controller re-run on every build) on the
   controller's `keyboard`; a button without a key is left out. Core needs no accessor for this -
   the keys are the app's, not the controller's.
+- The car layout's accelerate/brake buttons press the first up/down code of the direction input's
+  `keymap` (`directionKeyCodes`), not an analog `{ y: ±1 }`: `DirectionInput.oppositeKeys` decides
+  held keys only, and a brake button that wins over the throttle button is what an app setting it
+  wants. A keymap without such a code falls back to the analog push. The pedal stick stays analog -
+  one source can't push both ways. A `keymap` change reaches the buttons through the `'keys'`
+  rebuild.
 - Overlay-wide settings live on the overlay element, not in each placement: `inset` is written as
   the unitless `--gg-mc-inset-<edge>` custom properties, and `applyControlPlacement` folds them into
   every numeric edge (`calc(var(--gg-mc-unit) * (N + var(--gg-mc-inset-<edge>, 0)) + env(...))`),

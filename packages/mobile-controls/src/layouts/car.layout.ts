@@ -1,4 +1,4 @@
-import { CarHandlingController, GgCarHandlingController } from '@gg-web-engine/core';
+import { CarHandlingController, directionKeyCodes, GgCarHandlingController } from '@gg-web-engine/core';
 import { TouchButton } from '../controls/touch-button';
 import { TouchStick } from '../controls/touch-stick';
 import { MobileControlsIcons } from '../icons';
@@ -40,7 +40,10 @@ export type CarLayoutOptions = LayoutCustomization<CarLayoutController, CarLayou
   tilt?: Partial<TiltInputOptions>;
   /**
    * The pedals: `'buttons'` (default) - an accelerate and a brake button, `'stick'` - an analog stick
-   * moving up (throttle) and down (brake), for a car whose controller takes a partial pedal.
+   * moving up (throttle) and down (brake), for a car whose controller takes a partial pedal. The
+   * buttons press the controller's own throttle and brake keys (the first up and down codes of its
+   * `keymap`), so both held follow its `oppositeKeys` like the keys do; the stick is an analog
+   * direction.
    */
   pedals?: 'buttons' | 'stick';
   /**
@@ -91,6 +94,10 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
     const bare = ggCar ? null : (controller as CarHandlingController);
     const keys = bare ? (typeof options.keys === 'function' ? options.keys(bare) : options.keys) || {} : {};
     const keyboard = ggCar ? ggCar.keyboard : bare!.keyboard;
+    const keyCodes = direction.keymap ? directionKeyCodes(direction.keymap) : null;
+    // a pedal button presses the key it stands for, or pushes the direction for a keymap without one
+    const pedal = (button: TouchButton, code: string | undefined, y: number) =>
+      code ? button.bindKey(keyboard, code) : button.bindDirection(direction, { y });
     if (steering === 'buttons') {
       b.add('steer-left', () =>
         new TouchButton({
@@ -129,20 +136,28 @@ export function carLayout(options: CarLayoutOptions = {}): MobileControlsLayoutF
       );
     } else {
       b.add('accelerate', () =>
-        new TouchButton({
-          id: 'accelerate',
-          label: 'Accelerate',
-          content: b.icon('accelerate', MobileControlsIcons.accelerate),
-          placement: b.placement('accelerate', { right: 4, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { y: 1 }),
+        pedal(
+          new TouchButton({
+            id: 'accelerate',
+            label: 'Accelerate',
+            content: b.icon('accelerate', MobileControlsIcons.accelerate),
+            placement: b.placement('accelerate', { right: 4, bottom: 4, width: 10, height: 10 }),
+          }),
+          keyCodes?.up[0],
+          1,
+        ),
       );
       b.add('brake', () =>
-        new TouchButton({
-          id: 'brake',
-          label: 'Brake',
-          content: b.icon('brake', MobileControlsIcons.brake),
-          placement: b.placement('brake', { right: 16, bottom: 4, width: 10, height: 10 }),
-        }).bindDirection(direction, { y: -1 }),
+        pedal(
+          new TouchButton({
+            id: 'brake',
+            label: 'Brake',
+            content: b.icon('brake', MobileControlsIcons.brake),
+            placement: b.placement('brake', { right: 16, bottom: 4, width: 10, height: 10 }),
+          }),
+          keyCodes?.down[0],
+          -1,
+        ),
       );
     }
     const handbrakeKey = ggCar ? ggCar.options.handbrakeKey : keys.handbrake;

@@ -30,11 +30,11 @@ where one exists.
 ## [Unreleased]
 
 ### Fixed
-- core: `DirectionInput.oppositeKeys` decides analog contributions too, not only the keys: with
-  `{ upDown: 'down' }`, on-screen brake and throttle buttons, or any mix of them with the keys,
-  brake, where they used to cancel each other out. A gamepad's direction is still summed, with its
-  own triggers and with the rest: `setAnalogDirection` takes `{ oppositeKeys: false }` for such a
-  contribution, and `GamepadInput.bindDirection` passes it.
+- mobile-controls: the car layout's accelerate and brake buttons press the car controller's own
+  throttle and brake keys (the first up and down codes of its `keymap`) instead of pushing an
+  analog direction, so both held follow the controller's `oppositeKeys` the way the keys do - with
+  `{ upDown: 'down' }` they brake, where they used to cancel each other out. The pedal stick stays
+  analog.
 
 ## [0.0.88] - 2026-10-25
 

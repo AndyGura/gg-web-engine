@@ -682,9 +682,7 @@ export class GamepadInput extends IInput {
   /**
    * Adds `binding`'s direction to `direction` as an analog contribution (`setAnalogDirection`),
    * refreshed on every poll while it is not zero and withdrawn when it returns to zero - or when
-   * this input stops. The direction's `oppositeKeys` does not decide it: its controls are summed
-   * (throttle and brake triggers held together), and so is it with the keys and other contributions.
-   * Returns a function that unbinds (and withdraws).
+   * this input stops. Returns a function that unbinds (and withdraws).
    */
   public bindDirection(direction: DirectionInput, binding: GamepadDirectionBinding): () => void {
     const source = {};
@@ -695,7 +693,7 @@ export class GamepadInput extends IInput {
       if (nonZero) {
         // set on every poll, not only on change: a direction input restarted meanwhile has dropped
         // the contribution, and gets it back this way
-        direction.setAnalogDirection(source, d, { oppositeKeys: false });
+        direction.setAnalogDirection(source, d);
         set = true;
       } else if (set) {
         direction.setAnalogDirection(source, null);
