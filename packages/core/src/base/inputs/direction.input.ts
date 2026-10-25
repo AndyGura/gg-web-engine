@@ -67,9 +67,11 @@ export function directionKeyCodes(keymap: DirectionKeymap): {
 export type DirectionKeyboardOutput = { upDown?: boolean; leftRight?: boolean };
 
 /**
- * What a `DirectionInput` reads, per axis, while both opposite direction keys are held: `'cancel'`
- * (the default) for neither direction, or the direction that wins - a car whose brake overrides
- * the throttle, say (`{ upDown: 'down' }`). Releasing the winning key gives the other one back.
+ * What a `DirectionInput` reads, per axis, while both opposite directions are pushed: `'cancel'`
+ * (the default) for neither direction - the pushes are summed -, or the direction that wins - a
+ * car whose brake overrides the throttle, say (`{ upDown: 'down' }`). It goes for every source
+ * alike: keys, analog contributions (on-screen buttons, a gamepad's throttle and brake) and any
+ * mix of them. Releasing the winning key gives the other one back.
  */
 export type DirectionOppositeKeys = {
   upDown?: 'cancel' | 'up' | 'down';
@@ -78,7 +80,7 @@ export type DirectionOppositeKeys = {
 
 /** The options of a `DirectionInput` */
 export type DirectionInputOptions = {
-  /** What both opposite direction keys held give, per axis: neither direction by default */
+  /** What both opposite directions pushed give, per axis: neither direction by default */
   oppositeKeys?: DirectionOppositeKeys;
 };
 
@@ -87,6 +89,20 @@ export type DirectionInputOptions = {
  * `DirectionInput.setAnalogDirection`. An omitted axis contributes nothing.
  */
 export type AnalogDirection = { x?: number; y?: number };
+
+/** The pushes of a `DirectionInput`'s sources on one axis: the sums towards its negative and positive sides */
+type AxisPushes = { negative: number; positive: number };
+
+/**
+ * One axis of `direction$` from its pushes: with a winner (`-1` the negative side, `1` the positive one) pushed, that
+ * side alone, otherwise their sum; clamped to [-1, 1]
+ */
+const resolveAnalogAxis = ({ negative, positive }: AxisPushes, winner: -1 | 0 | 1): number =>
+  winner < 0 && negative > 0
+    ? -Math.min(1, negative)
+    : winner > 0 && positive > 0
+      ? Math.min(1, positive)
+      : clampAxis(positive - negative);
 
 const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 
@@ -119,8 +135,9 @@ const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boole
  * - analog contributions from anything else that can point in a direction (an on-screen stick, a
  *   tilt sensor, a gamepad), set through `setAnalogDirection`.
  *
- * Created without a keyboard or a keymap it takes analog contributions only. Both keys of an axis
- * held (up and down, left and right) cancel each other out, unless `oppositeKeys` makes one win.
+ * Created without a keyboard or a keymap it takes analog contributions only. Both directions of an
+ * axis pushed (up and down, left and right), by keys or analog contributions, cancel each other out,
+ * unless `oppositeKeys` makes one win.
  */
 export class DirectionInput extends IInput {
   /**
@@ -137,7 +154,10 @@ export class DirectionInput extends IInput {
 
   private readonly _direction$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
   private keysDirection: Point2 = Pnt2.O;
-  private readonly analogDirections: Map<unknown, AnalogDirection> = new Map<unknown, AnalogDirection>();
+  private readonly analogDirections: Map<unknown, readonly AnalogDirection[]> = new Map<
+    unknown,
+    readonly AnalogDirection[]
+  >();
   private keysSubscription: Subscription | null = null;
   /** The keys held while bound: up, left, down, right; `null` while unbound */
   private heldKeys: readonly boolean[] | null = null;
@@ -177,10 +197,12 @@ export class DirectionInput extends IInput {
   }
 
   /**
-   * What both opposite direction keys held give, per axis: `'cancel'` (or the axis left out) for
-   * neither direction, or the direction that wins. Assigning it while the input runs applies at
-   * once to the keys already held, reporting the change on `output$` and `direction$`. Applies to
-   * the keys only: analog contributions are summed as ever.
+   * What both opposite directions pushed give, per axis: `'cancel'` (or the axis left out) for
+   * neither direction, or the direction that wins. It reads the keys and the analog contributions
+   * alike: with `{ upDown: 'down' }`, an on-screen brake button or a gamepad's brake trigger
+   * overrides the throttle key, button or trigger, giving the brake's own value. Assigning it while
+   * the input runs applies at once to what is already pushed, reporting the change on `output$`
+   * (keys only) and `direction$`.
    *
    * @example
    * ```ts
@@ -199,15 +221,18 @@ export class DirectionInput extends IInput {
       const after = this.keysOutputOf(this.heldKeys);
       if (before.upDown !== after.upDown || before.leftRight !== after.leftRight) {
         this.applyKeysOutput(after);
+        return;
       }
     }
+    this.updateDirection();
   }
 
   /**
    * The current direction as a vector: `x` from -1 (left) to 1 (right), `y` from -1 (down/backward)
    * to 1 (up/forward). The held keys (each worth a full -1/1) and every analog contribution are
-   * summed and each axis is clamped to [-1, 1] on its own, so the vector may be longer than 1 on a
-   * diagonal. Emits the current value on subscription and then on every change.
+   * summed - unless `oppositeKeys` makes one direction of an axis win, which then gives what pushes
+   * that way alone - and each axis is clamped to [-1, 1] on its own, so the vector may be longer
+   * than 1 on a diagonal. Emits the current value on subscription and then on every change.
    */
   public get direction$(): Observable<Point2> {
     return this._direction$.pipe(distinctUntilChanged((a, b) => a.x === b.x && a.y === b.y));
@@ -223,28 +248,46 @@ export class DirectionInput extends IInput {
   /**
    * Sets (or, with `null`, withdraws) one source's analog contribution to `direction$`. `source` is
    * any value identifying the caller, typically the object doing the call: every source has one
-   * contribution, replaced by its next call. Ignored while the input is not running; stopping the
-   * input withdraws every contribution.
+   * contribution, replaced by its next call. A source made of several controls pushing on their own
+   * (a gamepad's throttle and brake triggers) passes one direction per control, so that
+   * `oppositeKeys` tells them apart: a single direction can only push one way per axis. Ignored
+   * while the input is not running; stopping the input withdraws every contribution.
    */
-  public setAnalogDirection(source: unknown, value: AnalogDirection | null): void {
+  public setAnalogDirection(source: unknown, value: AnalogDirection | readonly AnalogDirection[] | null): void {
     if (!this.running) {
       return;
     }
     if (value === null) {
       this.analogDirections.delete(source);
     } else {
-      this.analogDirections.set(source, value);
+      this.analogDirections.set(source, Array.isArray(value) ? [...value] : [value as AnalogDirection]);
     }
     this.updateDirection();
   }
 
   private updateDirection(): void {
-    let { x, y } = this.keysDirection;
-    for (const value of this.analogDirections.values()) {
-      x += value.x || 0;
-      y += value.y || 0;
+    const x: AxisPushes = { negative: 0, positive: 0 };
+    const y: AxisPushes = { negative: 0, positive: 0 };
+    const push = (axis: AxisPushes, value: number = 0) => {
+      if (value > 0) {
+        axis.positive += value;
+      } else if (value < 0) {
+        axis.negative -= value;
+      }
+    };
+    push(x, this.keysDirection.x);
+    push(y, this.keysDirection.y);
+    for (const values of this.analogDirections.values()) {
+      for (const value of values) {
+        push(x, value.x);
+        push(y, value.y);
+      }
     }
-    this._direction$.next({ x: clampAxis(x), y: clampAxis(y) });
+    const { upDown, leftRight } = this._oppositeKeys;
+    this._direction$.next({
+      x: resolveAnalogAxis(x, leftRight === 'left' ? -1 : leftRight === 'right' ? 1 : 0),
+      y: resolveAnalogAxis(y, upDown === 'down' ? -1 : upDown === 'up' ? 1 : 0),
+    });
   }
 
   /**
@@ -252,7 +295,7 @@ export class DirectionInput extends IInput {
    *
    * @param keyboard The `KeyboardInput` instance to read direction keys from, normally the world's one. `null` for no keys
    * @param keymap The `DirectionKeymap` defining which keys to listen for. `null` for no keys
-   * @param options `oppositeKeys`: what both opposite direction keys held give (see `oppositeKeys`)
+   * @param options `oppositeKeys`: what both opposite directions pushed give (see `oppositeKeys`)
    */
   constructor(
     protected readonly keyboard: KeyboardInput | null = null,
