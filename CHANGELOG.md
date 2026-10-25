@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.88] - 2026-10-25
+
 ### Added
 - Examples: a prompt-to-level demo (`examples/3d/prompt-to-level`). It plays an obstacle course an
   agent wrote as level JSON from the prompt shown beside it, lists the one fix the draft needed,
@@ -1504,7 +1506,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.88...HEAD
+[0.0.88]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...0.0.88
 [0.0.87]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...0.0.87
 [0.0.86]: https://github.com/AndyGura/gg-web-engine/compare/0.0.85...0.0.86
 [0.0.85]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...0.0.85

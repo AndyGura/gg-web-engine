@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.87",
-    "@gg-web-engine/multiplayer": "0.0.87",
-    "@gg-web-engine/rapier3d": "0.0.87",
-    "@gg-web-engine/three": "0.0.87",
+    "@gg-web-engine/core": "0.0.88",
+    "@gg-web-engine/multiplayer": "0.0.88",
+    "@gg-web-engine/rapier3d": "0.0.88",
+    "@gg-web-engine/three": "0.0.88",
     "firebase": "12.19.0",
     "rxjs": "7.8.2"
   },
