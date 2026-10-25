@@ -40,8 +40,8 @@ export type CarHandlingControllerOptions = {
   /**
    * What both keys of a pair held give: both pedals (`upDown`), both steering keys (`leftRight`).
    * They cancel each other out by default; `{ upDown: 'down' }` brakes with the throttle held too.
-   * Passed to `directionsInput`, whose `oppositeKeys` changes it while the game runs. Keys, gamepad
-   * and on-screen pedals alike, in any mix: the gamepad's brake trigger over the throttle key brakes.
+   * Passed to `directionsInput`, whose `oppositeKeys` changes it while the game runs. Keys and
+   * on-screen pedals alike, in any mix; a gamepad's triggers are summed, with each other and with them.
    */
   readonly oppositeKeys?: DirectionOppositeKeys;
   /**

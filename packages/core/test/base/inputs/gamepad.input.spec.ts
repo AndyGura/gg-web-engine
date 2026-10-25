@@ -270,25 +270,22 @@ describe('GamepadInput', () => {
     direction.stop();
   });
 
-  it('pushes the two controls of an axis on their own, so the brake trigger can win over the throttle', () => {
-    const pedals = { y: { negative: 'b6', positive: 'b7' } } as const;
-    const summed = new DirectionInput();
-    const brake = new DirectionInput(null, null, { oppositeKeys: { upDown: 'down' } });
-    summed.start();
+  it("sums its direction whatever the direction input's oppositeKeys says", () => {
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
     brake.start();
-    input.bindDirection(summed, pedals);
-    input.bindDirection(brake, pedals);
-    connect({ buttons: { 7: 1 } });
-    expect(brake.direction).toEqual({ x: 0, y: 1 });
-    connect({ buttons: { 6: 0.5, 7: 1 } });
-    expect(summed.direction).toEqual({ x: 0, y: 0.5 });
-    expect(brake.direction).toEqual({ x: 0, y: -0.5 });
-    connect({ buttons: { 6: 0.5 } });
-    expect(brake.direction).toEqual({ x: 0, y: -0.5 });
-    connect({ buttons: {} });
-    expect(brake.direction).toEqual({ x: 0, y: 0 });
-    summed.stop();
+    input.bindDirection(brake, { y: { negative: 'b6', positive: 'b7' } });
+    // the brake trigger touched over the full throttle
+    connect({ buttons: { 6: 0.25, 7: 1 } });
+    expect(brake.direction).toEqual({ x: 0, y: 0.75 });
+    // nor overrides the throttle key
+    keyboard.emulateKeyDown('KeyW');
+    connect({ buttons: { 6: 0.25 } });
+    expect(brake.direction).toEqual({ x: 0, y: 0.75 });
+    keyboard.emulateKeyUp('KeyW');
     brake.stop();
+    keyboard.stop();
   });
 
   it('lets go of everything when the gamepad disconnects', () => {

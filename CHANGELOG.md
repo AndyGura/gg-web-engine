@@ -31,10 +31,10 @@ where one exists.
 
 ### Fixed
 - core: `DirectionInput.oppositeKeys` decides analog contributions too, not only the keys: with
-  `{ upDown: 'down' }`, on-screen brake and throttle buttons, a gamepad's brake and throttle
-  triggers or any mix of them with the keys brake (with the brake's own value), where they used to
-  cancel each other out. `GamepadInput.bindDirection` pushes the negative and positive controls of
-  an axis apart for it, and `setAnalogDirection` takes an array of directions for such a source.
+  `{ upDown: 'down' }`, on-screen brake and throttle buttons, or any mix of them with the keys,
+  brake, where they used to cancel each other out. A gamepad's direction is still summed, with its
+  own triggers and with the rest: `setAnalogDirection` takes `{ oppositeKeys: false }` for such a
+  contribution, and `GamepadInput.bindDirection` passes it.
 
 ## [0.0.88] - 2026-10-25
 

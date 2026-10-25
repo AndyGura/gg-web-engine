@@ -290,19 +290,35 @@ describe('DirectionInput', () => {
       brake.setAnalogDirection('trigger', { y: -0.5 });
       expect(brake.direction).toEqual({ x: 0, y: -0.5 });
       brake.setAnalogDirection('trigger', null);
-      // the brake key over the throttle buttons; one source's directions are told apart too
+      // the brake key over the throttle button
       keyboard.emulateKeyDown('KeyS');
       expect(brake.direction).toEqual({ x: 0, y: -1 });
       keyboard.emulateKeyUp('KeyS');
       keyboard.emulateKeyUp('KeyW');
-      brake.setAnalogDirection('throttle', [{ y: 0.25 }, { y: 0.5 }]);
-      expect(brake.direction).toEqual({ x: 0, y: 0.75 });
-      brake.setAnalogDirection('throttle', [{ y: -0.25 }, { y: 1 }]);
-      expect(brake.direction).toEqual({ x: 0, y: -0.25 });
       // the axis left out sums them
       brake.setAnalogDirection('left', { x: -1 });
       brake.setAnalogDirection('right', { x: 0.5 });
-      expect(brake.direction).toEqual({ x: -0.5, y: -0.25 });
+      expect(brake.direction).toEqual({ x: -0.5, y: 1 });
+      brake.stop();
+    });
+
+    it('sums a contribution set with oppositeKeys false on top of what the winner gives', () => {
+      const brake = new DirectionInput(keyboard, 'wasd', { oppositeKeys: { upDown: 'down' } });
+      brake.start();
+      brake.setAnalogDirection('gamepad', { y: 0.5 }, { oppositeKeys: false });
+      expect(brake.direction).toEqual({ x: 0, y: 0.5 });
+      // not overridden by the brake key, nor overriding the throttle key
+      keyboard.emulateKeyDown('KeyS');
+      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
+      keyboard.emulateKeyDown('KeyW');
+      expect(brake.direction).toEqual({ x: 0, y: -0.5 });
+      keyboard.emulateKeyUp('KeyS');
+      brake.setAnalogDirection('gamepad', { y: -0.25 }, { oppositeKeys: false });
+      expect(brake.direction).toEqual({ x: 0, y: 0.75 });
+      // replaced by a decided contribution of the same source
+      brake.setAnalogDirection('gamepad', { y: -0.25 });
+      expect(brake.direction).toEqual({ x: 0, y: -0.25 });
+      keyboard.emulateKeyUp('KeyW');
       brake.stop();
     });
 

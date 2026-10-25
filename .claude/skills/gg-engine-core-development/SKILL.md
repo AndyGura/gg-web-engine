@@ -1301,13 +1301,12 @@ The input classes in `base/inputs/` are the single entry point for every input d
 keyboard and mouse they are named after. Anything else feeds them:
 
 - `KeyboardInput.emulateKeyDown`/`emulateKeyUp(code)` - a discrete action.
-- `DirectionInput.setAnalogDirection(source, { x?, y? } | { x?, y? }[] | null)` - an analog
+- `DirectionInput.setAnalogDirection(source, { x?, y? } | null, { oppositeKeys? })` - an analog
   direction. Each `source` (any value, normally the calling object) holds one contribution;
   `direction$`/`direction` is the keys plus every contribution, each axis clamped to [-1, 1] (`x`
   right, `y` up/forward), so several sources compose (a tilt sensor on `x`, a pedal button on `y`).
-  A source of several controls pushing on their own passes an array, one direction per control
-  (`GamepadInput.bindDirection` passes the negative and the positive controls of each axis apart),
-  so that `oppositeKeys` sees both sides pushed. `output$` stays keys-only.
+  `{ oppositeKeys: false }` keeps the contribution out of the `oppositeKeys` winner (below) and sums
+  it on top; `GamepadInput.bindDirection` passes it. `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
 **Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
@@ -1375,10 +1374,14 @@ the contributions alone on the way. `DirectionInput.oppositeKeys` (constructor `
 live setter) decides an axis whose two keys are both held: `'cancel'` (default) or the winning
 direction, for `output$` and `direction$` alike. The bound subscription keeps the raw held states
 (`heldKeys`) so the setter can re-resolve them at once without rebinding. `direction$` applies it
-to the analog contributions too (`updateDirection` sums each axis' negative and positive pushes of
-keys and contributions apart, `resolveAnalogAxis` gives the winning side alone when it is pushed):
-apps set it for a brake that wins on every device, and a winner that only held for the keys left
-touch pedals and gamepad triggers cancelling each other out. A new
+to the analog contributions too, so on-screen brake and throttle buttons follow it like the keys:
+`updateDirection` sums each axis' negative and positive pushes of keys and contributions apart,
+`resolveAnalogAxis` gives the winning side alone when it is pushed, and the contributions set with
+`{ oppositeKeys: false }` are added after it. The gamepad's are, because the winner has no
+threshold: any push of the winning side wins, so a brake trigger resting a little past its deadzone
+would hold off the throttle of every device (and, with `autoReverse`, back the car up with both
+triggers held); one gamepad binding is a single summed contribution, its triggers summed with each
+other. A new
 `KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
 held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
 `loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import

@@ -69,9 +69,10 @@ export type DirectionKeyboardOutput = { upDown?: boolean; leftRight?: boolean };
 /**
  * What a `DirectionInput` reads, per axis, while both opposite directions are pushed: `'cancel'`
  * (the default) for neither direction - the pushes are summed -, or the direction that wins - a
- * car whose brake overrides the throttle, say (`{ upDown: 'down' }`). It goes for every source
- * alike: keys, analog contributions (on-screen buttons, a gamepad's throttle and brake) and any
- * mix of them. Releasing the winning key gives the other one back.
+ * car whose brake overrides the throttle, say (`{ upDown: 'down' }`). It goes for the keys and
+ * the analog contributions (on-screen buttons) alike, in any mix of them, but not for a gamepad's,
+ * which are summed on top - see `AnalogDirectionOptions`. Releasing the winning key gives the other
+ * one back.
  */
 export type DirectionOppositeKeys = {
   upDown?: 'cancel' | 'up' | 'down';
@@ -90,19 +91,25 @@ export type DirectionInputOptions = {
  */
 export type AnalogDirection = { x?: number; y?: number };
 
-/** The pushes of a `DirectionInput`'s sources on one axis: the sums towards its negative and positive sides */
+/** How a `DirectionInput` takes one analog contribution - see `DirectionInput.setAnalogDirection` */
+export type AnalogDirectionOptions = {
+  /**
+   * Whether `oppositeKeys` decides the contribution along with the keys (the default), or, with
+   * `false`, it is added to what they give, summed whatever `oppositeKeys` says - a gamepad's
+   * (`GamepadInput.bindDirection`), whose throttle and brake triggers are summed into one value
+   */
+  oppositeKeys?: boolean;
+};
+
+/** The pushes on one axis of the sources `oppositeKeys` decides: the sums towards its negative and positive sides */
 type AxisPushes = { negative: number; positive: number };
 
 /**
- * One axis of `direction$` from its pushes: with a winner (`-1` the negative side, `1` the positive one) pushed, that
- * side alone, otherwise their sum; clamped to [-1, 1]
+ * One axis from the pushes `oppositeKeys` decides: with a winner (`-1` the negative side, `1` the positive one)
+ * pushed, that side alone, otherwise their sum; not clamped
  */
 const resolveAnalogAxis = ({ negative, positive }: AxisPushes, winner: -1 | 0 | 1): number =>
-  winner < 0 && negative > 0
-    ? -Math.min(1, negative)
-    : winner > 0 && positive > 0
-      ? Math.min(1, positive)
-      : clampAxis(positive - negative);
+  winner < 0 && negative > 0 ? -negative : winner > 0 && positive > 0 ? positive : positive - negative;
 
 const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 
@@ -137,7 +144,7 @@ const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boole
  *
  * Created without a keyboard or a keymap it takes analog contributions only. Both directions of an
  * axis pushed (up and down, left and right), by keys or analog contributions, cancel each other out,
- * unless `oppositeKeys` makes one win.
+ * unless `oppositeKeys` makes one win (over the keys and contributions it decides).
  */
 export class DirectionInput extends IInput {
   /**
@@ -154,9 +161,10 @@ export class DirectionInput extends IInput {
 
   private readonly _direction$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
   private keysDirection: Point2 = Pnt2.O;
-  private readonly analogDirections: Map<unknown, readonly AnalogDirection[]> = new Map<
+  /** Every source's analog contribution, and whether `oppositeKeys` decides it */
+  private readonly analogDirections: Map<unknown, { direction: AnalogDirection; oppositeKeys: boolean }> = new Map<
     unknown,
-    readonly AnalogDirection[]
+    { direction: AnalogDirection; oppositeKeys: boolean }
   >();
   private keysSubscription: Subscription | null = null;
   /** The keys held while bound: up, left, down, right; `null` while unbound */
@@ -199,8 +207,9 @@ export class DirectionInput extends IInput {
   /**
    * What both opposite directions pushed give, per axis: `'cancel'` (or the axis left out) for
    * neither direction, or the direction that wins. It reads the keys and the analog contributions
-   * alike: with `{ upDown: 'down' }`, an on-screen brake button or a gamepad's brake trigger
-   * overrides the throttle key, button or trigger, giving the brake's own value. Assigning it while
+   * alike: with `{ upDown: 'down' }`, an on-screen brake button overrides the throttle key or
+   * button, and the brake key the throttle button. A contribution set with `{ oppositeKeys: false }`
+   * - a gamepad's - is summed on top of that instead. Assigning it while
    * the input runs applies at once to what is already pushed, reporting the change on `output$`
    * (keys only) and `direction$`.
    *
@@ -231,8 +240,8 @@ export class DirectionInput extends IInput {
    * The current direction as a vector: `x` from -1 (left) to 1 (right), `y` from -1 (down/backward)
    * to 1 (up/forward). The held keys (each worth a full -1/1) and every analog contribution are
    * summed - unless `oppositeKeys` makes one direction of an axis win, which then gives what pushes
-   * that way alone - and each axis is clamped to [-1, 1] on its own, so the vector may be longer
-   * than 1 on a diagonal. Emits the current value on subscription and then on every change.
+   * that way alone, plus the contributions it does not decide - and each axis is clamped to
+   * [-1, 1] on its own, so the vector may be longer than 1 on a diagonal. Emits the current value on subscription and then on every change.
    */
   public get direction$(): Observable<Point2> {
     return this._direction$.pipe(distinctUntilChanged((a, b) => a.x === b.x && a.y === b.y));
@@ -248,19 +257,18 @@ export class DirectionInput extends IInput {
   /**
    * Sets (or, with `null`, withdraws) one source's analog contribution to `direction$`. `source` is
    * any value identifying the caller, typically the object doing the call: every source has one
-   * contribution, replaced by its next call. A source made of several controls pushing on their own
-   * (a gamepad's throttle and brake triggers) passes one direction per control, so that
-   * `oppositeKeys` tells them apart: a single direction can only push one way per axis. Ignored
-   * while the input is not running; stopping the input withdraws every contribution.
+   * contribution, replaced by its next call. `oppositeKeys` decides it along with the keys unless
+   * `options` says otherwise (see `AnalogDirectionOptions`). Ignored while the input is not running;
+   * stopping the input withdraws every contribution.
    */
-  public setAnalogDirection(source: unknown, value: AnalogDirection | readonly AnalogDirection[] | null): void {
+  public setAnalogDirection(source: unknown, value: AnalogDirection | null, options?: AnalogDirectionOptions): void {
     if (!this.running) {
       return;
     }
     if (value === null) {
       this.analogDirections.delete(source);
     } else {
-      this.analogDirections.set(source, Array.isArray(value) ? [...value] : [value as AnalogDirection]);
+      this.analogDirections.set(source, { direction: value, oppositeKeys: options?.oppositeKeys !== false });
     }
     this.updateDirection();
   }
@@ -277,16 +285,21 @@ export class DirectionInput extends IInput {
     };
     push(x, this.keysDirection.x);
     push(y, this.keysDirection.y);
-    for (const values of this.analogDirections.values()) {
-      for (const value of values) {
-        push(x, value.x);
-        push(y, value.y);
+    let summedX = 0;
+    let summedY = 0;
+    for (const { direction, oppositeKeys } of this.analogDirections.values()) {
+      if (oppositeKeys) {
+        push(x, direction.x);
+        push(y, direction.y);
+      } else {
+        summedX += direction.x || 0;
+        summedY += direction.y || 0;
       }
     }
     const { upDown, leftRight } = this._oppositeKeys;
     this._direction$.next({
-      x: resolveAnalogAxis(x, leftRight === 'left' ? -1 : leftRight === 'right' ? 1 : 0),
-      y: resolveAnalogAxis(y, upDown === 'down' ? -1 : upDown === 'up' ? 1 : 0),
+      x: clampAxis(resolveAnalogAxis(x, leftRight === 'left' ? -1 : leftRight === 'right' ? 1 : 0) + summedX),
+      y: clampAxis(resolveAnalogAxis(y, upDown === 'down' ? -1 : upDown === 'up' ? 1 : 0) + summedY),
     });
   }
 
