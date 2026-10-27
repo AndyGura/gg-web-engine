@@ -1,5 +1,5 @@
 import { map, merge, Observable, Subject, Subscription } from 'rxjs';
-import { Body, Detector, Engine, Events, IEventCollision, Query } from 'matter-js';
+import { Body, Collision, Detector, Engine, Events, IEventCollision, Pair, Query } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { buildMatterTriggerBody } from '../matter-rigid-body-builder';
 import { MatterCharacterControllerComponent } from './matter-character-controller.component';
@@ -40,14 +40,15 @@ export class MatterTriggerComponent
    * back to the native-event path once a native `collisionStart` reports it (it woke up inside). */
   protected polledOverlaps: Set<MatterRigidBodyComponent> = new Set();
 
-  /** `Composite.remove` (what `removeFromWorld` calls) never fires a native `collisionEnd` for the
-   * body it removes - matter-js simply stops considering that body's pairs on the next step, it
-   * doesn't retroactively report the pairs that were active at removal time. Without this, a body
-   * removed from the world while still overlapping this trigger would leave `currentOverlaps`
-   * (and, for a character, `currentCharacterOverlaps`) permanently stale and `onEntityLeft` would
-   * never fire for it. `world.physicsWorld.removed$` fires for every component removal regardless
-   * of overlap state, so this only actually acts when the removed component is one this trigger was
-   * still tracking as an overlap.
+  /** `Composite.remove` (what `removeFromWorld` calls) reports nothing at the moment of removal: a
+   * removed body's pairs stay in `engine.pairs` until the next `Engine.update` ends them, and a
+   * character controller's phantom body has no native pairs at all. This reaction is what reports
+   * a body removed while still overlapping this trigger: it drops it from `currentOverlaps` (or
+   * `currentCharacterOverlaps`) and `nativePairCounts`, purges its pairs with this trigger when it
+   * had an active one (see {@link purgeNativePairs}, so a body re-added before the next update gets
+   * a fresh `collisionStart`), and emits `onEntityLeft`. `world.physicsWorld.removed$` fires for every
+   * component removal regardless of overlap state, so this only emits for a component this trigger
+   * was still tracking as an overlap.
    *
    * The stale entry is dropped synchronously, but `onLeft$` itself is only ever emitted on a
    * microtask from this reaction, never inline. `removed$` fires from inside whatever call stack
@@ -63,51 +64,104 @@ export class MatterTriggerComponent
    * removal's own, has unwound. */
   private removedSub?: Subscription;
 
+  /**
+   * Native part pairs currently active between this trigger and each awake dynamic body. matter-js
+   * pairs *parts*, not bodies: the detector walks parts `1..n` of a multi-part (`COMPOUND`) body, so
+   * every `pair.bodyA`/`pair.bodyB` is a part (a single-part body is its own part) and one body pair
+   * can be several part pairs at once - a compound body with two parts inside, or a body crossing
+   * the seam between two parts of a compound trigger. `onEnter$` fires when a body's count goes
+   * 0 -> 1 and `onLeft$` when it returns to 0, so each body enters and leaves once.
+   */
+  protected readonly nativePairCounts: Map<MatterRigidBodyComponent, number> = new Map();
+
+  /** The rigid-body component on the other side of a native pair that involves this trigger, if any.
+   * Both sides are resolved through `.parent` (self-referential for a single-part body) first. */
+  private resolveOther(pair: Pair): MatterRigidBodyComponent | null {
+    const parentA = pair.bodyA.parent;
+    const parentB = pair.bodyB.parent;
+    const other = parentA === this.nativeBody ? parentB : parentB === this.nativeBody ? parentA : null;
+    if (!other) {
+      return null;
+    }
+    const comp = this.world.handleIdEntityMap.get(other.id);
+    return comp instanceof MatterRigidBodyComponent ? comp : null;
+  }
+
   private handleCollisionStart(event: IEventCollision<Engine>) {
     for (const pair of event.pairs) {
-      let body: Body | null = null;
-      if (pair.bodyA === this.nativeBody) {
-        body = pair.bodyB;
-      } else if (pair.bodyB === this.nativeBody) {
-        body = pair.bodyA;
+      const comp = this.resolveOther(pair);
+      if (!comp) {
+        continue;
       }
-      if (body) {
-        let comp = this.world.children.find(c => c.nativeBody === body);
-        if (comp instanceof MatterRigidBodyComponent) {
-          if (this.currentOverlaps.has(comp)) {
-            // already inside via polling (it was asleep or kinematic): the native pair takes over
-            this.polledOverlaps.delete(comp);
-            continue;
-          }
-          this.currentOverlaps.add(comp);
-          this.onEnter$.next(comp);
-        }
+      const count = (this.nativePairCounts.get(comp) || 0) + 1;
+      this.nativePairCounts.set(comp, count);
+      if (count > 1) {
+        continue;
       }
+      if (this.currentOverlaps.has(comp)) {
+        // already inside via polling (it was asleep or kinematic): the native pair takes over
+        this.polledOverlaps.delete(comp);
+        continue;
+      }
+      this.currentOverlaps.add(comp);
+      this.onEnter$.next(comp);
     }
   }
 
   private handleCollisionEnd(event: IEventCollision<Engine>) {
     for (const pair of event.pairs) {
-      let body: Body | null = null;
-      if (pair.bodyA === this.nativeBody) {
-        body = pair.bodyB;
-      } else if (pair.bodyB === this.nativeBody) {
-        body = pair.bodyA;
+      const comp = this.resolveOther(pair);
+      const count = comp && this.nativePairCounts.get(comp);
+      if (!comp || !count) {
+        continue;
       }
-      if (body) {
-        let comp = this.world.children.find(c => c.nativeBody === body);
-        if (comp instanceof MatterRigidBodyComponent && this.currentOverlaps.has(comp)) {
-          if (this.isPolled(comp) && this.overlaps(comp)) {
-            // a body falling asleep inside: matter drops the pair without it having left
-            this.polledOverlaps.add(comp);
-            continue;
-          }
-          this.currentOverlaps.delete(comp);
-          this.polledOverlaps.delete(comp);
-          this.onLeft$.next(comp);
-        }
+      if (count > 1) {
+        this.nativePairCounts.set(comp, count - 1);
+        continue;
+      }
+      this.nativePairCounts.delete(comp);
+      if (!this.currentOverlaps.has(comp)) {
+        continue;
+      }
+      if (this.isPolled(comp) && this.overlaps(comp)) {
+        // a body falling asleep inside: matter drops the pair without it having left
+        this.polledOverlaps.add(comp);
+        continue;
+      }
+      this.currentOverlaps.delete(comp);
+      this.polledOverlaps.delete(comp);
+      this.onLeft$.next(comp);
+    }
+  }
+
+  /**
+   * Drops the engine's pairs between this trigger and `other` (every pair of this trigger when
+   * omitted). `Composite.remove` leaves a removed body's pairs in `engine.pairs`: they only end
+   * (with a native `collisionEnd`) on the next `Engine.update`, and a body re-added before that
+   * update finds its old pairs still active, so no `collisionStart` would ever report it entering
+   * again. Purged pairs are rebuilt from scratch, with a fresh `collisionStart`, by the next update
+   * that detects the overlap.
+   */
+  private purgeNativePairs(other?: Body): void {
+    const pairs = this.world.matterEngine?.pairs as { table: Record<string, Pair>; list: Pair[] } | undefined;
+    if (!pairs) {
+      return;
+    }
+    // compacted in place, as matter's own `Pairs.update` does
+    const list = pairs.list;
+    let kept = 0;
+    for (let i = 0; i < list.length; i++) {
+      const pair = list[i];
+      const parentA = pair.bodyA.parent;
+      const parentB = pair.bodyB.parent;
+      const involvesThis = parentA === this.nativeBody || parentB === this.nativeBody;
+      if (involvesThis && (!other || parentA === other || parentB === other)) {
+        delete pairs.table[pair.id];
+      } else {
+        list[kept++] = pair;
       }
     }
+    list.length = kept;
   }
 
   /**
@@ -121,7 +175,25 @@ export class MatterTriggerComponent
   }
 
   protected overlaps(comp: MatterRigidBodyComponent): boolean {
-    return Query.collides(this.nativeBody, [comp.nativeBody]).length > 0;
+    return this.queryCollides([comp.nativeBody]).length > 0;
+  }
+
+  /**
+   * `Query.collides` against each of this trigger's own parts. Passing a multi-part (`COMPOUND`)
+   * body itself as `Query.collides`'s first argument tests the parent's vertices, which are the
+   * convex hull of every part - an L-shaped trigger would report a body sitting in its notch. The
+   * returned collisions' `parentA`/`parentB` still resolve to this trigger's own body.
+   */
+  protected queryCollides(bodies: Body[]): Collision[] {
+    const parts = this.nativeBody.parts;
+    if (parts.length === 1) {
+      return Query.collides(this.nativeBody, bodies);
+    }
+    const collisions: Collision[] = [];
+    for (let i = 1; i < parts.length; i++) {
+      collisions.push(...Query.collides(parts[i], bodies));
+    }
+    return collisions;
   }
 
   constructor(
@@ -158,6 +230,7 @@ export class MatterTriggerComponent
     this.intersectionsAmount = 0;
     this.currentOverlaps.clear();
     this.polledOverlaps.clear();
+    this.nativePairCounts.clear();
     super.addToWorld(world);
 
     Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
@@ -170,9 +243,16 @@ export class MatterTriggerComponent
         if (this.currentCharacterOverlaps.delete(c)) {
           queueMicrotask(() => this.onLeft$.next(c));
         }
-      } else if (c instanceof MatterRigidBodyComponent && this.currentOverlaps.delete(c)) {
-        this.polledOverlaps.delete(c);
-        queueMicrotask(() => this.onLeft$.next(c));
+      } else if (c instanceof MatterRigidBodyComponent) {
+        // an active pair with this trigger was counted on its `collisionStart`; an inactive one
+        // reports a fresh `collisionStart` when it activates again, so needs no purge
+        if (this.nativePairCounts.delete(c)) {
+          this.purgeNativePairs(c.nativeBody);
+        }
+        if (this.currentOverlaps.delete(c)) {
+          this.polledOverlaps.delete(c);
+          queueMicrotask(() => this.onLeft$.next(c));
+        }
       }
     });
   }
@@ -187,6 +267,8 @@ export class MatterTriggerComponent
     }
     this.currentOverlaps.clear();
     this.polledOverlaps.clear();
+    this.nativePairCounts.clear();
+    this.purgeNativePairs();
     for (const character of this.currentCharacterOverlaps) {
       this.onLeft$.next(character);
     }
@@ -232,10 +314,7 @@ export class MatterTriggerComponent
     );
     const stillOverlapping = new Set<MatterCharacterControllerComponent>();
     if (characters.length > 0) {
-      const collisions = Query.collides(
-        this.nativeBody,
-        characters.map(c => c.nativeBody),
-      );
+      const collisions = this.queryCollides(characters.map(c => c.nativeBody));
       for (const collision of collisions) {
         const otherNative = collision.parentA === this.nativeBody ? collision.parentB : collision.parentA;
         const comp = characters.find(c => c.nativeBody === otherNative);
@@ -283,6 +362,7 @@ export class MatterTriggerComponent
       if (!this.overlaps(comp)) {
         this.polledOverlaps.delete(comp);
         this.currentOverlaps.delete(comp);
+        this.nativePairCounts.delete(comp);
         this.onLeft$.next(comp);
       }
     }

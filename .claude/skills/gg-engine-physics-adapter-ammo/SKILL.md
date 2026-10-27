@@ -764,6 +764,89 @@ component should default to this same deferred-emission shape rather than assumi
 are safe to reenter synchronously - they generally aren't, since nothing about their own call sites
 was written expecting to run nested inside arbitrary unrelated removal code.
 
+## `AmmoTriggerComponent.checkOverlaps()`: broadphase pairs, decided by the step's own manifolds
+
+A `btPairCachingGhostObject`'s `getNumOverlappingObjects()`/`getOverlappingObject(i)` list is filled
+by the broadphase alone: every object whose AABB overlaps the ghost's AABB. That AABB is the
+world-space bounding box of the rotated shape, so on its own a box trigger rotated 45 degrees about
+Z fires for a body in its bounding box's corners, and a `COMPOUND` trigger anywhere in the union of
+its children's AABBs (the empty quadrant of an L). `checkOverlaps()` keeps a listed body only if
+the shapes really overlap - a contact point with `getDistance() <= 0` (touching or inside; points at
+a small positive distance within the collision margins don't count) - deciding each one by the
+first rule that applies:
+
+1. **No component in `nativeBodyReverseMap`**: skipped, there is nothing to report.
+2. **Both shapes concave** (`MESH` or `PLANE`, alone or inside a `COMPOUND` - `shapeHasConcave`, core's
+   `shapeContains` memoized per descriptor): Bullet's dispatcher has no algorithm for a concave-vs-concave pair
+   (`btEmptyAlgorithm`), so no narrowphase - the step's or `contactPairTest`'s - ever reports a
+   contact for it. The broadphase result stands: such a pair overlaps while the AABBs overlap.
+   `AmmoFactory.createTrigger` logs an Ammo-specific `warnOnce` saying so for a trigger shape
+   containing a `MESH`/`PLANE`, next to core's `warnIfMeshTrigger`.
+3. **The last step left a manifold for the pair**: overlapping iff one of its contact points has
+   `getDistance() <= 0`. The ghost object (collision flags `5`: `CF_STATIC_OBJECT` from
+   `btCollisionObject`'s default plus `CF_NO_CONTACT_RESPONSE`) stays `ACTIVE_TAG`, so the
+   dispatcher's `needsCollision` passes for all its pairs and the narrowphase runs for each of them
+   every substep, static and sleeping partners included (measured). `AmmoWorldComponent.
+   processManifolds()` already walks `getNumManifolds()`/`getManifoldByIndexInternal(i)` after every
+   step for collision events; whenever the world has a trigger it also hands every manifold whose
+   `getBody0()`/`getBody1()` pointer is a registered trigger ghost (`triggersByPointer`, kept by the
+   trigger's `addToWorld`/`removeFromWorld`/`dispose`) to that trigger - zero-contact manifolds
+   too, since "tested, not touching" is an answer - regardless of `enableCollisionEvents`. A
+   `COMPOUND` side yields one manifold per child pair; any one touching counts. The trigger keeps
+   that as `stepPartners`/`stepTouching`, valid while its `stepId` equals the world's `stepCount`
+   (bumped only by a `simulate()` call that actually stepped). `Trigger3dEntity` ticks at
+   `OBJECTS_BINDING`, after `PHYSICS_SIMULATION`, so in a `GgWorld` tick the walk always precedes
+   `checkOverlaps()`. Like the broadphase list it filters, the result describes the poses at the
+   last substep's collision detection (`performDiscreteCollisionDetection` runs before
+   `integrateTransforms`), one substep behind the bodies' current transforms.
+4. **Anything else** (`testPair`): a body added since the last step (`addCollisionObject`/
+   `addRigidBody` puts it into the ghost's list at once via `btDbvtBroadphase::createProxy`, but its
+   manifold only exists after the next dispatch), a `COMPOUND` pair none of whose children's AABBs
+   overlap (the compound algorithm frees its child algorithms and their manifolds), or a trigger not
+   yet through a step since it was added. In order: a cached result if neither the trigger's nor the
+   body's pose (`[x, y, z, qx, qy, qz, qw]` from `getWorldTransform()`, compared exactly) changed
+   since the pair was last tested - so a static trigger next to static geometry is tested once; a
+   JS check that a rigid body's `getAabb()` corners all lie inside one convex part of the trigger's
+   shape (a `BOX`/`SPHERE`, alone or as one `COMPOUND` child), which means overlapping with no
+   narrowphase - skipped outright for a trigger with no such part (`canContainAabb`, computed once
+   per component, since the shape never changes); and otherwise one `btCollisionWorld.contactPairTest(ghost, other, callback)`. The
+   cache is rebuilt on every call (pairs that left the list drop out) and purged by pointer on
+   `world.removed$`, since a freed pointer can be reused.
+
+**Why the manifold route matters**: `contactPairTest` builds and runs a fresh collision algorithm
+for the pair. For convex vs a BVH triangle mesh it walks every triangle in the trigger's AABB with
+no early exit (returning `0` from the JS callback doesn't stop it) and crosses WASM->JS once per
+contact point, so a large trigger over dense static level geometry paid that every frame even with
+nothing moving. Reading the step's manifolds costs a few embind calls per pair. There's no per-pair
+route to a manifold in this build (`btBroadphasePair.m_algorithm`/`getAllContactManifolds`/
+`btManifoldArray` aren't in `ammo.idl`), which is why the trigger's results come from the
+world-wide walk rather than from its own pairs. With a trigger in the world the walk reads both
+bodies of every manifold, not only of those with contacts.
+
+**Detaching a trigger deletes its manifolds.** `detachTriggers()`/`refreshCG` remove and re-add the
+ghost: the pairs come back at once (`createProxy`), their algorithms and manifolds don't until the
+next step. That's why the step's results are copied into the trigger during the walk rather than
+looked up from the dispatcher in `checkOverlaps()`; a character's sweeps run at
+`PHYSICS_SIMULATION - 5`, before the step, so they never cost a trigger its manifold results.
+
+`contactPairTest` runs the pair's collision algorithm with no dispatcher or collision-group
+filtering (the broadphase already applied the groups when it listed the pair). Its
+`ConcreteContactResultCallback` is created once per trigger on first use and destroyed in
+`dispose()`; its `addSingleResult` override gets raw pointers (`wrapPointer(cpPtr,
+Ammo.btManifoldPoint)`, as in `recoverFromPenetration()`). `btRigidBody.getAabb` fills two
+module-wide scratch `btVector3`s.
+
+`overlaps` holds the wrapper objects `getOverlappingObject()` returns (identity-stable per
+pointer); a body that stops touching while its AABB still overlaps leaves through the same diff as
+one whose AABB left, and the `removed$` purge above matches by pointer. A body touching several
+children of a `COMPOUND` trigger is one pair, so it enters and leaves once. Regression:
+`ammo-trigger.component.spec.ts`'s "exact shape overlap" block (rotated box, L-shaped compound, a
+static body, a body crossing from one child into the other and out), its "narrowphase cost" block
+(no `contactPairTest` for pairs the step decided, also with `enableCollisionEvents = false`; one
+test for a static pair with no manifold until either side moves; the AABB-inside check for a box
+and for a compound child) and the concave `MESH`-vs-`MESH` case. They spy on
+`world.dynamicAmmoWorld.contactPairTest` to count narrowphase runs.
+
 ## `IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`: Bullet's own semantics fit the contract
 
 Bullet accumulates `applyForce`/`applyTorque` into the body's `m_totalForce`/`m_totalTorque`, uses
@@ -884,7 +967,7 @@ Use a plane or modest boxes for vehicle tests.
 ## `onCollisionStart`/`onCollisionEnd`: manifold polling, not a native callback
 
 `AmmoRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (backing `IRigidBody3dComponent`'s
-contract) are driven entirely by `AmmoWorldComponent.simulate()`'s own `processCollisionEvents()`,
+contract) are driven entirely by `AmmoWorldComponent.simulate()`'s own `processManifolds()`,
 called once per tick right after `stepSimulation` - Ammo/Bullet has no native "collision
 started/ended" callback usable from this embind build, so this package uses the standard polling
 technique instead: walk `dispatcher.getNumManifolds()`/`getManifoldByIndexInternal(i)` (both
@@ -934,7 +1017,7 @@ has several, e.g. a box resting flush on a floor with 4 corner contacts).
 
 **`relativeVelocity` is necessarily an approximation, not the literal pre-collision approach
 vector.** Bullet resolves contact response within the same `stepSimulation` call that first
-generates a manifold's contact points, so by the time `processCollisionEvents()` runs (right after
+generates a manifold's contact points, so by the time `processManifolds()` runs (right after
 `stepSimulation` returns) and reads `self.linearVelocity`/`other.linearVelocity`, both are already
 post-response - there's no embind hook exposed in this build for a pre-solve velocity snapshot.
 This is fine in practice: the two reciprocal events remain exact negations of each other by
@@ -942,7 +1025,7 @@ construction (both read the same two velocities at the same instant), which is t
 core contract and this package's own reciprocal-event test actually check, rather than bit-exact
 physical precision.
 
-**`onCollisionEnd`'s `null` case is not just "best-effort via dispose"** - `processCollisionEvents`
+**`onCollisionEnd`'s `null` case is not just "best-effort via dispose"** - `processManifolds`
 checks `this.children.includes(...)` for the other side of an ended pair, which flips to `null`
 for a plain `removeFromWorld()` (dispose or not), not only an actually-disposed component. No
 dedicated test exercises the disposed-while-touching sub-case specifically (removed-while-touching
@@ -959,7 +1042,7 @@ floor collision never producing a rigid-body collision event for that overlap (o
 `onEntityEntered`).
 
 **Performance: don't extract contact-point/impulse data for a pair that was already touching last
-frame.** The first version of `processCollisionEvents()` ran its per-contact `getContactPoint(j)`/
+frame.** The first version of the collision-event walk (`processManifolds()`) ran its per-contact `getContactPoint(j)`/
 `.getAppliedImpulse()` loop for *every* manifold with contacts, every tick, unconditionally - but
 that data is only ever used to build a `CollisionEvent` for a pair transitioning into contact
 (`onCollisionStart`); for a pair already present in `previousContactPairs` (still resting on
@@ -980,18 +1063,18 @@ native per-contact data every tick rather than reacting to a native start/stop e
 implementations are driven by the native engine's own edge-triggered event queue/callback, which
 simply never fires for a continuing contact in the first place).
 
-**`AmmoWorldComponent.enableCollisionEvents` (default `true`) lets an app opt out of the manifold
-walk entirely.** Even after the above optimization, `processCollisionEvents()` still does one cheap
+**`AmmoWorldComponent.enableCollisionEvents` (default `true`) lets an app opt out of collision-event
+polling.** Even after the above optimization, `processManifolds()` still does one cheap
 pass over every manifold every `simulate()` call - unconditionally, regardless of whether anything is
 subscribed - to know which pairs are currently touching. For an app that never reads
 `onCollisionStart`/`onCollisionEnd` at all, and has a very large number of simultaneously-resting
 bodies (a big debris field, a dense physics playground), that per-manifold bookkeeping is pure
-overhead with nothing to show for it. Setting `enableCollisionEvents = false` skips the `simulate()`
-call into `processCollisionEvents()` outright, removing the cost completely; `onEntityEntered`/
-`onEntityLeft` on triggers are a separate, already-existing mechanism (each trigger's own
-`checkOverlaps()`) and are unaffected either way. Toggling this back to `true` later resumes
+overhead with nothing to show for it. With `enableCollisionEvents = false`, `simulate()` skips
+`processManifolds()` entirely in a world with no trigger; with a trigger it still walks the
+manifolds after each step but only routes the trigger ones (see `checkOverlaps()` above), so
+`onEntityEntered`/`onEntityLeft` are unaffected either way. Toggling this back to `true` later resumes
 normally without needing to clear any state first: `previousContactPairs` is simply never advanced
-while disabled, so the first `processCollisionEvents()` call after re-enabling diffs the world's
+while disabled, so the first `processManifolds()` call after re-enabling diffs the world's
 actual current contacts against whatever `previousContactPairs` last held (empty, if collision
 events were never enabled before) - any pair already touching at that point is (re-)reported as a
 fresh `onCollisionStart`, which is the correct, if slightly delayed, way to surface a transition that

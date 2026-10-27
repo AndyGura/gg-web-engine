@@ -1,4 +1,4 @@
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
@@ -6,8 +6,7 @@ import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 import { Rapier2dCharacterControllerComponent } from './rapier-2d-character-controller.component';
 import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
-// a rigid body or a character controller can overlap this trigger's sensor volume - see
-// `handleOverlapEvent`'s doc.
+// a rigid body or a character controller can overlap this trigger's sensor volume
 type Rapier2dOverlapping = Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent;
 
 export class Rapier2dTriggerComponent
@@ -27,9 +26,30 @@ export class Rapier2dTriggerComponent
     return this.onLeft$.asObservable();
   }
 
-  protected readonly overlaps: Set<Rapier2dOverlapping> = new Set<Rapier2dOverlapping>();
+  /**
+   * Overlapping bodies, each with its number of currently intersecting collider pairs. Rapier
+   * reports sensor intersections per collider, and a `COMPOUND` trigger (or a `COMPOUND` body) is one
+   * collider per part, so a body crossing from one part of an L-shaped trigger into the other gets
+   * a native start for the second part before the stop for the first. `onEntityEntered` fires only
+   * when a body's count goes from 0 to 1 and `onEntityLeft` only when it returns to 0.
+   */
+  protected readonly overlaps: Map<Rapier2dOverlapping, number> = new Map();
+  /**
+   * Bodies removed from the world while overlapping this trigger, whose `onEntityLeft` is still to
+   * be emitted. The intersection stop Rapier reports for a removed collider can't be routed (its
+   * handle no longer resolves to it - see the world's event dispatch), so the world's `removed$`
+   * drops the body's entry from `overlaps` the moment it leaves the world - otherwise a body removed
+   * and added back before the next step (reparented, or hidden and shown again by a network layer)
+   * would keep its old count, and its fresh colliders' start would only raise it, leaving the count
+   * one above the stops still to come. The leave itself is emitted at this trigger's next
+   * controlled point (`checkOverlaps()`, or before the next overlap notification, so a re-added body
+   * reports leave before its new enter), never synchronously from inside the remover's own
+   * `removeFromWorld` call.
+   */
+  protected readonly pendingLeft: Set<Rapier2dOverlapping> = new Set();
   protected readonly onEnter$: Subject<Rapier2dOverlapping> = new Subject<Rapier2dOverlapping>();
   protected readonly onLeft$: Subject<Rapier2dOverlapping> = new Subject<Rapier2dOverlapping>();
+  private removedSub: Subscription | null = null;
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
@@ -48,6 +68,13 @@ export class Rapier2dTriggerComponent
       );
     }
     this.overlaps.clear();
+    this.pendingLeft.clear();
+    this.removedSub?.unsubscribe();
+    this.removedSub = this.world.removed$.subscribe(c => {
+      if (this.overlaps.delete(c)) {
+        this.pendingLeft.add(c);
+      }
+    });
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c =>
       this.world.nativeWorld!.createCollider(c, this._nativeBody!),
@@ -57,36 +84,49 @@ export class Rapier2dTriggerComponent
   }
 
   removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean) {
-    for (const body of this.overlaps) {
+    this.removedSub?.unsubscribe();
+    this.removedSub = null;
+    this.flushPendingLeft();
+    for (const body of this.overlaps.keys()) {
       this.onLeft$.next(body);
     }
     this.overlaps.clear();
     super.removeFromWorld(world, dispose);
   }
 
-  /** @internal invoked by `Rapier2dWorldComponent.simulate()` for each sensor-overlap start/stop
-   * transition drained from the world's shared event queue that involves this trigger - draining
-   * now happens once, centrally, in the world component (so it can also route plain rigid-body
-   * contact events to `Rapier2dRigidBodyComponent.handleCollisionStart`/`handleCollisionEnd`
-   * without racing this trigger for the same queue - see `Rapier2dWorldComponent.simulate`'s own
-   * doc), rather than each trigger draining the whole queue itself on every `checkOverlaps()` call
-   * as before. */
+  /** @internal invoked by `Rapier2dWorldComponent.simulate()` for each sensor-intersection
+   * start/stop drained from the world's shared event queue that involves one of this trigger's
+   * colliders. The world drains that queue once per step and routes every event itself (so plain
+   * rigid-body contacts reach `Rapier2dRigidBodyComponent.handleCollisionStart`/`handleCollisionEnd`
+   * from the same drain - see `Rapier2dWorldComponent.simulate`'s own doc); `other` is the
+   * component owning the other collider's body. */
   handleOverlapEvent(other: Rapier2dOverlapping, started: boolean): void {
+    this.flushPendingLeft();
+    const count = this.overlaps.get(other) ?? 0;
     if (started) {
-      this.overlaps.add(other);
-      this.onEnter$.next(other);
-    } else {
-      this.overlaps.delete(other);
-      this.onLeft$.next(other);
+      this.overlaps.set(other, count + 1);
+      if (count === 0) {
+        this.onEnter$.next(other);
+      }
+    } else if (count > 0) {
+      if (count === 1) {
+        this.overlaps.delete(other);
+        this.onLeft$.next(other);
+      } else {
+        this.overlaps.set(other, count - 1);
+      }
     }
   }
 
+  /** Emits `onEntityLeft` for bodies removed from the world while overlapping - see `pendingLeft`. */
   checkOverlaps(): void {
-    for (const body of this.overlaps) {
-      if (!body.nativeBody) {
-        this.overlaps.delete(body);
-        this.onLeft$.next(body);
-      }
+    this.flushPendingLeft();
+  }
+
+  private flushPendingLeft(): void {
+    for (const body of this.pendingLeft) {
+      this.pendingLeft.delete(body);
+      this.onLeft$.next(body);
     }
   }
 
@@ -102,7 +142,10 @@ export class Rapier2dTriggerComponent
    * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
    * subjects have no other owner to complete them. */
   dispose() {
+    this.removedSub?.unsubscribe();
+    this.removedSub = null;
     this.overlaps.clear();
+    this.pendingLeft.clear();
     this.onEnter$.complete();
     this.onLeft$.complete();
     super.dispose();

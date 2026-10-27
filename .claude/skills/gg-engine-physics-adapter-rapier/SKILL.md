@@ -477,11 +477,11 @@ Applies to both packages (each has its own `jest` config/`node_modules`):
   this became visible upgrading `@dimforge/rapier{2,3}d-compat` from a mid-2024 prerelease build to the
   `0.20.0` stable release (verified empirically against the real WASM engine; not a bug in
   `Rapier{2,3}dTriggerComponent`). Relatedly, `EventQueue` constructed with `autoDrain: true` clears any
-  undrained events right before the *next* `step()` call, so `checkOverlaps()`/`drainCollisionEvents`
-  must be called after **every** `simulate()`, not once after a batch of steps, or interior events are
-  silently lost - this is a correctness requirement for any real consumer of this API (a per-frame game
-  loop already does this naturally), not just a test artifact. Write trigger tests as small (e.g. 10ms)
-  simulate-then-check steps in a loop rather than jumping to a checkpoint with one large timestep.
+  undrained events right before the *next* `step()` call, so `drainCollisionEvents` must run after
+  **every** step, or interior events are silently lost - the world component's `simulate()` does this
+  itself (see the collision-event sections below). Write trigger tests as small (e.g. 10ms)
+  simulate-then-`checkOverlaps()` steps in a loop, as a per-frame game loop runs them, rather than
+  jumping to a checkpoint with one large timestep.
 
 ## `ignoredBodies` (2D and 3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
 
@@ -507,47 +507,53 @@ note).
 
 ## `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (2D, implemented in `packages/rapier2d`): draining must be centralized in the world component, not left to each trigger
 
-`Rapier2dWorldComponent.simulate()` now drains the world's single `EventQueue` itself, right after
+`Rapier2dWorldComponent.simulate()` drains the world's single `EventQueue` itself, right after
 `world.step(eventQueue)`, and routes every `(collider1Handle, collider2Handle, started)` transition to
 whichever component(s) it involves - a sensor-overlap transition (either side a
 `Rapier2dTriggerComponent`) goes to that trigger's own `handleOverlapEvent` (backing
 `onEntityEntered`/`onEntityLeft`), a real contact transition between two plain rigid bodies goes to
-both sides' `handleCollisionStart`/`handleCollisionEnd` (backing the new `onCollisionStart`/
-`onCollisionEnd`). This replaces the previous design where `Rapier2dTriggerComponent.checkOverlaps()`
-itself called `drainCollisionEvents` every time `Trigger2dEntity` ticked it.
+both sides' `handleCollisionStart`/`handleCollisionEnd` (backing `onCollisionStart`/`onCollisionEnd`).
 
-That change was load-bearing, not cosmetic: `drainCollisionEvents` drains and clears the *entire*
-shared queue in one call, and the world has exactly one `EventQueue` for every collider in it. Once
-plain rigid bodies also need events drained from that same queue (for `onCollisionStart`/
-`onCollisionEnd`), doing that drain a second time from inside `simulate()` and *also* leaving each
-trigger to drain it again itself from `checkOverlaps()` would mean whichever call runs first empties
-the queue for everyone else - the world's own `simulate()` always runs before any entity's tick this
-frame (see `GgWorld`'s tick loop: physics simulation tick order is strictly before
-`TickOrder.OBJECTS_BINDING`, which is where `Trigger2dEntity.tick$` calls `checkOverlaps()`), so
-draining there first and leaving `checkOverlaps()` a no-op-except-for-the-removed-body-cleanup-loop
-is the only ordering that reaches both consumers. `checkOverlaps()` is still called by `Trigger2dEntity`
-every tick and still handles the one case that has nothing to do with the event queue: detecting a body
-that was overlapping this trigger but has since been removed from the world entirely (no `stopped`
-event is ever queued for a collider that no longer exists), by checking `!body.nativeBody` on each
-recorded overlap. As a side effect, centralizing the drain this way also fixes a latent limitation of
-the old per-trigger-drain design: two triggers overlapping in the same frame used to race for the same
-queue (the first trigger's `checkOverlaps()` call would silently consume events the second trigger's
-own call needed) - now the one central drain sees every event and routes it correctly regardless of how
-many triggers/bodies are involved.
+The world must be the only drainer: `drainCollisionEvents` drains and clears the *entire* shared
+queue in one call, and the world has exactly one `EventQueue` for every collider in it, so a second
+consumer (a trigger draining it from its own `checkOverlaps()`, or two triggers in the same frame)
+would race the first for the same events. The world's own `simulate()` always runs before any
+entity's tick this frame (see `GgWorld`'s tick loop: physics simulation tick order is strictly before
+`TickOrder.OBJECTS_BINDING`, which is where `Trigger2dEntity.tick$` calls `checkOverlaps()`), so it
+reaches every consumer. `checkOverlaps()` drains nothing: it only emits the deferred `onEntityLeft`
+of bodies removed from the world while overlapping (see "Sensor intersections are per collider" in
+the 3D section below - both packages handle removal the same way).
 
 **Resolving a collider handle back to a component**: `drainCollisionEvents`'s `handle1`/`handle2`
 arguments are **collider** handles, not rigid-body handles - a distinct handle space in Rapier's
-internal `ColliderSet` vs `RigidBodySet` arenas. `Rapier2dTriggerComponent`'s pre-existing
-`checkOverlaps()` code compared these handles directly against `this.nativeBody?.handle` (a *rigid
-body* handle) and got away with it only because this adapter always creates exactly one collider per
-body, in lockstep, so the two arenas' generational indices happen to stay numerically aligned in
-practice - fragile, but not touched here since it still passes every existing test. The new dispatch
-code in `Rapier2dWorldComponent.simulate()` does this properly instead: `nativeWorld.colliders.get(h1)`
-→ `Collider`, then `.parent()` → owning `RigidBody`, then `.handle` looked up in the existing
-`handleIdEntityMap` (already keyed by rigid-body handle, and already shared between
+internal `ColliderSet` vs `RigidBodySet` arenas, which only happen to stay numerically aligned while
+every body has exactly one collider and nothing was ever removed; never compare one against a
+`RigidBody.handle`. `Rapier2dWorldComponent.dispatchCollisionEvents` resolves them properly:
+`nativeWorld.colliders.get(h1)` → `Collider`, then `.parent()` → owning `RigidBody`, then `.handle`
+looked up in `handleIdEntityMap` (keyed by rigid-body handle, shared between
 `Rapier2dRigidBodyComponent` and `Rapier2dTriggerComponent` instances, so an `instanceof
 Rapier2dTriggerComponent` check on the resolved component is enough to route sensor-overlap pairs away
 from the plain-rigid-body collision path).
+
+**A removed collider's stale handle resolves to whichever collider took its slot** (both packages).
+When a collider is removed mid-contact or mid-intersection, Rapier reports the stop at the next step
+under the old handle. A handle packs an arena index and a generation, but the JS-side
+`ColliderSet.get` (`colliders.get` in 2D, `World.getCollider` in 3D) looks it up by the index alone:
+while the slot is free it returns `null`, but once any new collider has taken it - the very same body
+re-added (the arena reuses the last freed slot first), or an unrelated body created in between - the
+old handle resolves to that new collider, and the stop gets routed to the wrong body (confirmed
+empirically on `0.20.0`: the stop for a removed sphere's handle resolved to the collider of the same
+sphere re-added, whose own `handle` differed). Both dispatchers therefore skip an event unless the
+resolved collider's own `handle` equals the reported one. Removal is never left to that stop anyway:
+`removeFromWorld` notifies contact partners itself, and triggers purge the body on `removed$` (see
+"Sensor intersections are per collider" in the 3D section).
+
+**`onCollisionStart`/`onCollisionEnd` are per collider pair in 2D.** `Rapier2dRigidBodyComponent
+.activeContacts` is a plain `Set` and `handleCollisionStart`/`handleCollisionEnd` emit on every native
+event, so a `COMPOUND` body (one collider per part) touching another body with two parts at once
+gets two `onCollisionStart`s, and an `onCollisionEnd` as soon as one part separates while the other
+still touches. The 3D package counts collider pairs per partner instead (see its section below);
+porting that count is the fix if this is ever needed in 2D.
 
 **Both plain-rigid-body colliders and trigger colliders need `ActiveEvents.COLLISION_EVENTS`** for a
 pair between two *plain* rigid bodies to generate any event at all - before this change, only
@@ -635,12 +641,10 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   `handleCollisionEnd`. Not unified across the two packages since they're independent classes with no
   shared base; if you're comparing the two implementations side by side, this is purely a naming
   choice, not a behavioral difference.
-- **`World.getCollider(handle)` returns `null` for a since-removed/unknown collider handle - it does
-  not throw.** Confirmed empirically on this pinned `@dimforge/rapier3d-compat` build (`0.20.0`):
-  create a collider, remove it, then call `world.getCollider(oldHandle)` - the result is `null`, safe
-  to guard with a plain `if (!collider) return;` in the drain callback rather than a `try`/`catch`.
-  Worth confirming this still holds for `rapier2d-compat` too if its own dispatch code ever needs the
-  same guard (this note only verified the 3D build directly).
+- **`World.getCollider(handle)` returns `null` for a handle whose arena slot is free - it does not
+  throw - but a handle whose slot has been reused resolves to the new occupant**; see "A removed
+  collider's stale handle" in the 2D section above for why `collectCollisionEvents` compares
+  `collider.handle` with the reported handle.
 - **`onCollisionEnd` genuinely distinguishes "separated" from "the other body was removed while still
   touching"** by emitting `null` for the latter, per `CollisionEvent`'s own doc convention (mirroring
   `ITriggerComponent.onEntityLeft`'s same optional-null convention, which `Rapier3dTriggerComponent`
@@ -648,10 +652,9 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   triggered exit). Implemented via `collidingWith` on `Rapier3dRigidBodyComponent` itself (see the
   next point for what it counts), walked by `removeFromWorld()`: every partner still in it when a body
   is removed gets `notifyCollisionEnd(null)` and has this body dropped from its own `collidingWith` in
-  turn. This is necessary because Rapier does not reliably emit a native collision-stop event for a
-  collider that's simply deleted mid-contact (the same reason `Rapier3dTriggerComponent.checkOverlaps`
-  needs its own manual `!body.nativeBody` cleanup pass instead of trusting the event queue for that
-  case) - without it, the partner body would simply never hear that the contact ended at all.
+  turn. This is necessary because the native stop for a collider deleted mid-contact can't be
+  routed (its handle no longer resolves to it - see "A removed collider's stale handle" above) -
+  without it, the partner body would simply never hear that the contact ended at all.
 - **Collision events are per collider, `onCollisionStart`/`onCollisionEnd` per body pair.**
   `drainCollisionEvents` reports each touching collider pair, and a `COMPOUND` body is one collider
   per part, so a two-box body landing flat on a floor gets two native starts, and a native stop
@@ -663,6 +666,31 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   `fallbackContactGeometry` (midpoint, direction between the bodies, no impulse) - since a skipped
   start would leave the count one short of the stops to come. Regression: the 3D contract suite's
   "fires onCollisionStart once per body pair, for a compound body".
+- **Sensor intersections are per collider too, so a trigger counts them per body (both packages).**
+  A `COMPOUND` trigger (or a `COMPOUND` body entering any trigger) is one collider per part, and a
+  body crossing from one part of an L-shaped trigger into the other gets the start for the second
+  part before the stop for the first. `Rapier3dTriggerComponent.overlaps`/
+  `Rapier2dTriggerComponent.overlaps` is a `Map` of intersecting collider pairs per body;
+  `notifyOverlap`/`handleOverlapEvent` emits `onEntityEntered` only when a body's count goes from 0
+  to 1 and `onEntityLeft` only when it returns to 0. Intersection itself is exact: Rapier's sensor
+  events come from its narrow phase, so a box trigger rotated 45 degrees doesn't fire for a body in
+  its bounding box's corners, nor an L-shaped compound in the empty quadrant of its bounding box - no
+  extra test is needed.
+
+  A body removed from the world while overlapping gets no usable native stop (see "A removed
+  collider's stale handle" above), so each trigger subscribes to the world's `removed$` while it is
+  in the world and drops that body's count the moment it is removed. Checking for a missing
+  `nativeBody` at the next `checkOverlaps()` is not enough: a body removed and added back before the
+  next step (reparented, or hidden and shown again by a network layer - `removeFromWorld` documents
+  both) has its native body again by then, keeps its stale count, and the start for its fresh
+  colliders only raises it, so the count never returns to 0 and `onEntityLeft` never fires. The
+  `onEntityLeft` for a removed body is not emitted from the `removed$` callback (that runs inside the
+  remover's own `removeFromWorld`, possibly mid-way through another component's lifecycle) but queued
+  in `pendingLeft` and emitted at the trigger's next `checkOverlaps()` or before its next overlap
+  notification, whichever comes first - so a re-added body reports its leave before its new enter.
+  Regressions: both packages' `rapier-*-trigger.component.spec.ts`, the "exact shape overlap" and
+  "one enter/leave per body" blocks (the latter also re-adds a body with another body created in
+  between, taking its freed collider slot).
 - **`relativeVelocity` reads each body's `linvel()` *after* the step that produced the `started` event
   has already fully resolved the contact** (both `drainCollisionEvents` and `contactPair` are read
   right after the `world.step()` the contact started in, there is no earlier point to read from without re-deriving the pre-solve state
@@ -863,7 +891,14 @@ the substeps, and both broke tests until they were:
   body spawned inside it). `collectCollisionEvents(out)` runs after every step - reading contact
   geometry and velocities right after the step the contact started in - and pushes notifications
   that `simulate()` delivers after the last step, so no subscriber runs (and changes the world)
-  between steps.
+  between steps. Components are resolved at collection time, so a sensor notification captures both
+  native body handles and is dropped if either component's `nativeBody?.handle` no longer matches
+  when it runs: an earlier notification's subscriber can remove that body (a pickup removing what
+  it caught), and a body touching two parts of a `COMPOUND` trigger queues two starts. Without the
+  check the second start re-enters the removed body, its stop is dropped as a stale handle, and the
+  trigger stays activated with `onEntityLeft` never firing. rapier2d dispatches while draining and
+  resolves each event live, so it has no queue to go stale. Regression: `rapier-3d-trigger.component.spec.ts`'s
+  "a body removed by an enter subscriber ..." test.
 - **`kinematic_pos` targets.** A `kinematic_pos` body's `position`/`rotation` setters call
   `setNextKinematicTranslation`/`Rotation` once per tick; Rapier reaches that target in the next
   step and keeps it afterwards, so with `n` steps the body moved `n` times too fast in the first one
@@ -1042,6 +1077,17 @@ floor, the two-vehicles-two-collision-groups-two-floors test from `gg-engine-phy
 guidance, and a drive-under-engine-force test asserting both net displacement and a sane (neither ~0 nor
 implausibly large) `wheelSpeed` - the last one is what originally caught both the axle-cancellation bug
 and would have caught a reintroduced unit-conversion bug in `wheelSpeed`.
+
+## Flattening `COMPOUND` shapes into colliders (both packages)
+
+Rapier has no compound shape: `createColliderDescr` turns a `COMPOUND` into one `ColliderDesc` per
+leaf, recursing into nested `COMPOUND` children. Each leaf's local translation and rotation are in its
+parent child's frame, so composing them into the outer child's frame is `position + rot(translation,
+rotation)` and `rotation * leafRotation` (2D: `Pnt2.rot(translation, rotation)` and `rotation +
+leafRotation`). Adding the translation unrotated places every nested part of a rotated child in the
+wrong spot - invisible for a flat compound (a leaf's own translation is zero) and for unrotated
+children. Regressions: the "turns a nested COMPOUND child's offset" tests in `rapier-3d-factory.spec.ts`
+and `rapier2d/test/rapier-2d-factory.spec.ts`.
 
 ## Keep this skill current
 

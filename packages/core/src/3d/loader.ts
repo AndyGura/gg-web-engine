@@ -491,7 +491,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
             ...props.sub(),
             loadProps,
             position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
-            rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
+            rotation: Qtrn.mult(loadOptions.rotation, dummy.rotation),
             nameScope: nameScope === null ? null : `${nameScope}__${dummy.name}`,
             ...(loadOptions.cachingStrategy !== undefined ? { cachingStrategy: loadOptions.cachingStrategy } : {}),
             ...(loadOptions.castShadow !== undefined ? { castShadow: loadOptions.castShadow } : {}),
@@ -508,9 +508,12 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       if (e.object3D && loadOptions.receiveShadow !== undefined) {
         e.object3D.receiveShadow = loadOptions.receiveShadow;
       }
+      // loadOptions.position/rotation place the file's root in the world: a pose read from the file
+      // (root space) maps to world space as world-from-root composed with it - the rotation in
+      // front (`Qtrn.mult(a, b)` applies `b` first, then `a`), the same transform the position goes
+      // through. A prop dummy's pose above goes through the identical mapping.
       e.position = Pnt3.add(Pnt3.rot(Pnt3.clone(e.position), loadOptions.rotation), loadOptions.position);
-      // FIXME this rotation is wrong
-      e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
+      e.rotation = Qtrn.mult(loadOptions.rotation, e.rotation);
     });
     if (propsSlot) {
       group.complete(propsSlot);

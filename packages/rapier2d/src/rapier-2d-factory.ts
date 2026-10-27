@@ -141,7 +141,8 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
         for (const item of descriptor.children) {
           const subDescrs = this.createColliderDescr(item.shape);
           subDescrs.forEach(d => {
-            const p = Pnt2.add(item.position || Pnt2.O, d.translation);
+            // a nested child's own offset is in its parent's frame, so it turns with the parent
+            const p = Pnt2.add(item.position || Pnt2.O, Pnt2.rot(d.translation, item.rotation || 0));
             d.setTranslation(p.x, p.y);
             d.setRotation((item.rotation || 0) + d.rotation);
           });
