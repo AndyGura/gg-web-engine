@@ -7,6 +7,15 @@ import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoCharacterControllerComponent } from './ammo-character-controller.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
+/**
+ * `Ammo.wrapPointer(ptr, Class)` turns the raw numeric handle a `ConcreteContactResultCallback`
+ * override receives back into a wrapped instance - present at runtime, not declared in
+ * `ammo-ambient.d.ts`.
+ */
+type AmmoWithWrapPointer = typeof Ammo & {
+  wrapPointer<T>(ptr: number, type: { new (...args: never[]): T }): T;
+};
+
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
   implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo>
@@ -98,11 +107,38 @@ export class AmmoTriggerComponent
   /** A native pointer from `checkOverlaps()`, or the removed component itself from the `removed$` reaction. */
   protected readonly onLeft$: Subject<number | AmmoBodyComponent<any>> = new Subject<number | AmmoBodyComponent<any>>();
 
+  /**
+   * One `ConcreteContactResultCallback` per trigger, created on first use and freed in `dispose()`,
+   * so `checkOverlaps()` allocates nothing native per tick. Its `addSingleResult` override sets
+   * `pairTouching` when Bullet reports a contact point at zero or negative distance.
+   */
+  private contactCallback: Ammo.ConcreteContactResultCallback | null = null;
+  private pairTouching = false;
+
+  /**
+   * The ghost object's overlap list is broadphase-only: it holds every body whose AABB overlaps the
+   * trigger's AABB. That AABB is the world-space bounding box of the (rotated) shape, so on its own
+   * a box rotated about Z would fire in its bounding box's corners, and a `COMPOUND` anywhere in the
+   * union of its children's bounding boxes. Each broadphase pair therefore also gets one
+   * narrowphase `contactPairTest` (`shapesTouch`), and only pairs whose shapes really touch count
+   * as overlaps.
+   *
+   * `contactPairTest` is used rather than the manifolds `stepSimulation` computed for these pairs:
+   * this Ammo build binds no per-pair route to them (`btBroadphasePair.m_algorithm`,
+   * `getAllContactManifolds`), and walking the dispatcher's world-wide manifold list from every
+   * trigger every tick would cost far more. The cost is one narrowphase test per broadphase pair
+   * per call; bodies outside the trigger's AABB cost nothing.
+   */
   checkOverlaps(): void {
+    const collisionWorld = this.world.dynamicAmmoWorld;
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();
-    const newOverlaps = new Set(
-      new Array(numOverlappingObjects).fill(null).map((_, i) => this.nativeBody.getOverlappingObject(i)),
-    );
+    const newOverlaps = new Set<Ammo.btCollisionObject>();
+    for (let i = 0; i < numOverlappingObjects; i++) {
+      const candidate = this.nativeBody.getOverlappingObject(i);
+      if (collisionWorld && this.shapesTouch(collisionWorld, candidate)) {
+        newOverlaps.add(candidate);
+      }
+    }
     for (const overlap of this.overlaps.keys()) {
       if (!newOverlaps.has(overlap)) {
         this.overlaps.delete(overlap);
@@ -115,6 +151,25 @@ export class AmmoTriggerComponent
       this.overlaps.add(newOverlap);
       this.onEnter$.next(Ammo.getPointer(newOverlap));
     }
+  }
+
+  /** Narrowphase test of one broadphase pair - see `checkOverlaps()`. */
+  private shapesTouch(collisionWorld: Ammo.btDiscreteDynamicsWorld, other: Ammo.btCollisionObject): boolean {
+    if (!this.contactCallback) {
+      const callback = new Ammo.ConcreteContactResultCallback();
+      // embind hands the override raw pointers, not wrapped objects - see `AmmoWithWrapPointer`
+      (callback as unknown as { addSingleResult: (...args: number[]) => number }).addSingleResult = (cpPtr: number) => {
+        if (!this.pairTouching) {
+          const cp = (Ammo as unknown as AmmoWithWrapPointer).wrapPointer(cpPtr, Ammo.btManifoldPoint);
+          this.pairTouching = cp.getDistance() <= 0;
+        }
+        return 0;
+      };
+      this.contactCallback = callback;
+    }
+    this.pairTouching = false;
+    collisionWorld.contactPairTest(this.nativeBody, other, this.contactCallback);
+    return this.pairTouching;
   }
 
   clone(): AmmoTriggerComponent {
@@ -168,6 +223,10 @@ export class AmmoTriggerComponent
 
   dispose(): void {
     this.removedSub.unsubscribe();
+    if (this.contactCallback) {
+      Ammo.destroy(this.contactCallback);
+      this.contactCallback = null;
+    }
     super.dispose();
     this.overlaps.clear();
     this.onEnter$.complete();

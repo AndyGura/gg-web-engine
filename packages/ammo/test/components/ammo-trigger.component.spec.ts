@@ -172,4 +172,105 @@ describe(`AmmoTriggerComponent`, () => {
     await Promise.resolve();
     expect(left).toEqual([ball]);
   });
+
+  describe('exact shape overlap (not the bounding box)', () => {
+    // a 10x10x10 box rotated 45 degrees about Z: its AABB spans about +-7.07 in x/y, its corners
+    // along the x/y axes. (6, 6) is inside that AABB but about 8.49 from the center along the
+    // diagonal, outside the box's 5 half-extent
+    const yaw45 = { x: 0, y: 0, z: Math.sin(Math.PI / 8), w: Math.cos(Math.PI / 8) };
+    // an L: a 10x5 bar along y in [-5, 0] plus a 5x5 block at x in [-5, 0], y in [0, 5]; the AABB
+    // quadrant x in [0, 5], y in [0, 5] is empty
+    const lShape = {
+      shape: 'COMPOUND' as const,
+      children: [
+        { position: { x: 0, y: -2.5, z: 0 }, shape: { shape: 'BOX' as const, dimensions: { x: 10, y: 5, z: 5 } } },
+        { position: { x: -2.5, y: 2.5, z: 0 }, shape: { shape: 'BOX' as const, dimensions: { x: 5, y: 5, z: 5 } } },
+      ],
+    };
+
+    const entered = (
+      shape: Parameters<AmmoFactory['createTrigger']>[0],
+      rotation: { x: number; y: number; z: number; w: number } | undefined,
+      ballPosition: { x: number; y: number; z: number },
+      bodyType: 'dynamic' | 'static' = 'dynamic',
+    ): boolean => {
+      const trigger = factory.createTrigger(shape, { rotation });
+      trigger.addToWorld({ physicsWorld: world } as any);
+      const ball = factory.createRigidBody(
+        { shape: { shape: 'SPHERE', radius: 0.5 }, body: { bodyType, mass: bodyType === 'dynamic' ? 1 : 0 } },
+        { position: ballPosition },
+      );
+      ball.addToWorld({ physicsWorld: world } as any);
+      let fired = false;
+      trigger.onEntityEntered.subscribe(obj => (fired = fired || obj === ball));
+      world.simulate(16);
+      trigger.checkOverlaps();
+      return fired;
+    };
+
+    it('a box rotated 45 degrees about Z does not fire for a body in its AABB corner', () => {
+      expect(entered({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } }, yaw45, { x: 6, y: 6, z: 0 })).toBe(false);
+    });
+
+    it('a box rotated 45 degrees about Z fires for a body inside it', () => {
+      expect(entered({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } }, yaw45, { x: 2, y: 2, z: 0 })).toBe(true);
+      expect(entered({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } }, yaw45, { x: 6.5, y: 0, z: 0 })).toBe(true);
+    });
+
+    it('an L-shaped compound does not fire in the empty quadrant of its AABB', () => {
+      expect(entered(lShape, undefined, { x: 2.5, y: 2.5, z: 0 })).toBe(false);
+    });
+
+    it('an L-shaped compound fires inside either of its children', () => {
+      expect(entered(lShape, undefined, { x: 2.5, y: -2.5, z: 0 })).toBe(true);
+      expect(entered(lShape, undefined, { x: -2.5, y: 2.5, z: 0 })).toBe(true);
+    });
+
+    it('is exact against a static body too', () => {
+      expect(entered(lShape, undefined, { x: 2.5, y: 2.5, z: 0 }, 'static')).toBe(false);
+      expect(entered(lShape, undefined, { x: -2.5, y: 2.5, z: 0 }, 'static')).toBe(true);
+    });
+
+    it('fires onEntityLeft once a body moves from the shape into the empty part of its AABB', () => {
+      const trigger = factory.createTrigger(lShape);
+      trigger.addToWorld({ physicsWorld: world } as any);
+      const ball = factory.createRigidBody(
+        { shape: { shape: 'SPHERE', radius: 0.5 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: 2.5, y: -2.5, z: 0 } },
+      );
+      ball.addToWorld({ physicsWorld: world } as any);
+      const events: string[] = [];
+      trigger.onEntityEntered.subscribe(obj => obj === ball && events.push('enter'));
+      trigger.onEntityLeft.subscribe(obj => obj === ball && events.push('left'));
+      world.simulate(16);
+      trigger.checkOverlaps();
+      ball.position = { x: 2.5, y: 2.5, z: 0 };
+      world.simulate(16);
+      trigger.checkOverlaps();
+      expect(events).toEqual(['enter', 'left']);
+    });
+
+    it('reports one enter and one leave for a body crossing from one compound child into the other and out', () => {
+      const trigger = factory.createTrigger(lShape);
+      trigger.addToWorld({ physicsWorld: world } as any);
+      const ball = factory.createRigidBody(
+        { shape: { shape: 'SPHERE', radius: 0.5 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: -2.5, y: -2.5, z: 0 } },
+      );
+      ball.addToWorld({ physicsWorld: world } as any);
+      const events: string[] = [];
+      trigger.onEntityEntered.subscribe(obj => obj === ball && events.push('enter'));
+      trigger.onEntityLeft.subscribe(obj => obj === ball && events.push('left'));
+      // starts in the bar, moves up through the bar/block seam into the block, then out of the top
+      world.simulate(10);
+      trigger.checkOverlaps();
+      ball.linearVelocity = { x: 0, y: 10, z: 0 };
+      for (let i = 0; i < 100; i++) {
+        world.simulate(10);
+        trigger.checkOverlaps();
+      }
+      expect(ball.position.y).toBeGreaterThan(6);
+      expect(events).toEqual(['enter', 'left']);
+    });
+  });
 });
