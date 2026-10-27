@@ -1,10 +1,13 @@
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { DebugBody3DSettings, ITrigger3dComponent, Shape3DDescriptor } from '@gg-web-engine/core';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
+
+// a rigid body or a character controller can overlap this trigger's sensor volume
+type Rapier3dOverlapping = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
 
 export class Rapier3dTriggerComponent
   extends Rapier3dRigidBodyComponent
@@ -15,11 +18,11 @@ export class Rapier3dTriggerComponent
     this.shape,
   );
 
-  get onEntityEntered(): Observable<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> {
+  get onEntityEntered(): Observable<Rapier3dOverlapping> {
     return this.onEnter$.asObservable();
   }
 
-  get onEntityLeft(): Observable<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> {
+  get onEntityLeft(): Observable<Rapier3dOverlapping> {
     return this.onLeft$.asObservable();
   }
 
@@ -30,12 +33,23 @@ export class Rapier3dTriggerComponent
    * a native start for the second part before the stop for the first. `onEntityEntered` fires only
    * when a body's count goes from 0 to 1 and `onEntityLeft` only when it returns to 0.
    */
-  protected readonly overlaps: Map<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent, number> =
-    new Map();
-  protected readonly onEnter$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
-    new Subject();
-  protected readonly onLeft$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
-    new Subject();
+  protected readonly overlaps: Map<Rapier3dOverlapping, number> = new Map();
+  /**
+   * Bodies removed from the world while overlapping this trigger, whose `onEntityLeft` is still to
+   * be emitted. The intersection stop Rapier reports for a removed collider can't be routed (its
+   * handle no longer resolves to it - see the world's event dispatch), so the world's `removed$`
+   * drops the body's entry from `overlaps` the moment it leaves the world - otherwise a body removed
+   * and added back before the next step (reparented, or hidden and shown again by a network layer)
+   * would keep its old count, and its fresh colliders' start would only raise it, leaving the count
+   * one above the stops still to come. The leave itself is emitted at this trigger's next
+   * controlled point (`checkOverlaps()`, or before the next overlap notification, so a re-added body
+   * reports leave before its new enter), never synchronously from inside the remover's own
+   * `removeFromWorld` call.
+   */
+  protected readonly pendingLeft: Set<Rapier3dOverlapping> = new Set();
+  protected readonly onEnter$: Subject<Rapier3dOverlapping> = new Subject();
+  protected readonly onLeft$: Subject<Rapier3dOverlapping> = new Subject();
+  private removedSub: Subscription | null = null;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
@@ -54,6 +68,13 @@ export class Rapier3dTriggerComponent
       );
     }
     this.overlaps.clear();
+    this.pendingLeft.clear();
+    this.removedSub?.unsubscribe();
+    this.removedSub = this.world.removed$.subscribe(c => {
+      if (this.overlaps.delete(c)) {
+        this.pendingLeft.add(c);
+      }
+    });
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c =>
       this.world.nativeWorld!.createCollider(c, this._nativeBody!),
@@ -63,6 +84,9 @@ export class Rapier3dTriggerComponent
   }
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean) {
+    this.removedSub?.unsubscribe();
+    this.removedSub = null;
+    this.flushPendingLeft();
     for (const body of this.overlaps.keys()) {
       this.onLeft$.next(body);
     }
@@ -71,32 +95,21 @@ export class Rapier3dTriggerComponent
   }
 
   /**
-   * Called by `Rapier3dWorldComponent`'s centralized collision-event dispatch (see
-   * `Rapier3dWorldComponent.simulate`) once per drained sensor-intersection event involving this
-   * trigger - not meant to be called by app code directly. Previously this trigger drained
-   * `world.eventQueue` itself from inside `checkOverlaps()`, matching `otherBody` by comparing an
-   * event's *collider* handle against `this.nativeBody?.handle` (a *rigid-body* handle) - those are
-   * two different handle namespaces in this pinned `@dimforge/rapier3d-compat` build, and the
-   * comparison only ever happened to work by coincidence (a body's first/only collider is allocated
-   * from a separate arena that, absent any prior removals, marches in lockstep with the rigid-body
-   * arena for the common one-collider-per-body case - see `gg-engine-physics-adapter-rapier` for the
-   * full incident). `EventQueue.drainCollisionEvents` also fully drains the *shared* queue on every
-   * call, so more than one consumer draining it independently (this trigger, another trigger, and now
-   * `Rapier3dRigidBodyComponent`'s own collision events) would silently steal each other's events -
-   * `Rapier3dWorldComponent` is now the single place that drains it, resolving collider handles to
-   * components correctly via `Collider.parent()`, and pushes matching events to whichever
-   * component(s) care.
+   * Called by `Rapier3dWorldComponent`'s collision-event dispatch (see
+   * `Rapier3dWorldComponent.simulate`) once per drained sensor-intersection start/stop involving
+   * one of this trigger's colliders - not meant to be called by app code directly. The world is the
+   * only consumer of its single shared `EventQueue` (`drainCollisionEvents` empties it for everyone),
+   * and it resolves each collider handle to its owning component through `Collider.parent()`, so
+   * `otherBody` is the component of whichever body the other collider belongs to.
+   *
+   * `otherBody` can be a `Rapier3dCharacterControllerComponent` (a player walking through this
+   * trigger) as well as an ordinary rigid body - `onEnter$`/`onLeft$` (and `ITrigger3dComponent`'s
+   * own `onEntityEntered`/`onEntityLeft`) are typed as this same union rather than narrowed to a
+   * rigid body, since a character controller only satisfies `IBodyComponent`, not
+   * `IRigidBodyComponent`.
    */
-  public notifyOverlap(
-    otherBody: Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent,
-    started: boolean,
-  ): void {
-    // `otherBody` can be a `Rapier3dCharacterControllerComponent` (a player walking through this
-    // trigger) as well as an ordinary rigid body - `onEnter$`/`onLeft$` (and `ITrigger3dComponent`'s
-    // own `onEntityEntered`/`onEntityLeft`) are typed as this same union rather than narrowed to a
-    // rigid body, since a character controller only satisfies `IBodyComponent`, not
-    // `IRigidBodyComponent` (no `linearVelocity`/`resetMotion()`/collision events). This mirrors the
-    // ammo adapter's own `AmmoTriggerComponent`, which resolves the same overlap case the same way.
+  public notifyOverlap(otherBody: Rapier3dOverlapping, started: boolean): void {
+    this.flushPendingLeft();
     const count = this.overlaps.get(otherBody) ?? 0;
     if (started) {
       this.overlaps.set(otherBody, count + 1);
@@ -113,16 +126,15 @@ export class Rapier3dTriggerComponent
     }
   }
 
+  /** Emits `onEntityLeft` for bodies removed from the world while overlapping - see `pendingLeft`. */
   checkOverlaps(): void {
-    // Rapier does not reliably emit a native intersection-stop event for a collider that's simply
-    // removed from the world mid-overlap (confirmed empirically) - this manual pass catches that case
-    // every tick regardless of whether `Rapier3dWorldComponent.simulate`'s own event dispatch already
-    // ran this tick.
-    for (const body of this.overlaps.keys()) {
-      if (!body.nativeBody) {
-        this.overlaps.delete(body);
-        this.onLeft$.next(body);
-      }
+    this.flushPendingLeft();
+  }
+
+  private flushPendingLeft(): void {
+    for (const body of this.pendingLeft) {
+      this.pendingLeft.delete(body);
+      this.onLeft$.next(body);
     }
   }
 
@@ -138,7 +150,10 @@ export class Rapier3dTriggerComponent
    * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
    * subjects have no other owner to complete them. */
   dispose() {
+    this.removedSub?.unsubscribe();
+    this.removedSub = null;
     this.overlaps.clear();
+    this.pendingLeft.clear();
     this.onEnter$.complete();
     this.onLeft$.complete();
     super.dispose();

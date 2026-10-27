@@ -1,4 +1,12 @@
-import { DebugBody3DSettings, IEntity, ITrigger3dComponent, Shape3DDescriptor } from '@gg-web-engine/core';
+import {
+  DebugBody3DSettings,
+  IEntity,
+  ITrigger3dComponent,
+  Pnt3,
+  Point3,
+  Qtrn,
+  Shape3DDescriptor,
+} from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject, Subscription } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
@@ -15,6 +23,99 @@ import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 type AmmoWithWrapPointer = typeof Ammo & {
   wrapPointer<T>(ptr: number, type: { new (...args: never[]): T }): T;
 };
+
+/** A `testPair` result and the two poses (`readPose`) it was computed for. */
+type CachedPairTest = { triggerPose: number[]; pose: number[]; touching: boolean };
+
+/** A collision object's world position and rotation as `[x, y, z, qx, qy, qz, qw]`. */
+function readPose(object: Ammo.btCollisionObject): number[] {
+  const transform = object.getWorldTransform();
+  const origin = transform.getOrigin();
+  const rotation = transform.getRotation();
+  return [origin.x(), origin.y(), origin.z(), rotation.x(), rotation.y(), rotation.z(), rotation.w()];
+}
+
+function samePose(a: number[], b: number[]): boolean {
+  for (let i = 0; i < 7; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+let aabbScratchVectors: [Ammo.btVector3, Ammo.btVector3] | null = null;
+
+/** Two module-wide `btVector3`s for `btRigidBody.getAabb` - see `AmmoBodyComponent.scratchVector` for why not `new`. */
+function aabbScratch(): [Ammo.btVector3, Ammo.btVector3] {
+  aabbScratchVectors ??= [new Ammo.btVector3(), new Ammo.btVector3()];
+  return aabbScratchVectors;
+}
+
+/** Whether `pointsInsideConvexPart` can ever answer `true` for this shape. */
+function canContainAabb(shape: Shape3DDescriptor): boolean {
+  switch (shape.shape) {
+    case 'BOX':
+    case 'SPHERE':
+      return true;
+    case 'COMPOUND':
+      return shape.children.some(c => canContainAabb(c.shape));
+    default:
+      return false;
+  }
+}
+
+/**
+ * Whether every point (in the shape's local frame) lies inside one single convex part of the
+ * shape: the shape itself for a `BOX`/`SPHERE`, or one `COMPOUND` child. The points are the corners
+ * of a body's AABB, so all of them inside one convex part means the whole body is inside it. Other
+ * shapes answer `false` and are left to the narrowphase.
+ */
+function pointsInsideConvexPart(shape: Shape3DDescriptor, points: Point3[]): boolean {
+  switch (shape.shape) {
+    case 'BOX': {
+      const hx = shape.dimensions.x / 2;
+      const hy = shape.dimensions.y / 2;
+      const hz = shape.dimensions.z / 2;
+      return points.every(p => Math.abs(p.x) <= hx && Math.abs(p.y) <= hy && Math.abs(p.z) <= hz);
+    }
+    case 'SPHERE': {
+      const r2 = shape.radius * shape.radius;
+      return points.every(p => Pnt3.lenSq(p) <= r2);
+    }
+    case 'COMPOUND':
+      return shape.children.some(child => {
+        const origin = child.position ?? Pnt3.O;
+        const inverse = Qtrn.conjugate(child.rotation ?? Qtrn.O);
+        return pointsInsideConvexPart(
+          child.shape,
+          points.map(p => Pnt3.rot(Pnt3.sub(p, origin), inverse)),
+        );
+      });
+    default:
+      return false;
+  }
+}
+
+const concaveShapes = new WeakMap<Shape3DDescriptor, boolean>();
+
+/**
+ * Whether a shape is, or contains, a shape Bullet builds as concave: `MESH`
+ * (`btBvhTriangleMeshShape`) or `PLANE` (`btStaticPlaneShape`). Bullet's dispatcher has no
+ * collision algorithm for a pair of concave shapes, so two of them never report a contact.
+ * Memoized per descriptor object, since `checkOverlaps()` asks it for every candidate every tick.
+ */
+export function shapeHasConcave(shape: Shape3DDescriptor): boolean {
+  let concave = concaveShapes.get(shape);
+  if (concave === undefined) {
+    concave =
+      shape.shape === 'MESH' ||
+      shape.shape === 'PLANE' ||
+      (shape.shape === 'COMPOUND' && shape.children.some(c => shapeHasConcave(c.shape)));
+    concaveShapes.set(shape, concave);
+  }
+  return concave;
+}
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
@@ -84,6 +185,10 @@ export class AmmoTriggerComponent
     // in-flight synchronous call stack (including whatever triggered this removal) has finished.
     this.removedSub = this.world.removed$.subscribe(component => {
       const removedPointer = Ammo.getPointer((component as AmmoBodyComponent<any>).nativeBody);
+      // the pointer can be reused by a later allocation: no result recorded for it may outlive it
+      this.pairCache.delete(removedPointer);
+      this.stepPartners.delete(removedPointer);
+      this.stepTouching.delete(removedPointer);
       for (const overlap of this.overlaps) {
         if (Ammo.getPointer(overlap) === removedPointer) {
           this.overlaps.delete(overlap);
@@ -107,6 +212,26 @@ export class AmmoTriggerComponent
   /** A native pointer from `checkOverlaps()`, or the removed component itself from the `removed$` reaction. */
   protected readonly onLeft$: Subject<number | AmmoBodyComponent<any>> = new Subject<number | AmmoBodyComponent<any>>();
 
+  /** Whether this trigger's shape is or contains a concave shape - see {@link shapeHasConcave}. */
+  private readonly concave: boolean = shapeHasConcave(this.shape);
+
+  /**
+   * What the last physics step's contact manifolds say about this trigger's pairs, filled by
+   * `AmmoWorldComponent` right after each step (`beginStepContacts`/`recordStepManifold`):
+   * `stepPartners` holds the pointer of every body the dispatcher kept a manifold with this ghost
+   * for, `stepTouching` the ones whose manifold had a contact point at zero or negative distance.
+   * Valid while `stepId` equals the world's `stepCount`.
+   */
+  private stepId = -1;
+  private readonly stepPartners = new Set<number>();
+  private readonly stepTouching = new Set<number>();
+
+  /**
+   * Result of the last `testPair` per candidate pointer, with both poses it was computed for.
+   * Rebuilt on every `checkOverlaps()`, so a candidate that left the broadphase list drops out.
+   */
+  private pairCache = new Map<number, CachedPairTest>();
+
   /**
    * One `ConcreteContactResultCallback` per trigger, created on first use and freed in `dispose()`,
    * so `checkOverlaps()` allocates nothing native per tick. Its `addSingleResult` override sets
@@ -115,31 +240,91 @@ export class AmmoTriggerComponent
   private contactCallback: Ammo.ConcreteContactResultCallback | null = null;
   private pairTouching = false;
 
+  /** Called by `AmmoWorldComponent` right after a physics step, before it routes the step's manifolds. */
+  beginStepContacts(stepId: number): void {
+    this.stepId = stepId;
+    this.stepPartners.clear();
+    this.stepTouching.clear();
+  }
+
   /**
-   * The ghost object's overlap list is broadphase-only: it holds every body whose AABB overlaps the
-   * trigger's AABB. That AABB is the world-space bounding box of the (rotated) shape, so on its own
-   * a box rotated about Z would fire in its bounding box's corners, and a `COMPOUND` anywhere in the
-   * union of its children's bounding boxes. Each broadphase pair therefore also gets one
-   * narrowphase `contactPairTest` (`shapesTouch`), and only pairs whose shapes really overlap
-   * (touching, or one fully inside the other: a contact point at zero or negative distance) count
-   * as overlaps.
+   * Called by `AmmoWorldComponent`'s manifold walk for every manifold between this trigger's ghost
+   * object and the body `otherPointer` (several for a `COMPOUND` side: one per touching child).
+   */
+  recordStepManifold(otherPointer: number, manifold: Ammo.btPersistentManifold, numContacts: number): void {
+    this.stepPartners.add(otherPointer);
+    if (this.stepTouching.has(otherPointer)) {
+      return;
+    }
+    for (let j = 0; j < numContacts; j++) {
+      if (manifold.getContactPoint(j).getDistance() <= 0) {
+        this.stepTouching.add(otherPointer);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Turns the ghost object's broadphase overlap list into the set of bodies whose shapes really
+   * overlap this trigger's (touching it, or fully inside it), then emits the difference to the last
+   * call as enter/leave events.
    *
-   * `contactPairTest` is used rather than the manifolds `stepSimulation` computed for these pairs:
-   * this Ammo build binds no per-pair route to them (`btBroadphasePair.m_algorithm`,
-   * `getAllContactManifolds`), and walking the dispatcher's world-wide manifold list from every
-   * trigger every tick would cost far more. The cost is one narrowphase test per broadphase pair
-   * per call; bodies outside the trigger's AABB cost nothing.
+   * The ghost's list holds every body whose AABB overlaps the trigger's AABB - the world-space
+   * bounding box of the rotated shape, so on its own a box rotated about Z would fire in its
+   * bounding box's corners, and a `COMPOUND` anywhere in the union of its children's bounding boxes.
+   * Each listed body is decided by the first of these that applies:
+   *
+   * 1. No component in `nativeBodyReverseMap`: skipped - there is nothing to report.
+   * 2. Both shapes concave (`MESH`/`PLANE`, alone or in a `COMPOUND`): Bullet has no collision
+   *    algorithm for a concave-vs-concave pair, so no narrowphase ever reports a contact for it.
+   *    The broadphase result stands: it overlaps while the AABBs overlap.
+   * 3. The last physics step left a manifold for the pair (`stepPartners`): it overlaps if that
+   *    step found a contact point at zero or negative distance. The ghost object is never
+   *    deactivated, so the dispatcher runs the narrowphase for every one of its pairs on every step,
+   *    static and sleeping partners included, and `AmmoWorldComponent`'s manifold walk (which runs
+   *    after each step anyway) hands those results here - no second narrowphase. Like the
+   *    broadphase list itself, this describes the poses at the last step's collision detection.
+   * 4. Otherwise (`testPair`): a body added since the last step, a `COMPOUND` pair none of whose
+   *    children's AABBs overlap (the dispatcher keeps no manifold for it), or a trigger that hasn't
+   *    been through a step yet. Answered from the cache if neither pose changed since the pair was
+   *    last tested, by a JS check if the body's AABB lies inside one convex part of this trigger's
+   *    shape, and otherwise by one `contactPairTest`.
    */
   checkOverlaps(): void {
     const collisionWorld = this.world.dynamicAmmoWorld;
+    const stepFresh = this.stepId === this.world.stepCount;
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();
     const newOverlaps = new Set<Ammo.btCollisionObject>();
+    const nextCache = new Map<number, CachedPairTest>();
+    let triggerPose: number[] | null = null;
     for (let i = 0; i < numOverlappingObjects; i++) {
       const candidate = this.nativeBody.getOverlappingObject(i);
-      if (collisionWorld && this.shapesTouch(collisionWorld, candidate)) {
+      const pointer = Ammo.getPointer(candidate);
+      const component = AmmoBodyComponent.nativeBodyReverseMap.get(pointer);
+      if (!component || !collisionWorld) {
+        continue;
+      }
+      let touching: boolean;
+      if (this.concave && shapeHasConcave(component.shape)) {
+        touching = true;
+      } else if (stepFresh && this.stepPartners.has(pointer)) {
+        touching = this.stepTouching.has(pointer);
+      } else {
+        triggerPose ??= readPose(this.nativeBody);
+        const pose = readPose(candidate);
+        const cached = this.pairCache.get(pointer);
+        if (cached && samePose(cached.triggerPose, triggerPose) && samePose(cached.pose, pose)) {
+          touching = cached.touching;
+        } else {
+          touching = this.testPair(collisionWorld, candidate, component, triggerPose);
+        }
+        nextCache.set(pointer, { triggerPose, pose, touching });
+      }
+      if (touching) {
         newOverlaps.add(candidate);
       }
     }
+    this.pairCache = nextCache;
     for (const overlap of this.overlaps.keys()) {
       if (!newOverlaps.has(overlap)) {
         this.overlaps.delete(overlap);
@@ -154,7 +339,46 @@ export class AmmoTriggerComponent
     }
   }
 
-  /** Narrowphase test of one broadphase pair - see `checkOverlaps()`. */
+  /**
+   * Decides one pair with no usable manifold from the last step - see `checkOverlaps()`, case 4.
+   * A rigid body whose AABB lies entirely inside one convex part of this trigger's shape (a `BOX` or
+   * `SPHERE`, alone or as a `COMPOUND` child) overlaps without a narrowphase; anything else gets one
+   * `contactPairTest` (`shapesTouch`).
+   */
+  private testPair(
+    collisionWorld: Ammo.btDiscreteDynamicsWorld,
+    candidate: Ammo.btCollisionObject,
+    component: AmmoBodyComponent<any>,
+    triggerPose: number[],
+  ): boolean {
+    if (component instanceof AmmoRigidBodyComponent && this.aabbInsideShape(component.nativeBody, triggerPose)) {
+      return true;
+    }
+    return this.shapesTouch(collisionWorld, candidate);
+  }
+
+  private aabbInsideShape(body: Ammo.btRigidBody, triggerPose: number[]): boolean {
+    if (!canContainAabb(this.shape)) {
+      return false;
+    }
+    const [min, max] = aabbScratch();
+    body.getAabb(min, max);
+    const lo = { x: min.x(), y: min.y(), z: min.z() };
+    const hi = { x: max.x(), y: max.y(), z: max.z() };
+    const origin = { x: triggerPose[0], y: triggerPose[1], z: triggerPose[2] };
+    const inverse = Qtrn.conjugate({ x: triggerPose[3], y: triggerPose[4], z: triggerPose[5], w: triggerPose[6] });
+    const corners: Point3[] = [];
+    for (const x of [lo.x, hi.x]) {
+      for (const y of [lo.y, hi.y]) {
+        for (const z of [lo.z, hi.z]) {
+          corners.push(Pnt3.rot(Pnt3.sub({ x, y, z }, origin), inverse));
+        }
+      }
+    }
+    return pointsInsideConvexPart(this.shape, corners);
+  }
+
+  /** Narrowphase test of one pair - see `testPair()`. */
   private shapesTouch(collisionWorld: Ammo.btDiscreteDynamicsWorld, other: Ammo.btCollisionObject): boolean {
     if (!this.contactCallback) {
       const callback = new Ammo.ConcreteContactResultCallback();
@@ -173,6 +397,14 @@ export class AmmoTriggerComponent
     return this.pairTouching;
   }
 
+  /** Forgets every per-pair result: after a removal from the world, the pairs are gone. */
+  private resetPairState(): void {
+    this.stepId = -1;
+    this.stepPartners.clear();
+    this.stepTouching.clear();
+    this.pairCache.clear();
+  }
+
   clone(): AmmoTriggerComponent {
     return this.world.factory.createTriggerFromShape(this._nativeBody.getCollisionShape(), this.shape, {
       position: this.position,
@@ -183,7 +415,9 @@ export class AmmoTriggerComponent
   addToWorld(world: AmmoGgWorld) {
     super.addToWorld(world);
     this.world.dynamicAmmoWorld?.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    this.world.registerTrigger(this);
     this.overlaps.clear();
+    this.resetPairState();
   }
 
   removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void {
@@ -191,6 +425,8 @@ export class AmmoTriggerComponent
       this.onLeft$.next(Ammo.getPointer(body));
     }
     this.overlaps.clear();
+    this.resetPairState();
+    this.world.unregisterTrigger(this);
     this.world.dynamicAmmoWorld?.removeCollisionObject(this.nativeBody);
     super.removeFromWorld(world, dispose);
   }
@@ -224,6 +460,8 @@ export class AmmoTriggerComponent
 
   dispose(): void {
     this.removedSub.unsubscribe();
+    this.world.unregisterTrigger(this);
+    this.resetPairState();
     if (this.contactCallback) {
       Ammo.destroy(this.contactCallback);
       this.contactCallback = null;

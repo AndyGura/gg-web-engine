@@ -370,7 +370,10 @@ describe('Gg3dLevelLoader', () => {
         },
         'TestLevel',
       );
-      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith({ shape: 'SPHERE', radius: 2 }, expect.anything());
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'SPHERE', radius: 2 },
+        expect.anything(),
+      );
       expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
         { shape: 'CYLINDER', radius: 1, height: 3 },
         expect.anything(),
@@ -388,7 +391,12 @@ describe('Gg3dLevelLoader', () => {
               config: {
                 children: [
                   { shape: 'BOX', position: { x: 0, y: -2.5, z: 0 }, dimensions: { x: 10, y: 5, z: 5 } },
-                  { shape: 'BOX', position: { x: -2.5, y: 2.5, z: 0 }, rotation: yaw90, dimensions: { x: 5, y: 5, z: 5 } },
+                  {
+                    shape: 'BOX',
+                    position: { x: -2.5, y: 2.5, z: 0 },
+                    rotation: yaw90,
+                    dimensions: { x: 5, y: 5, z: 5 },
+                  },
                 ],
               },
             },
@@ -400,8 +408,16 @@ describe('Gg3dLevelLoader', () => {
         {
           shape: 'COMPOUND',
           children: [
-            { position: { x: 0, y: -2.5, z: 0 }, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } } },
-            { position: { x: -2.5, y: 2.5, z: 0 }, rotation: yaw90, shape: { shape: 'BOX', dimensions: { x: 5, y: 5, z: 5 } } },
+            {
+              position: { x: 0, y: -2.5, z: 0 },
+              rotation: undefined,
+              shape: { shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } },
+            },
+            {
+              position: { x: -2.5, y: 2.5, z: 0 },
+              rotation: yaw90,
+              shape: { shape: 'BOX', dimensions: { x: 5, y: 5, z: 5 } },
+            },
           ],
         },
         expect.anything(),
@@ -409,9 +425,9 @@ describe('Gg3dLevelLoader', () => {
     });
 
     it('should reject a BOX trigger (the default shape) without dimensions', async () => {
-      await expect(levelLoader.loadLevel({ entities: [{ class: 'Trigger', config: {} }] }, 'TestLevel')).rejects.toThrow(
-        'Dimensions are required for BOX primitive',
-      );
+      await expect(
+        levelLoader.loadLevel({ entities: [{ class: 'Trigger', config: {} }] }, 'TestLevel'),
+      ).rejects.toThrow('Dimensions are required for BOX primitive');
     });
 
     it('should load a level with cameras, wrapped ready-to-use in a Camera3dEntity parented under the level', async () => {
@@ -1034,6 +1050,26 @@ describe('Gg3dLevelLoader', () => {
           angularVelocity: { x: 0.1, y: 0.2, z: 0.3 },
         },
       });
+    });
+
+    it('serializes a COMPOUND Primitive, children and their offsets included', () => {
+      const body = mock3DBody({
+        shape: 'COMPOUND',
+        children: [
+          { position: { x: 1, y: 0, z: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } } },
+          { rotation: { x: 0, y: 0, z: 1, w: 0 }, shape: { shape: 'SPHERE', radius: 0.5 } },
+        ],
+      });
+      const entity = new Entity3d({ objectBody: body });
+      entity.name = 'CompoundPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.class).toBe('Primitive');
+      expect(json.shape).toBe('COMPOUND');
+      expect(json.config.children).toEqual([
+        { position: { x: 1, y: 0, z: 0 }, shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+        { rotation: { x: 0, y: 0, z: 1, w: 0 }, shape: 'SPHERE', radius: 0.5 },
+      ]);
     });
 
     it('recovers material from object3D when it implements IMaterialReadable3dComponent', () => {

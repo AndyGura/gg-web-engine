@@ -229,7 +229,8 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    work for an entity regardless of how (or by what code) it was actually built, and reflect
    however much its state has drifted since spawn (moved, given a different velocity, ...). The
    built-in `"Primitive"`/`"Trigger"` classes (2D and 3D) work this way: they recover `shape`/
-   `dimensions`/`radius`/etc. from the physics body's own `debugBodySettings.shape`,
+   `dimensions`/`radius`/etc. - for every shape, `COMPOUND` children with their offsets included -
+   from the physics body's own `debugBodySettings.shape`,
    `body`/`linearVelocity`/`angularVelocity` from the live body itself (`bodyOptions`,
    `linearVelocity`, `angularVelocity`), and `material` from the live display object when it
    implements `IMaterialReadable3dComponent`/`IMaterialReadable2dComponent` (see below) - not from

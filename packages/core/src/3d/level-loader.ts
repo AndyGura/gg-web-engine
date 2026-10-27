@@ -95,45 +95,11 @@ const defaultCarChassisBodyOptions: Body3DOptions = {
 const defaultWheelDisplaySize = { tyreRadius: 0.4, tyreWidth: 0.3 };
 
 /**
- * Inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns a live `Shape3DDescriptor` (as read off
- * a rigid body's `debugBodySettings.shape`) back into the `shape`/`config` fields a `"Primitive"`
- * `EntityJson` needs - backs `Gg3dLevelLoader.serializePrimitive`. Returns `undefined` for a shape
- * `"Primitive"` has no `shape` value for (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH`, and
- * anything else not listed in `buildShapeDescriptor`'s own `switch`).
- */
-function primitiveConfigFromShape(
-  shape: Shape3DDescriptor,
-): { shape: string; config: Record<string, any> } | undefined {
-  switch (shape.shape) {
-    case 'BOX':
-      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
-    case 'SPHERE':
-      return { shape: 'SPHERE', config: { radius: shape.radius } };
-    case 'PLANE':
-      return { shape: 'PLANE', config: {} };
-    case 'CAPSULE':
-      return { shape: 'CAPSULE', config: { radius: shape.radius, centersDistance: shape.centersDistance } };
-    case 'CYLINDER':
-      return {
-        shape: 'CYLINDER',
-        config:
-          'radius' in shape
-            ? { radius: shape.radius, height: shape.height }
-            : { radiusX: shape.radiusX, radiusY: shape.radiusY, height: shape.height },
-      };
-    case 'CONE':
-      return { shape: 'CONE', config: { radius: shape.radius, height: shape.height } };
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Full inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns any live `Shape3DDescriptor` (as
- * read off a trigger's `debugBodySettings.shape`) back into the flat `shape` + shape-fields form a
- * level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
+ * Inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns any live `Shape3DDescriptor` (as
+ * read off a rigid body's or trigger's `debugBodySettings.shape`) back into the flat `shape` +
+ * shape-fields form a level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
  * `rotation`). `collisionMargin` has no level-JSON field and is left out. Backs
- * `Gg3dLevelLoader.serializeTrigger`.
+ * `Gg3dLevelLoader.serializePrimitive` and `Gg3dLevelLoader.serializeTrigger`.
  */
 function shapeSettingsFromDescriptor(shape: Shape3DDescriptor): Primitive3DShapeSettings {
   if (shape.shape === 'COMPOUND') {
@@ -842,12 +808,11 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * was actually built with, tracked by every physics adapter regardless of how the body was
    * constructed) and `body`/`linearVelocity`/`angularVelocity` from the live physics body itself
    * (`objectBody.bodyOptions`, `.linearVelocity`, `.angularVelocity`) - not from whatever `config`
-   * the entity may or may not have originally been loaded from. Returns `undefined` (falls through
-   * to the next serializer, then the spawn-record echo) for a shape `"Primitive"` doesn't support
-   * (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH` - buildable directly via
-   * `physicsWorld.factory.createRigidBody`, just not through this level-JSON class) or an entity
-   * with no physics body at all (`objectBody` unset - a display-only primitive has nothing this
-   * serializer can recover a `shape`/`body` from).
+   * the entity may or may not have originally been loaded from. Every `Shape3DDescriptor`
+   * round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`). Returns `undefined` (falls
+   * through to the next serializer, then the spawn-record echo) for an entity with no physics body
+   * at all (`objectBody` unset - a display-only primitive has nothing this serializer can recover a
+   * `shape`/`body` from).
    *
    * Recovers `material` too, when `object3D` implements `IMaterialReadable3dComponent` (true for
    * anything built via `IDisplayObject3dComponentFactory.createPrimitive`/its shortcuts, which is
@@ -863,19 +828,16 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     const positionable = entity as Entity3d<TypeDoc>;
     const body = positionable.objectBody!;
-    const shapeConfig = primitiveConfigFromShape(body.debugBodySettings.shape);
-    if (!shapeConfig) {
-      return undefined;
-    }
+    const { shape, ...shapeConfig } = shapeSettingsFromDescriptor(body.debugBodySettings.shape);
     const material = isMaterialReadable3d(positionable.object3D) ? positionable.object3D.materialOptions : undefined;
     return {
       class: 'Primitive',
-      shape: shapeConfig.shape,
+      shape,
       name: positionable.name,
       position: positionable.position,
       rotation: positionable.rotation,
       config: {
-        ...shapeConfig.config,
+        ...shapeConfig,
         ...(material !== undefined ? { material } : {}),
         body: body.bodyOptions,
         linearVelocity: body.linearVelocity,

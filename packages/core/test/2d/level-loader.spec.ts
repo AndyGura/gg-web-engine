@@ -396,7 +396,10 @@ describe('Gg2dLevelLoader', () => {
         },
         'TestLevel',
       );
-      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith({ shape: 'CIRCLE', radius: 3 }, expect.anything());
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'CIRCLE', radius: 3 },
+        expect.anything(),
+      );
       expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
         {
           shape: 'COMPOUND',
@@ -635,6 +638,26 @@ describe('Gg2dLevelLoader', () => {
           angularVelocity: 0.5,
         },
       });
+    });
+
+    it('serializes a COMPOUND Primitive, children and their offsets included', () => {
+      const body = mock2DBody({
+        shape: 'COMPOUND',
+        children: [
+          { position: { x: 1, y: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } } },
+          { rotation: 0.5, shape: { shape: 'CIRCLE', radius: 0.5 } },
+        ],
+      });
+      const entity = new Entity2d({ objectBody: body });
+      entity.name = 'CompoundPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.class).toBe('Primitive');
+      expect(json.shape).toBe('COMPOUND');
+      expect(json.config.children).toEqual([
+        { position: { x: 1, y: 0 }, shape: 'BOX', dimensions: { x: 1, y: 1 } },
+        { rotation: 0.5, shape: 'CIRCLE', radius: 0.5 },
+      ]);
     });
 
     it('recovers material from object2D when it implements IMaterialReadable2dComponent', () => {

@@ -39,29 +39,11 @@ const defaultBodyOptions: Body2DOptions = {
 };
 
 /**
- * Inverse of `Gg2dLevelLoader.buildShapeDescriptor`: turns a live `Shape2DDescriptor` (as read off
- * a rigid body's `debugBodySettings.shape`) back into the `shape`/`config` fields a `"Primitive"`
- * `EntityJson` needs - backs `Gg2dLevelLoader.serializePrimitive`.
- */
-function primitiveConfigFromShape(
-  shape: Shape2DDescriptor,
-): { shape: string; config: Record<string, any> } | undefined {
-  switch (shape.shape) {
-    case 'BOX':
-      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
-    case 'CIRCLE':
-      return { shape: 'CIRCLE', config: { radius: shape.radius } };
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Full inverse of `Gg2dLevelLoader.buildShapeDescriptor`: turns any live `Shape2DDescriptor` (as
- * read off a trigger's `debugBodySettings.shape`) back into the flat `shape` + shape-fields form a
- * level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
+ * Inverse of `Gg2dLevelLoader.buildShapeDescriptor`: turns any live `Shape2DDescriptor` (as
+ * read off a rigid body's or trigger's `debugBodySettings.shape`) back into the flat `shape` +
+ * shape-fields form a level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
  * `rotation`). `collisionMargin` has no level-JSON field and is left out. Backs
- * `Gg2dLevelLoader.serializeTrigger`.
+ * `Gg2dLevelLoader.serializePrimitive` and `Gg2dLevelLoader.serializeTrigger`.
  */
 function shapeSettingsFromDescriptor(shape: Shape2DDescriptor): Primitive2DShapeSettings {
   if (shape.shape === 'COMPOUND') {
@@ -376,19 +358,16 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     }
     const positionable = entity as Entity2d<TypeDoc>;
     const body = positionable.objectBody!;
-    const shapeConfig = primitiveConfigFromShape(body.debugBodySettings.shape);
-    if (!shapeConfig) {
-      return undefined;
-    }
+    const { shape, ...shapeConfig } = shapeSettingsFromDescriptor(body.debugBodySettings.shape);
     const material = isMaterialReadable2d(positionable.object2D) ? positionable.object2D.materialOptions : undefined;
     return {
       class: 'Primitive',
-      shape: shapeConfig.shape,
+      shape,
       name: positionable.name,
       position: positionable.position,
       rotation: positionable.rotation,
       config: {
-        ...shapeConfig.config,
+        ...shapeConfig,
         ...(material !== undefined ? { material } : {}),
         body: body.bodyOptions,
         linearVelocity: body.linearVelocity,

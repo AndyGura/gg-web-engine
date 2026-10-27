@@ -146,13 +146,16 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
    * two plain rigid bodies goes to both sides' `handleCollisionStart`/`handleCollisionEnd`
    * (`onCollisionStart`/`onCollisionEnd`).
    *
-   * This drains the queue exactly once per `simulate()` call, centrally, rather than leaving each
-   * trigger to drain the whole (shared, single) queue itself from its own `checkOverlaps()` - two
-   * triggers both calling `drainCollisionEvents` in the same frame would otherwise race for the
-   * same queue, with the first drain silently consuming events the second was waiting for (this
-   * was already a latent limitation of the pre-existing single-trigger-only draining approach).
-   * `Rapier2dTriggerComponent.checkOverlaps()` still exists and is still called by `Trigger2dEntity`
-   * every tick, but it no longer drains anything itself - see its own doc.
+   * This drains the queue exactly once per `simulate()` call, centrally: `drainCollisionEvents`
+   * empties the whole (shared, single) queue, so any second consumer draining it - a trigger, say -
+   * would race this one for the same events. `Rapier2dTriggerComponent.checkOverlaps()`, called by
+   * `Trigger2dEntity` every tick, drains nothing - see its own doc.
+   *
+   * A removed collider's stop arrives at the next step under its old handle, and
+   * `ColliderSet.get` looks a handle up by its arena index alone, ignoring the generation: once a
+   * new collider has taken the freed slot, the old handle resolves to *that* collider (of whichever
+   * body created it - possibly the same body re-added). Such an event is skipped unless the
+   * resolved collider's own `handle` equals the reported one; an unoccupied slot gives `null`.
    */
   private dispatchCollisionEvents(): void {
     if (!this._nativeWorld) {
@@ -162,9 +165,13 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     this.eventQueue.drainCollisionEvents((h1, h2, started) => {
       const collider1 = nativeWorld.colliders.get(h1);
       const collider2 = nativeWorld.colliders.get(h2);
-      const body1 = collider1?.parent();
-      const body2 = collider2?.parent();
-      if (!collider1 || !collider2 || !body1 || !body2) {
+      // a stale handle of a removed collider resolves to whichever collider took its slot since
+      if (!collider1 || !collider2 || collider1.handle !== h1 || collider2.handle !== h2) {
+        return;
+      }
+      const body1 = collider1.parent();
+      const body2 = collider2.parent();
+      if (!body1 || !body2) {
         return;
       }
       const c1 = this.handleIdEntityMap.get(body1.handle);
