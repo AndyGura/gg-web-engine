@@ -30,6 +30,11 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- core: `Gg3dWorld.frame` (with `frame$` and a `frame` constructor option), the global placement of
+  a 3D world's local origin - a translation plus a yaw about `+Z` - for open worlds made of
+  sections each simulated near its own origin. Identity by default. `toGlobalPoint`/`toLocalPoint`,
+  `toGlobalDirection`/`toLocalDirection` and `toGlobalRotation`/`toLocalRotation` convert through
+  it; `Frame3d` is the immutable value behind it, with `compose`, `inverse` and `equals`.
 - core: `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` hold a direction the
   way its key does, for an on-screen button or anything else that is either pushed or not: it is
   part of `output$`, and `oppositeKeys` decides it together with the keys. Analog contributions

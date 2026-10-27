@@ -2002,6 +2002,32 @@ full statement; `Pnt3.Z` is "up" everywhere in this engine's 3D code (core, ever
 example), with no per-world way to change it. Any new 3D interface/entity/math helper you add
 should assume this rather than taking an axis convention as a parameter.
 
+## World frame: `Gg3dWorld.frame` and `Frame3d` (3D only)
+
+A large open world can be split into sections, each simulated in its own `Gg3dWorld` near the
+origin, where float precision is best. `Gg3dWorld.frame` (a `Frame3d`, `src/3d/models/frame-3d.ts`)
+says where that world's local origin sits globally: `global = rotZ(yaw) * local + position`.
+Everything inside the world - physics, rendering, every entity's `position`/`rotation` - is local;
+the frame only maps it. Defaults to `Frame3d.IDENTITY`, so a world that never sets it has
+local = global and nothing about it changes.
+
+- **Yaw only, by design.** Pitch/roll would tilt the local `+Z` away from the global one, i.e. tilt
+  gravity; a frame never does that.
+- `Frame3d` is an immutable, frozen value (`yaw` wrapped to (-PI, PI], `toJSON()` gives
+  `{ position, yaw }`). Conversions: `toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+  `toLocalDirection` (rotation only: velocities, angular velocity vectors, offsets, normals) and
+  `toGlobalRotation`/`toLocalRotation` (quaternions: `yawQuat * q` and its inverse). The world has
+  the same six methods, delegating to its current frame.
+- Frames compose like functions: `a.compose(b)` = `a ∘ b` (apply `b` first). The transform moving
+  content from one frame's local space into another's, keeping its global pose, is
+  `newFrame.inverse().compose(oldFrame)`. `equals(other, posEps, yawEps)` compares yaw on the circle.
+- Setting `world.frame` (accepts any `Frame3dLike`) only changes the mapping - no entity moves - and
+  emits on `frame$` only when the value actually differs. It is meant for world creation (or the
+  `frame` constructor option).
+- 2D worlds have no frame.
+- Anything that must compare across sections (a network layer's wire format, saved global
+  positions) goes through these helpers; never apply a frame to state the physics adapter reads.
+
 ## Build & test
 
 ```bash
