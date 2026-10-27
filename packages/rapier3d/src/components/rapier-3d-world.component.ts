@@ -327,6 +327,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    * slept before it is put back to sleep after it - Rapier wakes any body whose pose was written,
    * whatever `wakeUp` said. Its collision events are delivered as usual; a switch moves everything
    * together, so there are none. Vehicles are not updated for it.
+   *
+   * It is a full step, only short: gravity, applied forces and the contact solver run for 1 µs too.
+   * Gravity and forces move a body by a negligible amount in that time, but the solver's
+   * penetration correction does not scale with the step's length and can still nudge resting
+   * contacts apart by a fraction of their penetration: a sub-millimetre settle per switch. Rapier
+   * has no narrower call that refreshes the broad phase alone.
    */
   onFrameSwitch(_delta: Frame3d): void {
     const world = this._nativeWorld;
@@ -350,8 +356,11 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     });
     const timestep = world.timestep;
     world.timestep = Rapier3dWorldComponent.FRAME_SWITCH_STEP;
-    world.step(this.eventQueue);
-    world.timestep = timestep;
+    try {
+      world.step(this.eventQueue);
+    } finally {
+      world.timestep = timestep;
+    }
     const pendingEvents: (() => void)[] = [];
     this.collectCollisionEvents(pendingEvents);
     for (const body of sleeping) {

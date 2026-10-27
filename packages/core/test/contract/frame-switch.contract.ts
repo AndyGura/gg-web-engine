@@ -442,6 +442,26 @@ export function describeFrameSwitchContract(
         expect(Pnt3.dist(world.toGlobalPoint(hit.hitPoint!), { x: 9.5, y: 0, z: 2 })).toBeLessThan(0.01);
       });
 
+      it('a force and a torque applied just before a switch push in the same global direction', () => {
+        const pushed = box({ x: 0, y: 0, z: 50 }, false);
+        const body = pushed.objectBody as IRigidBody3dComponent;
+        step(2);
+        const v0 = world.toGlobalDirection(body.linearVelocity);
+        const w0 = world.toGlobalDirection(body.angularVelocity);
+        // between two ticks, so the force waits for the next step
+        body.applyForce(world.toLocalDirection({ x: 1000, y: 0, z: 0 }));
+        body.applyTorque(world.toLocalDirection({ x: 50, y: 0, z: 0 }));
+        world.switchFrame(new Frame3d(Pnt3.O, Math.PI / 2));
+        step(1);
+        const dv = Pnt3.sub(world.toGlobalDirection(body.linearVelocity), v0);
+        const dw = Pnt3.sub(world.toGlobalDirection(body.angularVelocity), w0);
+        // 100 m/s² along global X for one tick
+        expect(dv.x).toBeGreaterThan(1);
+        expect(Math.abs(dv.y)).toBeLessThan(0.01);
+        expect(dw.x).toBeGreaterThan(0.1);
+        expect(Math.abs(dw.y)).toBeLessThan(0.01);
+      });
+
       it('a falling body keeps falling at the same global speed, without a jump or a streak', () => {
         groundEntity();
         const reference = box({ x: 0, y: 0, z: 30 }, false);

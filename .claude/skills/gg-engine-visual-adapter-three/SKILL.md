@@ -34,6 +34,13 @@ with faces that carry a marker on their top and left edges (solid-colored faces 
 but not a rotated or mirrored image), and, for the environment map, the reflection on a
 mirror-like sphere.
 
+A frame switch's yaw (`onFrameSwitch`) is accumulated in `frameYaw` and goes into the same two
+Eulers as `Rz(frameYaw) * Rx(PI/2)`: Euler order `'ZYX'`, since three.js multiplies an Euler's
+matrices in the order its order string lists them (`'XYZ'` would turn the sky about its own Y-up
+axis instead). three.js samples at `rotation^T * viewDirection` (plus a constant X mirror for cube
+maps), so the sky turns with the world's axes and stays put globally;
+`three-light.component.spec.ts` checks that with the transposed matrix.
+
 ## Display objects
 
 - **`Object3D.traverse()` fires on the root node itself first, then recursively on children.**

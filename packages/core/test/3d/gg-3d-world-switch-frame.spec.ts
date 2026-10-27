@@ -1,8 +1,10 @@
 import {
   AudioSource3dEntity,
+  Camera3dAnimator,
   Camera3dEntity,
   CharacterController3dEntity,
   Entity3d,
+  Entity3dPositioningAnimator,
   Frame3d,
   FrameSwitch,
   Gg3dWorld,
@@ -449,6 +451,80 @@ describe('Gg3dWorld.switchFrame', () => {
     world.switchFrame(SWITCH_TO);
     expect(plain.position).toEqual({ x: 1, y: 2, z: 3 });
     expect(received.length).toBe(1);
+  });
+
+  it('animators follow what their function reads live, without moving it again', () => {
+    const car = new Entity3d({ objectBody: mock3DBody() });
+    world.addEntity(car);
+    car.position = { x: 40, y: -12, z: 1 };
+    const renderer = mockRenderer(mockCamera());
+    world.addEntity(renderer);
+    const camera = new Camera3dAnimator(renderer, () => ({
+      position: Pnt3.add(car.position, { x: 0, y: -6, z: 2 }),
+      target: car.position,
+    }));
+    world.addEntity(camera);
+    const follower = new Entity3d({ objectBody: mock3DBody() });
+    world.addEntity(follower);
+    world.addEntity(
+      new Entity3dPositioningAnimator(follower, () => ({
+        position: Pnt3.add(car.position, Pnt3.Z),
+        rotation: car.rotation,
+      })),
+    );
+    world.worldClock.step(16);
+    world.switchFrame(SWITCH_TO);
+    world.worldClock.step(16);
+    expectPointClose(renderer.position, Pnt3.add(car.position, { x: 0, y: -6, z: 2 }));
+    expectPointClose(follower.position, Pnt3.add(car.position, Pnt3.Z));
+  });
+
+  it("turns the visual scene's environment through its optional hook", () => {
+    const onFrameSwitch = jest.fn();
+    (world.visualScene as any).onFrameSwitch = onFrameSwitch;
+    const events: FrameSwitch[] = [];
+    world.frameSwitched$.subscribe(e => events.push(e));
+    world.switchFrame(SWITCH_TO);
+    expect(onFrameSwitch).toHaveBeenCalledTimes(1);
+    expect(onFrameSwitch).toHaveBeenCalledWith(events[0].delta);
+  });
+
+  it('a switch requested while one is applied runs right after it', () => {
+    const entity = new Entity3d({ objectBody: mock3DBody() });
+    world.addEntity(entity);
+    entity.position = { x: 7, y: 8, z: 9 };
+    const global = world.toGlobalPoint(entity.position);
+    const second = new Frame3d({ x: -3000, y: 12, z: -1 }, -2.5);
+    const third = new Frame3d({ x: 50, y: 50, z: 0 }, 0.5);
+    // e.g. a collision callback the physics world fires during its own frame switch
+    physicsWorld.onFrameSwitch.mockImplementationOnce(() => world.switchFrame(second));
+    const events: FrameSwitch[] = [];
+    world.frameSwitched$.subscribe(e => {
+      events.push(e);
+      if (events.length === 2) {
+        world.switchFrame(third);
+      }
+    });
+    world.switchFrame(SWITCH_TO);
+    expect(events.map(e => e.frame)).toEqual([SWITCH_TO, second, third]);
+    expect(events[1].previousFrame).toBe(SWITCH_TO);
+    expect(world.frame).toBe(third);
+    expect(world.pendingFrame).toBeNull();
+    expectPointClose(world.toGlobalPoint(entity.position), global, 8);
+  });
+
+  it('a physics step that throws does not hold later switches back', () => {
+    simulate.mockImplementationOnce(() => {
+      throw new Error('step failure');
+    });
+    try {
+      world.worldClock.step(16);
+    } catch {
+      // whether the error reaches the caller depends on rxjs's error reporting
+    }
+    world.switchFrame(SWITCH_TO);
+    expect(world.frame).toBe(SWITCH_TO);
+    expect(world.pendingFrame).toBeNull();
   });
 
   it('switchBodyFrame falls back to setters and moves a component once per delta', () => {

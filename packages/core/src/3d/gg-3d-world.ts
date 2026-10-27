@@ -265,10 +265,15 @@ export class Gg3dWorld<
    * Called during a world tick before its physics step is done (from an entity ticking before
    * `TickOrder.PHYSICS_SIMULATION`, or from a collision or trigger callback), the switch waits for
    * that step to finish and is applied right after it, before the transforms are bound and the
-   * frame is rendered; a second call in the meantime replaces the pending target. Called at any
-   * other time, it is applied immediately.
+   * frame is rendered; a second call in the meantime replaces the pending target. Called while a
+   * switch is being applied (from an `onFrameSwitch` hook, a collision or trigger callback the
+   * physics world fires during its own `onFrameSwitch`, or a `frameSwitched$` subscriber), it is
+   * applied right after that switch completes. Called at any other time, it is applied immediately.
    *
-   * Entities without the hook keep their state. While the dev console is loaded
+   * Only entities in the world at the time are moved: one taken out with `removeEntity` and added
+   * back later keeps its old local pose, which the app maps through the switch's `delta`. The
+   * visual scene turns its directional environment (sky, environment map) by the yaw through its
+   * optional `onFrameSwitch`. Entities without the hook keep their state. While the dev console is loaded
    * (`window.ggstatic`), each such entity class with a `position` and `rotation` is reported once
    * with a console warning.
    *
@@ -286,7 +291,7 @@ export class Gg3dWorld<
    */
   public switchFrame(newFrame: Frame3dLike): void {
     const target = Frame3d.from(newFrame);
-    if (this.isBeforePhysicsStep) {
+    if (this.isBeforePhysicsStep || this.applyingFrameSwitch) {
       this.pendingFrameSwitch = target;
       return;
     }
@@ -310,6 +315,8 @@ export class Gg3dWorld<
   }
 
   private pendingFrameSwitch: Frame3d | null = null;
+  // a switch is being applied: switchFrame calls made meanwhile wait for it
+  private applyingFrameSwitch: boolean = false;
   // entity classes switchFrame already warned about (dev console only)
   private readonly frameSwitchWarnedTypes: Set<string> = new Set();
   private readonly _frameSwitched$: Subject<FrameSwitch> = new Subject<FrameSwitch>();
@@ -324,6 +331,20 @@ export class Gg3dWorld<
   }
 
   private applyFrameSwitch(target: Frame3d): void {
+    this.applyingFrameSwitch = true;
+    try {
+      this.moveIntoFrame(target);
+    } finally {
+      this.applyingFrameSwitch = false;
+    }
+    const next = this.pendingFrameSwitch;
+    if (next && !this.isBeforePhysicsStep) {
+      this.pendingFrameSwitch = null;
+      this.applyFrameSwitch(next);
+    }
+  }
+
+  private moveIntoFrame(target: Frame3d): void {
     const previousFrame = this._frame$.value;
     const delta = target.inverse().compose(previousFrame);
     // deepest first: a parent that places its children (a vehicle's wheels) has the last word
@@ -352,6 +373,7 @@ export class Gg3dWorld<
       }
     }
     this.physicsWorld?.onFrameSwitch?.(delta);
+    this.visualScene?.onFrameSwitch?.(delta);
     this._frame$.next(target);
     this._frameSwitched$.next({ delta, previousFrame, frame: target });
   }

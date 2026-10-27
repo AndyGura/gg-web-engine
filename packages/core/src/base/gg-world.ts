@@ -552,44 +552,49 @@ export abstract class GgWorld<
     };
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
       this._isBeforePhysicsStep = true;
-      this.tickStarted$.next();
       let i = 0;
-      // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
-      for (i; i < this.tickListeners.length; i++) {
-        if (this.tickListeners[i].tickOrder >= TickOrder.PHYSICS_SIMULATION) {
-          break;
-        }
-        forwardTick(this.tickListeners[i], elapsed, delta);
-      }
-      // run physics simulation - tickForwardTo$/tickForwardedTo$('PHYSICS_WORLD') fire exactly
-      // once per world tick either way, wrapping the whole fixed-step batch below rather than each
-      // individual simulate() call, so a hook listening for them can't tell how many substeps ran.
-      if (this.physicsWorld) {
-        this.tickForwardTo$.next('PHYSICS_WORLD');
-        if (this.fixedPhysicsStep !== undefined) {
-          this.physicsAccumulator += delta;
-          let steps = 0;
-          while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsStepsPerTick) {
-            this.physicsWorld.simulate(this.fixedPhysicsStep);
-            this.physicsAccumulator -= this.fixedPhysicsStep;
-            steps++;
+      // cleared even if a tick listener or the physics step throws: left set, it would hold every
+      // later `Gg3dWorld.switchFrame` back for a physics step
+      try {
+        this.tickStarted$.next();
+        // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
+        for (i; i < this.tickListeners.length; i++) {
+          if (this.tickListeners[i].tickOrder >= TickOrder.PHYSICS_SIMULATION) {
+            break;
           }
-          if (steps >= this.maxPhysicsStepsPerTick && this.physicsAccumulator >= this.fixedPhysicsStep) {
-            // spiral-of-death guard: this tick alone accumulated more time than
-            // maxPhysicsStepsPerTick fixed steps can consume (e.g. a huge delta from a
-            // backgrounded tab) - drop the rest rather than let the debt grow tick over tick.
-            warnOnce(
-              `GgWorld "${this.name}": fixedPhysicsStep accumulator exceeded maxPhysicsStepsPerTick ` +
-                `(${this.maxPhysicsStepsPerTick}) in one tick - dropping the remaining accumulated time`,
-            );
-            this.physicsAccumulator = 0;
-          }
-        } else {
-          this.physicsWorld.simulate(delta);
+          forwardTick(this.tickListeners[i], elapsed, delta);
         }
-        this.tickForwardedTo$.next('PHYSICS_WORLD');
+        // run physics simulation - tickForwardTo$/tickForwardedTo$('PHYSICS_WORLD') fire exactly
+        // once per world tick either way, wrapping the whole fixed-step batch below rather than each
+        // individual simulate() call, so a hook listening for them can't tell how many substeps ran.
+        if (this.physicsWorld) {
+          this.tickForwardTo$.next('PHYSICS_WORLD');
+          if (this.fixedPhysicsStep !== undefined) {
+            this.physicsAccumulator += delta;
+            let steps = 0;
+            while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsStepsPerTick) {
+              this.physicsWorld.simulate(this.fixedPhysicsStep);
+              this.physicsAccumulator -= this.fixedPhysicsStep;
+              steps++;
+            }
+            if (steps >= this.maxPhysicsStepsPerTick && this.physicsAccumulator >= this.fixedPhysicsStep) {
+              // spiral-of-death guard: this tick alone accumulated more time than
+              // maxPhysicsStepsPerTick fixed steps can consume (e.g. a huge delta from a
+              // backgrounded tab) - drop the rest rather than let the debt grow tick over tick.
+              warnOnce(
+                `GgWorld "${this.name}": fixedPhysicsStep accumulator exceeded maxPhysicsStepsPerTick ` +
+                  `(${this.maxPhysicsStepsPerTick}) in one tick - dropping the remaining accumulated time`,
+              );
+              this.physicsAccumulator = 0;
+            }
+          } else {
+            this.physicsWorld.simulate(delta);
+          }
+          this.tickForwardedTo$.next('PHYSICS_WORLD');
+        }
+      } finally {
+        this._isBeforePhysicsStep = false;
       }
-      this._isBeforePhysicsStep = false;
       this.onPhysicsStepped();
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {

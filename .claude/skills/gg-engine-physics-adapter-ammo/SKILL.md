@@ -1202,7 +1202,9 @@ objects: triggers, character controllers), `AmmoRigidBodyComponent`, `AmmoRaycas
   hence velocities first. For a kinematic body it takes the interpolation transform from the current
   world transform, already the new one, so `saveKinematicState` derives no velocity from the switch.
   Then the motion state (`getMotionState().setWorldTransform`), which kinematic bodies and wheels
-  are placed from.
+  are placed from. A dynamic body's pending `getTotalForce()`/`getTotalTorque()` (forces applied
+  since the last step; a force at a point is already split into the two) is cleared and re-applied
+  rotated.
 - **AABB**: `updateSingleAabb` on every moved object. Bullet refreshes AABBs in a step only for
   active, non-static objects, so without it a static or sleeping body stays findable by raycasts and
   overlaps only where it was.

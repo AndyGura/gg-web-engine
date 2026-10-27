@@ -81,8 +81,23 @@ export class AmmoRigidBodyComponent
    *   objects in the next step: a static body or a sleeping one would otherwise stay findable only
    *   where it was.
    * Contact manifolds are kept (`AmmoWorldComponent.onFrameSwitch` moves their world-space points).
+   * A force or torque applied since the last step (`applyForce`/`applyTorque`) is rotated too; one
+   * applied at a point is already split into a force and a torque about the centre of mass.
    */
   public onFrameSwitch(delta: Frame3d): void {
+    if (this.bodyType === 'dynamic') {
+      const f = this.nativeBody.getTotalForce();
+      const t = this.nativeBody.getTotalTorque();
+      const force = delta.toGlobalDirection({ x: f.x(), y: f.y(), z: f.z() });
+      const torque = delta.toGlobalDirection({ x: t.x(), y: t.y(), z: t.z() });
+      if (force.x || force.y || force.z || torque.x || torque.y || torque.z) {
+        this.nativeBody.clearForces();
+        const atCentre = new Ammo.btVector3(0, 0, 0);
+        this.nativeBody.applyForce(AmmoBodyComponent.scratchVector(force.x, force.y, force.z), atCentre);
+        Ammo.destroy(atCentre);
+        this.nativeBody.applyTorque(AmmoBodyComponent.scratchVector(torque.x, torque.y, torque.z));
+      }
+    }
     const v = this.nativeBody.getLinearVelocity();
     const w = this.nativeBody.getAngularVelocity();
     const lv = delta.toGlobalDirection({ x: v.x(), y: v.y(), z: v.z() });

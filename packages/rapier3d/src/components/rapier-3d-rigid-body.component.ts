@@ -530,6 +530,8 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
    * read the switch as a kinematic motion. Contacts survive as they are: Rapier keeps contact points
    * and normals in the colliders' local frames. The colliders follow at the world's own
    * `onFrameSwitch`, after every body moved. A body out of the world moves its stored descriptor.
+   * A force or torque applied since the last step (`applyForce`/`applyTorque`) is rotated too; one
+   * applied at a point is already split into a force and a torque about the centre of mass.
    */
   onFrameSwitch(delta: Frame3d): void {
     const body = this._nativeBody;
@@ -561,6 +563,14 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       const av = delta.toGlobalDirection(body.angvel());
       body.setLinvel(new Vector3(lv.x, lv.y, lv.z), false);
       body.setAngvel(new Vector3(av.x, av.y, av.z), false);
+    }
+    if (this.world.forcedBodies.has(this)) {
+      const force = delta.toGlobalDirection(body.userForce());
+      const torque = delta.toGlobalDirection(body.userTorque());
+      body.resetForces(false);
+      body.resetTorques(false);
+      body.addForce(new Vector3(force.x, force.y, force.z), false);
+      body.addTorque(new Vector3(torque.x, torque.y, torque.z), false);
     }
   }
 

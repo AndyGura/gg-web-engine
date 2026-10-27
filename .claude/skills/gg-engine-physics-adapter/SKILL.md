@@ -532,7 +532,8 @@ plus `IPhysicsWorld3dComponent.onFrameSwitch` for world-level state; the world's
 body's. What the hooks must achieve, whatever the engine:
 
 - The pose moves without waking anything and without changing the activation/sleep state; linear
-  and angular velocities rotate (`delta.toGlobalDirection`).
+  and angular velocities rotate (`delta.toGlobalDirection`), and so do a force and a torque applied
+  since the last step and still waiting for the next one.
 - Anything the engine derives from the previous pose moves too, or the next step reads the switch as
   motion: interpolation transforms, kinematic targets, cached world-space contact points and normals.
 - Broad-phase bounds are current right after the switch: a raycast, a character sweep or a
@@ -554,7 +555,8 @@ hold the thresholds that far out - its coordinates there have a 1-2 mm step - so
 `farBounds` set to its measured drift with margin, and its spec says why and how the drift was shown
 to be the precision and not the switch (the same switches on the first two ticks, a car at rest, give
 the same drift). Then triggers keep their overlaps, a sleeping body stays asleep, a raycast right
-after the switch finds a moved static body, and a falling body keeps its velocity without a streak.
+after the switch finds a moved static body, a force and a torque applied just before a switch push in
+the same global direction, and a falling body keeps its velocity without a streak.
 `options.ground` replaces the default static `PLANE` for an engine without one; `options.report`
 receives the measured deviations.
 

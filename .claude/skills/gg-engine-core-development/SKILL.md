@@ -117,7 +117,12 @@ content by it, then sets `frame` and emits `frameSwitched$` (`FrameSwitch`: `del
 `isBeforePhysicsStep`), it is parked in `pendingFrame` and applied from `onPhysicsStepped()` - the
 protected no-op hook `GgWorld.tick` calls right after the physics block (also in a world without
 physics), before the post-physics listeners and rendering. Otherwise it applies at once. A second
-switch before the pending one applies replaces it.
+switch before the pending one applies replaces it. A call made while a switch is being applied (an
+`onFrameSwitch` hook, a collision or trigger callback fired by the physics world's own hook, a
+`frameSwitched$` subscriber) is parked the same way and applied right after that switch completes,
+so `frame` and `frameSwitched$` always describe every move. `GgWorld`'s tick clears
+`isBeforePhysicsStep` in a `finally`: a throwing physics step would otherwise hold every later switch
+back.
 
 What gets moved, in order:
 - Every entity in `world.children` (the flat list, nested ones included), deepest first, through its
@@ -127,6 +132,12 @@ What gets moved, in order:
   front), velocities, offsets and normals through `toGlobalDirection` (rotated only).
 - Then `physicsWorld.onFrameSwitch?.(delta)` - for world-level native state (contact manifolds, the
   broad phase), after every body moved.
+- Then `visualScene.onFrameSwitch?.(delta)` (`IVisualScene3dComponent`): turns the directional
+  environment (a sky texture `background`, the `environmentMap`) by `delta.yaw`, so the sky keeps its
+  global orientation. `Environment3dEntity` only sets those fields and needs no hook of its own.
+
+Only entities in `world.children` at the time move: one removed and added back later (pooling)
+keeps its old local pose, for the app to map.
 
 Helpers in the same file: `switchBodyFrame(component, delta)` hands a physics component to its own
 optional `onFrameSwitch` (on `IRigidBody3dComponent`, `ITrigger3dComponent`,
@@ -142,10 +153,12 @@ State that is easy to miss when writing a hook: velocities cached for the next t
 (`RaycastVehicle3dEntity`'s pre-step velocities, `Grabbable3dEntity`'s last commanded velocity,
 the character's fall/air/actual velocity and `externalDisplacement`), smoothing targets (camera
 controllers rotate `theta` by the yaw and move their target, reset their motion and re-emit the
-pending target), output frames of animators (`Entity3dPositioningAnimator`/`Camera3dAnimator`
-compose a per-switch frame onto what their function returns), functions returning world-space
-values (`SurfaceFollowingEntity.followFunc` is wrapped by the composed frame; assigning a new one
-resets it), and asynchronous loads (`MapGraph3dEntity` composes the switches made while a chunk's
+pending target), forces applied since the last step (the adapters' rigid-body hooks rotate them),
+functions returning world-space values (`SurfaceFollowingEntity.followFunc` is wrapped by the composed frame; assigning a new one
+resets it; the animators `Entity3dPositioningAnimator`/`Camera3dAnimator` are the exception: their
+function is re-evaluated every tick and typically reads live entity positions - a follow camera -
+so they have no hook and their function answers in the current frame; a path fixed in space is
+written in global coordinates and mapped through `world.toLocalPoint`), and asynchronous loads (`MapGraph3dEntity` composes the switches made while a chunk's
 GLB loads and applies them when it lands; entities still being prepared are moved at once).
 
 An entity with `position` and `rotation` but no hook is left in place, and - only when

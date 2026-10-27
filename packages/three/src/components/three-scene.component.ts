@@ -1,5 +1,6 @@
 import {
   Environment3dOpts,
+  Frame3d,
   IVisualScene3dComponent,
   MAIN_RENDER_LAYER,
   notInitializedError,
@@ -102,21 +103,50 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
     return texture ? Math.PI / 2 : 0;
   }
 
+  /** The sum of the yaws of every frame switch so far - see `onFrameSwitch`. */
+  private frameYaw: number = 0;
+
+  /**
+   * `IVisualScene3dComponent.onFrameSwitch`: turns the sky and the environment map about `+Z` by
+   * `delta.yaw` (on top of their Z-up quarter turn), so they keep their global orientation.
+   */
+  onFrameSwitch(delta: Frame3d): void {
+    if (delta.yaw === 0) {
+      return;
+    }
+    this.frameYaw = (this.frameYaw + delta.yaw) % (2 * Math.PI);
+    this.applyEnvironmentRotation();
+  }
+
+  /**
+   * Both rotations are `Rz(frameYaw) * Rx(zUpRotationX)`: three.js multiplies the Euler angles'
+   * matrices in the order the order string lists them, so `'ZYX'` is that product.
+   */
+  private applyEnvironmentRotation(): void {
+    const scene = this._nativeScene;
+    if (!scene) {
+      return;
+    }
+    const { background, environmentMap } = this._environment;
+    const sky = typeof background === 'number' ? null : background;
+    scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(sky), 0, sky ? this.frameYaw : 0, 'ZYX');
+    scene.environmentRotation.set(
+      ThreeSceneComponent.zUpRotationX(environmentMap),
+      0,
+      environmentMap ? this.frameYaw : 0,
+      'ZYX',
+    );
+  }
+
   private applyEnvironment(): void {
     const scene = this._nativeScene;
     if (!scene) {
       return;
     }
     const { background, environmentMap, fog } = this._environment;
-    if (typeof background === 'number') {
-      scene.background = new Color(background);
-      scene.backgroundRotation.set(0, 0, 0);
-    } else {
-      scene.background = background;
-      scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(background), 0, 0);
-    }
+    scene.background = typeof background === 'number' ? new Color(background) : background;
     scene.environment = environmentMap;
-    scene.environmentRotation.set(ThreeSceneComponent.zUpRotationX(environmentMap), 0, 0);
+    this.applyEnvironmentRotation();
     if (!fog) {
       scene.fog = null;
     } else if (fog.type === 'LINEAR') {
@@ -169,5 +199,6 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
     this.beforeRenderHooks.clear();
     this._nativeScene = this.createNativeScene();
     this._environment = { background: null, environmentMap: null, fog: null };
+    this.frameYaw = 0;
   }
 }

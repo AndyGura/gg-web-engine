@@ -291,11 +291,10 @@ export class Rapier3dRaycastVehicleComponent
     const castDelta = this.castFrameDelta;
     const castPoint = castDelta ? castDelta.toGlobalPoint(point) : Pnt3.clone(point);
     const groundNormal = castDelta ? castDelta.toGlobalDirection(normal) : Pnt3.clone(normal);
-    const castFrom = castDelta ? castDelta.toGlobalPoint(castHardPoint) : castHardPoint;
     const ray = this.currentWheelRay(wheel);
     // the cast contact's distance along the ray, from the current hard point: the contact carried
-    // with the chassis, on the wheel's current ray
-    const carried = Pnt3.add(ray.hardPoint, Pnt3.scalarMult(ray.direction, Pnt3.dist(castPoint, castFrom)));
+    // with the chassis, on the wheel's current ray (a distance, the same in any frame)
+    const carried = Pnt3.add(ray.hardPoint, Pnt3.scalarMult(ray.direction, Pnt3.dist(point, castHardPoint)));
     // slide it along that ray back onto the ground plane (along the normal instead for a ray nearly
     // parallel to the ground, which would otherwise meet the plane far away)
     const offGround = Pnt3.dot(Pnt3.sub(carried, castPoint), groundNormal);

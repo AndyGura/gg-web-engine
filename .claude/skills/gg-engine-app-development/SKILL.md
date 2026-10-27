@@ -452,7 +452,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   (`world.pendingFrame` shows it meanwhile). `world.frameSwitched$` emits `{ delta, previousFrame,
   frame }` afterwards: anything of the app's own holding world-space coordinates outside entities (a
   cached target point, a path) moves through `delta.toGlobalPoint`/`toGlobalDirection`/
-  `toGlobalRotation`. An app entity class holding such state implements `IFrameSwitchable`
+  `toGlobalRotation`. Only entities in the world at the time move: one removed and re-added later (a
+pool) is mapped by the app. Animator functions (`Camera3dAnimator`, `Entity3dPositioningAnimator`)
+answer in the current frame each tick, so a follow camera reading the car's position just keeps
+following; a path fixed in space is written in global coordinates and mapped with
+`world.toLocalPoint`/`toLocalRotation`. An app entity class holding such state implements `IFrameSwitchable`
   (`onFrameSwitch(delta)`; `Entity3d` subclasses call `super.onFrameSwitch(delta)` first); with the
   dev console loaded, a switch warns once per positioned entity class without the hook. Keep the
   content near the new origin: a far frame (km away) costs single-precision physics its accuracy.

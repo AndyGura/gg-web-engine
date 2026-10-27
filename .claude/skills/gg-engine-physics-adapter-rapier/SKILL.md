@@ -1087,7 +1087,8 @@ The hooks (see `gg-engine-physics-adapter` for the contract) live on `Rapier3dRi
 - **Bodies** teleport with `setTranslation`/`setRotation(..., false)` and rotated
   `setLinvel`/`setAngvel(..., false)`. A `kinematic_pos` body's `nextTranslation()`/`nextRotation()`
   move with it (`setNextKinematic*`), or the next step reads the switch as kinematic motion. A body
-  out of the world moves its `_bodyDescr`. Contacts need nothing: Rapier keeps contact points and
+  out of the world moves its `_bodyDescr`. A body in the world's `forcedBodies` has its
+  `userForce()`/`userTorque()` reset and re-added rotated. Contacts need nothing: Rapier keeps contact points and
   normals in the colliders' local frames.
 - **Character controller**: body and next kinematic target to the same moved pose (as its setters),
   `up` and the cached ground normal rotated, then `propagateModifiedBodyPositionsToColliders`.
@@ -1104,8 +1105,11 @@ The hooks (see `gg-engine-physics-adapter` for the contract) live on `Rapier3dRi
   course over 20 s. The world hook therefore runs one `FRAME_SWITCH_STEP` (1 µs) step: every
   `kinematic_pos` body targets its current pose for it (its target restored afterwards), every body
   that slept before it is put back to sleep (Rapier wakes any body whose pose was written, whatever
-  `wakeUp` said), and its collision events are collected and delivered (there are none). Its cost:
-  a car's trajectory after an *identity* switch differs by ~0.7 mm over 20 s.
+  `wakeUp` said), and its collision events are collected and delivered (there are none); the world's
+  `timestep` is restored in a `finally`. Its cost: gravity and forces act for 1 µs (negligible), but
+  the solver's penetration correction does not scale with the step length, and a car's trajectory
+  after an *identity* switch differs by ~0.7 mm over 20 s. Rapier 0.21 has no narrower broad-phase
+  refresh.
 - **Far from the origin, Rapier is single precision.** 15-21 km out a coordinate has a 1-2 mm step:
   the frame-switch suite's `far` car drive differs from the near-origin one by ~14 cm in position
   (heading and speed stay within the thresholds), and spawning the car there (switches on the first
