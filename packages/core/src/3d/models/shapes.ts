@@ -44,13 +44,21 @@ export function getCylinderRadii(shape: CylinderRadius): { radiusX: number; radi
 }
 
 /**
+ * `true` when `descriptor` is one of `kinds`, or a `COMPOUND` with one of them anywhere among its
+ * children, however deeply nested.
+ */
+export function shapeContains(descriptor: Shape3DDescriptor, kinds: readonly Shape3DDescriptor['shape'][]): boolean {
+  if (kinds.includes(descriptor.shape)) {
+    return true;
+  }
+  return descriptor.shape === 'COMPOUND' && descriptor.children.some(c => shapeContains(c.shape, kinds));
+}
+
+/**
  * `true` when `descriptor` is a `MESH`, or a `COMPOUND` with a `MESH` anywhere among its children.
  */
 export function shapeHasMesh(descriptor: Shape3DDescriptor): boolean {
-  if (descriptor.shape === 'MESH') {
-    return true;
-  }
-  return descriptor.shape === 'COMPOUND' && descriptor.children.some(c => shapeHasMesh(c.shape));
+  return shapeContains(descriptor, ['MESH']);
 }
 
 /**

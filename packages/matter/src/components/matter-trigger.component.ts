@@ -44,9 +44,9 @@ export class MatterTriggerComponent
    * removed body's pairs stay in `engine.pairs` until the next `Engine.update` ends them, and a
    * character controller's phantom body has no native pairs at all. This reaction is what reports
    * a body removed while still overlapping this trigger: it drops it from `currentOverlaps` (or
-   * `currentCharacterOverlaps`) and `nativePairCounts`, purges its pairs with this trigger (see
-   * {@link purgeNativePairs}, so a body re-added before the next update gets a fresh
-   * `collisionStart`), and emits `onEntityLeft`. `world.physicsWorld.removed$` fires for every
+   * `currentCharacterOverlaps`) and `nativePairCounts`, purges its pairs with this trigger when it
+   * had an active one (see {@link purgeNativePairs}, so a body re-added before the next update gets
+   * a fresh `collisionStart`), and emits `onEntityLeft`. `world.physicsWorld.removed$` fires for every
    * component removal regardless of overlap state, so this only emits for a component this trigger
    * was still tracking as an overlap.
    *
@@ -147,21 +147,21 @@ export class MatterTriggerComponent
     if (!pairs) {
       return;
     }
-    const kept: Pair[] = [];
-    for (const pair of pairs.list) {
+    // compacted in place, as matter's own `Pairs.update` does
+    const list = pairs.list;
+    let kept = 0;
+    for (let i = 0; i < list.length; i++) {
+      const pair = list[i];
       const parentA = pair.bodyA.parent;
       const parentB = pair.bodyB.parent;
       const involvesThis = parentA === this.nativeBody || parentB === this.nativeBody;
       if (involvesThis && (!other || parentA === other || parentB === other)) {
         delete pairs.table[pair.id];
       } else {
-        kept.push(pair);
+        list[kept++] = pair;
       }
     }
-    if (kept.length !== pairs.list.length) {
-      pairs.list.length = 0;
-      pairs.list.push(...kept);
-    }
+    list.length = kept;
   }
 
   /**
@@ -244,8 +244,11 @@ export class MatterTriggerComponent
           queueMicrotask(() => this.onLeft$.next(c));
         }
       } else if (c instanceof MatterRigidBodyComponent) {
-        this.nativePairCounts.delete(c);
-        this.purgeNativePairs(c.nativeBody);
+        // an active pair with this trigger was counted on its `collisionStart`; an inactive one
+        // reports a fresh `collisionStart` when it activates again, so needs no purge
+        if (this.nativePairCounts.delete(c)) {
+          this.purgeNativePairs(c.nativeBody);
+        }
         if (this.currentOverlaps.delete(c)) {
           this.polledOverlaps.delete(c);
           queueMicrotask(() => this.onLeft$.next(c));

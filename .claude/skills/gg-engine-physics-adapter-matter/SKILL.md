@@ -313,7 +313,12 @@ body removed and re-added before the next update (or a trigger removed and re-ad
 still in `pairs.table`: `Collision.collides` reuses it, `Pairs.update` sees it as already active, and no
 `collisionStart` ever reports the body entering again. A purged pair is rebuilt from scratch, with a
 fresh `collisionStart`, by the next update that detects the overlap. Only sensor pairs are purged, which
-the resolver never acts on. Regressions: the removed-and-re-added cases in
+the resolver never acts on. The reaction purges only for a body the trigger holds in `nativePairCounts`:
+every active pair was counted on its `collisionStart`, and an inactive pair left in the table reports a
+fresh `collisionStart` when it activates again, so any other removal would scan the whole pair list for
+nothing (per trigger, per removed body - quadratic when a level unloads). The purge compacts
+`pairs.list` in place, like matter's own `Pairs.update`; spreading a large list into `push` can exceed
+the engine's argument limit. Regressions: the removed-and-re-added cases in
 `matter-trigger.component.spec.ts`'s `COMPOUND shapes` block.
 
 **That reaction drops the stale entry synchronously but emits `onLeft$` via `queueMicrotask`, never

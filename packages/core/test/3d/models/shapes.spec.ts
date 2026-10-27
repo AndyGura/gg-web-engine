@@ -1,4 +1,4 @@
-import { shapeHasMesh, warnIfMeshTrigger } from '../../../src';
+import { shapeContains, shapeHasMesh, warnIfMeshTrigger } from '../../../src';
 
 describe('trigger MESH shape check', () => {
   const mesh = { shape: 'MESH' as const, vertices: [], faces: [] };
@@ -13,6 +13,18 @@ describe('trigger MESH shape check', () => {
         shape: 'COMPOUND',
         children: [{ shape: box }, { shape: { shape: 'COMPOUND', children: [{ shape: mesh }] } }],
       }),
+    ).toBe(true);
+  });
+
+  it('finds any of several shape kinds, nested in COMPOUNDs too', () => {
+    const plane = { shape: 'PLANE' as const };
+    expect(shapeContains(plane, ['MESH', 'PLANE'])).toBe(true);
+    expect(shapeContains(box, ['MESH', 'PLANE'])).toBe(false);
+    expect(
+      shapeContains({ shape: 'COMPOUND', children: [{ shape: { shape: 'COMPOUND', children: [{ shape: plane }] } }] }, [
+        'MESH',
+        'PLANE',
+      ]),
     ).toBe(true);
   });
 

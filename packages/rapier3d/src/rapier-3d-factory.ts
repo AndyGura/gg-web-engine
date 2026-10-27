@@ -161,7 +161,8 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
         for (const item of descriptor.children) {
           const subDescr = this.createColliderDescr(item.shape);
           subDescr.forEach(d => {
-            const p = Pnt3.add(item.position || Pnt3.O, d.translation);
+            // a nested child's own offset is in its parent's frame, so it turns with the parent
+            const p = Pnt3.add(item.position || Pnt3.O, Pnt3.rot(d.translation, item.rotation || Qtrn.O));
             const r = Qtrn.combineRotations(item.rotation || Qtrn.O, d.rotation);
             d.setTranslation(p.x, p.y, p.z);
             d.setRotation(new Quaternion(r.x, r.y, r.z, r.w));

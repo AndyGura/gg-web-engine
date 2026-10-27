@@ -43,7 +43,8 @@ where one exists.
   `"Primitive"` - `"COMPOUND"` with `children`, `"SPHERE"`, `"CYLINDER"`, ... `shape` defaults to
   `"BOX"` with `dimensions`, so existing levels load unchanged. `serializeEntity` reconstructs a
   trigger of any shape, a compound one included.
-- core: `warnIfMeshTrigger` and `shapeHasMesh`. Creating a trigger whose shape contains a `MESH`
+- core: `warnIfMeshTrigger`, `shapeHasMesh` and `shapeContains(shape, kinds)` (whether a shape is,
+  or nests in a `COMPOUND`, any of the given kinds). Creating a trigger whose shape contains a `MESH`
   (ammo, rapier3d) logs a one-time warning: a triangle mesh is a surface, so such a trigger does not
   fire for a body fully inside it. Use `CONVEX_HULL` or a `COMPOUND` of convex shapes for a volume.
   ammo adds a warning for a trigger containing a `MESH` or `PLANE`: it reports a `MESH` or `PLANE`
@@ -70,6 +71,8 @@ where one exists.
   that are not moving.
 - rapier2d, rapier3d: a compound trigger, or a compound body entering a trigger, fires
   `onEntityEntered` and `onEntityLeft` once per body, not once per touching part.
+- rapier2d, rapier3d: a nested `COMPOUND` child's offset turns with its parent's `rotation`; it
+  used to be added unrotated, placing the collider in the wrong spot.
 - rapier2d, rapier3d: a body removed from the world while inside a trigger fires `onEntityLeft`,
   and if re-added it enters again. A trigger no longer stays activated with `onEntityLeft` never
   firing after such a body is re-added while another collider took its freed slot, and collision
@@ -81,9 +84,10 @@ where one exists.
 - core: `serializeEntity` reconstructs a `"Primitive"` of any shape - `COMPOUND`, `CONVEX_HULL`,
   `MESH`, and in 2D `CAPSULE` and `POLYGON` - from its live body, instead of falling back to its
   spawn record or returning `undefined`.
-- core: an app class whose generator builds a plain `Entity3d`/`Entity2d` with a body, or a plain
-  `Trigger3dEntity`/`Trigger2dEntity`, serializes as that class with its own `config`, not as a
-  `"Primitive"` or `"Trigger"` that lost the class and its model.
+- core: an app class whose generator builds a plain `Entity3d`/`Entity2d` with a body, a plain
+  `Trigger3dEntity`/`Trigger2dEntity` or a plain `Light3dEntity` serializes as that class with its
+  own `config`, not as a `"Primitive"`, `"Trigger"` or `"Light"` that lost the class and its model.
+  The same holds for live serializers an app registers with `registerLiveSerializer`.
 - core: `loadGgGlb` applies its `rotation` in front of each loaded object's own rotation and each
   prop dummy's rotation. A loaded object whose own rotation did not commute with the load
   rotation (for example a tilted object under a yawed load), and a nested prop whose dummy and

@@ -891,7 +891,14 @@ the substeps, and both broke tests until they were:
   body spawned inside it). `collectCollisionEvents(out)` runs after every step - reading contact
   geometry and velocities right after the step the contact started in - and pushes notifications
   that `simulate()` delivers after the last step, so no subscriber runs (and changes the world)
-  between steps.
+  between steps. Components are resolved at collection time, so a sensor notification captures both
+  native body handles and is dropped if either component's `nativeBody?.handle` no longer matches
+  when it runs: an earlier notification's subscriber can remove that body (a pickup removing what
+  it caught), and a body touching two parts of a `COMPOUND` trigger queues two starts. Without the
+  check the second start re-enters the removed body, its stop is dropped as a stale handle, and the
+  trigger stays activated with `onEntityLeft` never firing. rapier2d dispatches while draining and
+  resolves each event live, so it has no queue to go stale. Regression: `rapier-3d-trigger.component.spec.ts`'s
+  "a body removed by an enter subscriber ..." test.
 - **`kinematic_pos` targets.** A `kinematic_pos` body's `position`/`rotation` setters call
   `setNextKinematicTranslation`/`Rotation` once per tick; Rapier reaches that target in the next
   step and keeps it afterwards, so with `n` steps the body moved `n` times too fast in the first one
@@ -1070,6 +1077,17 @@ floor, the two-vehicles-two-collision-groups-two-floors test from `gg-engine-phy
 guidance, and a drive-under-engine-force test asserting both net displacement and a sane (neither ~0 nor
 implausibly large) `wheelSpeed` - the last one is what originally caught both the axle-cancellation bug
 and would have caught a reintroduced unit-conversion bug in `wheelSpeed`.
+
+## Flattening `COMPOUND` shapes into colliders (both packages)
+
+Rapier has no compound shape: `createColliderDescr` turns a `COMPOUND` into one `ColliderDesc` per
+leaf, recursing into nested `COMPOUND` children. Each leaf's local translation and rotation are in its
+parent child's frame, so composing them into the outer child's frame is `position + rot(translation,
+rotation)` and `rotation * leafRotation` (2D: `Pnt2.rot(translation, rotation)` and `rotation +
+leafRotation`). Adding the translation unrotated places every nested part of a rotated child in the
+wrong spot - invisible for a flat compound (a leaf's own translation is zero) and for unrotated
+children. Regressions: the "turns a nested COMPOUND child's offset" tests in `rapier-3d-factory.spec.ts`
+and `rapier2d/test/rapier-2d-factory.spec.ts`.
 
 ## Keep this skill current
 

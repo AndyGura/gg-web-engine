@@ -776,8 +776,8 @@ a small positive distance within the collision margins don't count) - deciding e
 first rule that applies:
 
 1. **No component in `nativeBodyReverseMap`**: skipped, there is nothing to report.
-2. **Both shapes concave** (`MESH` or `PLANE`, alone or inside a `COMPOUND` - `shapeHasConcave`,
-   memoized per descriptor): Bullet's dispatcher has no algorithm for a concave-vs-concave pair
+2. **Both shapes concave** (`MESH` or `PLANE`, alone or inside a `COMPOUND` - `shapeHasConcave`, core's
+   `shapeContains` memoized per descriptor): Bullet's dispatcher has no algorithm for a concave-vs-concave pair
    (`btEmptyAlgorithm`), so no narrowphase - the step's or `contactPairTest`'s - ever reports a
    contact for it. The broadphase result stands: such a pair overlaps while the AABBs overlap.
    `AmmoFactory.createTrigger` logs an Ammo-specific `warnOnce` saying so for a trigger shape
@@ -808,7 +808,8 @@ first rule that applies:
    since the pair was last tested - so a static trigger next to static geometry is tested once; a
    JS check that a rigid body's `getAabb()` corners all lie inside one convex part of the trigger's
    shape (a `BOX`/`SPHERE`, alone or as one `COMPOUND` child), which means overlapping with no
-   narrowphase; and otherwise one `btCollisionWorld.contactPairTest(ghost, other, callback)`. The
+   narrowphase - skipped outright for a trigger with no such part (`canContainAabb`, computed once
+   per component, since the shape never changes); and otherwise one `btCollisionWorld.contactPairTest(ghost, other, callback)`. The
    cache is rebuilt on every call (pairs that left the list drop out) and purged by pointer on
    `world.removed$`, since a freed pointer can be reused.
 

@@ -9,6 +9,7 @@ import {
   GgCarEntity,
   IEntity,
   LevelJson,
+  Light3dEntity,
   MapGraph3dEntity,
   Pnt3,
   RVEntityTractionBias,
@@ -1230,7 +1231,7 @@ describe('Gg3dLevelLoader', () => {
       expect(copy.airHorizontalVelocity).toEqual({ x: 1.5, y: 0, z: 0 });
     });
 
-    it('serializes an app class that builds a plain Entity3d or Trigger3dEntity as that class, not a built-in one', async () => {
+    it('serializes an app class that builds a plain Entity3d, Trigger3dEntity or Light3dEntity as that class, not a built-in one', async () => {
       levelLoader.registerClass(
         'Rock',
         () =>
@@ -1242,12 +1243,22 @@ describe('Gg3dLevelLoader', () => {
         'KillZone',
         () => new Trigger3dEntity(mock3DBody({ shape: 'SPHERE', radius: 3 }) as any),
       );
+      levelLoader.registerClass(
+        'Torch',
+        () =>
+          new Light3dEntity({
+            ...mock3DObject(),
+            lightOptions: { type: 'POINT', color: 0xffaa00, intensity: 2 },
+          } as any),
+      );
 
       const rock = await levelLoader.createEntity({ class: 'Rock', name: 'RockOne', config: { model: 'rock.glb' } });
       const zone = await levelLoader.createEntity({ class: 'KillZone', name: 'ZoneOne', config: { damage: 5 } });
+      const torch = await levelLoader.createEntity({ class: 'Torch', name: 'TorchOne', config: { flicker: true } });
 
       expect(levelLoader.serializeEntity(rock!)).toMatchObject({ class: 'Rock', config: { model: 'rock.glb' } });
       expect(levelLoader.serializeEntity(zone!)).toMatchObject({ class: 'KillZone', config: { damage: 5 } });
+      expect(levelLoader.serializeEntity(torch!)).toMatchObject({ class: 'Torch', config: { flicker: true } });
     });
 
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {

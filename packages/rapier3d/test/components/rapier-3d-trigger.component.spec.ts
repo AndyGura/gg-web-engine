@@ -240,6 +240,28 @@ describe(`Rapier3dTriggerComponent`, () => {
       expect(ball.position.y).toBeGreaterThan(6);
       expect(events).toEqual(['enter', 'left']);
     });
+
+    it('a body removed by an enter subscriber is not entered again by its other compound child', () => {
+      const trigger = factory.createTrigger(lShape);
+      trigger.addToWorld({ physicsWorld: world } as any);
+      // on the bar/block seam, touching both children in the same step
+      const ball = factory.createRigidBody(
+        { shape: { shape: 'SPHERE', radius: 0.5 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: -2.5, y: 0, z: 0 } },
+      );
+      ball.addToWorld({ physicsWorld: world } as any);
+      const events: string[] = [];
+      trigger.onEntityEntered.subscribe(obj => {
+        if (obj === ball) {
+          events.push('enter');
+          ball.removeFromWorld({ physicsWorld: world } as any);
+        }
+      });
+      trigger.onEntityLeft.subscribe(obj => obj === ball && events.push('left'));
+      advance(30, () => trigger.checkOverlaps());
+      expect(events).toEqual(['enter', 'left']);
+      expect((trigger.debugBodySettings.type as { activated: () => boolean }).activated()).toBe(false);
+    });
   });
   describe('one enter/leave per body', () => {
     const activated = (trigger: { debugBodySettings: { type: unknown } }) =>

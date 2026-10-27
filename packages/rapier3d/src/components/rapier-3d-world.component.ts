@@ -363,7 +363,15 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       }
 
       if (collider1.isSensor() || collider2.isSensor()) {
+        const handle1 = body1.handle;
+        const handle2 = body2.handle;
         out.push(() => {
+          // an earlier notification's subscriber may have removed either side (a pickup removing the
+          // body it caught) or removed and re-added it under a new native body - this event is then
+          // about a body no longer in the world, and its stop has already been accounted for
+          if (comp1.nativeBody?.handle !== handle1 || comp2.nativeBody?.handle !== handle2) {
+            return;
+          }
           if (comp1 instanceof Rapier3dTriggerComponent) {
             comp1.notifyOverlap(comp2, started);
           }

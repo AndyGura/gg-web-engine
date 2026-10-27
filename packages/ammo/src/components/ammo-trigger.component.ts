@@ -5,6 +5,7 @@ import {
   Pnt3,
   Point3,
   Qtrn,
+  shapeContains,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
@@ -108,10 +109,7 @@ const concaveShapes = new WeakMap<Shape3DDescriptor, boolean>();
 export function shapeHasConcave(shape: Shape3DDescriptor): boolean {
   let concave = concaveShapes.get(shape);
   if (concave === undefined) {
-    concave =
-      shape.shape === 'MESH' ||
-      shape.shape === 'PLANE' ||
-      (shape.shape === 'COMPOUND' && shape.children.some(c => shapeHasConcave(c.shape)));
+    concave = shapeContains(shape, ['MESH', 'PLANE']);
     concaveShapes.set(shape, concave);
   }
   return concave;
@@ -214,6 +212,8 @@ export class AmmoTriggerComponent
 
   /** Whether this trigger's shape is or contains a concave shape - see {@link shapeHasConcave}. */
   private readonly concave: boolean = shapeHasConcave(this.shape);
+  /** Whether {@link aabbInsideShape} can ever answer `true` for this trigger's shape - see `canContainAabb`. */
+  private readonly canContainAabb: boolean = canContainAabb(this.shape);
 
   /**
    * What the last physics step's contact manifolds say about this trigger's pairs, filled by
@@ -358,7 +358,7 @@ export class AmmoTriggerComponent
   }
 
   private aabbInsideShape(body: Ammo.btRigidBody, triggerPose: number[]): boolean {
-    if (!canContainAabb(this.shape)) {
+    if (!this.canContainAabb) {
       return false;
     }
     const [min, max] = aabbScratch();

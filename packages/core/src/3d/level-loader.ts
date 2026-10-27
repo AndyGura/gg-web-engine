@@ -812,9 +812,9 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`). Returns `undefined` (falls
    * through to the next serializer, then the spawn-record echo) for an entity with no physics body
    * at all (`objectBody` unset - a display-only primitive has nothing this serializer can recover a
-   * `shape`/`body` from), and for one `createEntity` built under another class alias
-   * (`spawnedAsOtherClass`): an app class whose generator builds a plain `Entity3d` - a hull, compound
-   * or mesh body with a loaded model - serializes as that class, not as a `"Primitive"`.
+   * `shape`/`body` from). An app class whose generator builds a plain `Entity3d` - a hull, compound
+   * or mesh body with a loaded model - still serializes as that class, not as a `"Primitive"`:
+   * `serializeEntity` drops a live result whose `class` differs from the entity's spawn record.
    *
    * Recovers `material` too, when `object3D` implements `IMaterialReadable3dComponent` (true for
    * anything built via `IDisplayObject3dComponentFactory.createPrimitive`/its shortcuts, which is
@@ -825,11 +825,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * building one in the first place.
    */
   private serializePrimitive(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
-    if (
-      entity.constructor !== Entity3d ||
-      !(entity as Entity3d<TypeDoc>).objectBody ||
-      this.spawnedAsOtherClass(entity, 'Primitive')
-    ) {
+    if (entity.constructor !== Entity3d || !(entity as Entity3d<TypeDoc>).objectBody) {
       return undefined;
     }
     const positionable = entity as Entity3d<TypeDoc>;
@@ -855,13 +851,12 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   /**
    * Live serializer for the built-in `"Trigger"` class - see `serializePrimitive`'s own doc for the
    * general approach (same `debugBodySettings.shape`-based recovery, applied to a trigger's `ITrigger3dComponent`
-   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly, unless
-   * `createEntity` built it under another class alias (`spawnedAsOtherClass`). Every
+   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly. Every
    * `Shape3DDescriptor` round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`); a
    * `"BOX"` trigger omits `shape`, since that is the class's default.
    */
   private serializeTrigger(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
-    if (entity.constructor !== Trigger3dEntity || this.spawnedAsOtherClass(entity, 'Trigger')) {
+    if (entity.constructor !== Trigger3dEntity) {
       return undefined;
     }
     const trigger = entity as Trigger3dEntity<TypeDoc['pTypeDoc']>;
