@@ -90,7 +90,10 @@ where one exists.
 - core, multiplayer: network state is quantised: `RigidBodyCorrection.capture`/`MoverCorrection.capture`
   round positions to 1 mm, velocities to 1 mm/s and quaternion components to 5 decimals, and the
   correction helpers normalize the received rotation. Heartbeat positions and spawn descriptors'
-  `position`/`rotation` are rounded the same way.
+  `position`/`rotation` are rounded the same way. A spawn descriptor's received rotation is
+  normalized too, and the unit-scaled default `deadzone` stays at least 2 mm, above the rounding.
+- multiplayer: `PeerInfo.position` (`peers$`, `netStats().peers`) is the peer's heartbeat position
+  as sent: global and rounded to 1 mm. In a 3D world with a frame, `world.toLocalPoint` places it.
 - core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the
   input, on a key or press that leaves it as it was, or on a stop with nothing resolved.
 

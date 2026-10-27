@@ -1,4 +1,5 @@
 import {
+  DEFAULT_CORRECTION_TUNING,
   Frame3d,
   Gg3dWorld,
   GgCarEntity,
@@ -9,7 +10,7 @@ import {
   Qtrn,
   RVEntityTractionBias,
 } from '@gg-web-engine/core';
-import { DEFAULT_ZONING, WireMessage, ZoneTracker } from '../../src';
+import { DEFAULT_ZONING, LoopbackHub, Network3dController, WireMessage, ZoneTracker } from '../../src';
 import { ADAPTERS, dist, Harness, Peer } from './harness';
 
 jest.setTimeout(60_000);
@@ -240,5 +241,45 @@ describe.each(ADAPTERS.filter(a => a.dim === 3))('world frames over the network 
     expect(dist(globalPosition(b, replica), before)).toBeLessThan(0.05);
     expect(dist(globalPosition(b, replica), globalPosition(a, box))).toBeLessThan(0.1);
     h.hub.heal('a');
+  });
+
+  it('a spawn descriptor without a rotation keeps the global orientation it was built at', async () => {
+    const { a, b } = await twoPeers();
+    const local = world3d(a).toLocalPoint(at(1, 2, 0));
+    // built at A's local identity, i.e. turned by A's yaw globally
+    const wire = (a.net as any).toWireDescriptor({ class: 'Thing', position: local });
+    expect(angle(wire.rotation, world3d(a).toGlobalRotation(Qtrn.O))).toBeLessThan(1e-4);
+    const received = (b.net as any).fromWireDescriptor(wire);
+    expect(angle(globalRotation(b, received), world3d(a).toGlobalRotation(Qtrn.O))).toBeLessThan(1e-4);
+    // from an identity-framed sender (nothing added on the wire): the global identity
+    const fromIdentity = (b.net as any).fromWireDescriptor({ class: 'Thing', position: at(1, 2, 0) });
+    expect(angle(globalRotation(b, fromIdentity), Qtrn.O)).toBeLessThan(1e-9);
+  });
+
+  it('a spawn rotation from the wire is normalized, in a framed and in an identity world', async () => {
+    const { b } = await twoPeers();
+    const rounded = { x: 0, y: 0, z: 0.38942, w: 0.92106 }; // a yaw rounded to 5 decimals
+    const len = (q: Point4) => Math.hypot(q.x, q.y, q.z, q.w);
+    expect(Math.abs(len(rounded) - 1)).toBeGreaterThan(1e-7);
+    const framed = (b.net as any).fromWireDescriptor({ class: 'Thing', position: at(0, 0, 0), rotation: rounded });
+    expect(Math.abs(len(framed.rotation) - 1)).toBeLessThan(1e-12);
+    world3d(b).frame = Frame3d.IDENTITY;
+    const plain = (b.net as any).fromWireDescriptor({ class: 'Thing', position: at(0, 0, 0), rotation: rounded });
+    expect(Math.abs(len(plain.rotation) - 1)).toBeLessThan(1e-12);
+  });
+});
+
+describe('wire rounding and the default deadzone', () => {
+  it('keeps the unit-scaled default deadzone above the 1 mm wire rounding', () => {
+    const hub = new LoopbackHub();
+    const small = new Network3dController({ transport: hub.createTransport('s'), unitScale: 0.01 });
+    expect((small as any).tuning.deadzone).toBeGreaterThanOrEqual(2e-3);
+    const metric = new Network3dController({ transport: hub.createTransport('m') });
+    expect((metric as any).tuning.deadzone).toBe(DEFAULT_CORRECTION_TUNING.deadzone);
+    const explicit = new Network3dController({ transport: hub.createTransport('e'), tuning: { deadzone: 1e-4 } });
+    expect((explicit as any).tuning.deadzone).toBe(1e-4);
+    small.dispose();
+    metric.dispose();
+    explicit.dispose();
   });
 });

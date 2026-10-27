@@ -103,7 +103,13 @@ pose. Who converts what:
 - **`Network3dController` converts what it sends itself**, through `worldFrame()` (`null` on the base
   and 2D controllers): heartbeat `pos` (global, so zoning cells - `updateLocalPosition` - and the
   takeover election compare global positions; `localPosition()` itself stays local), and spawn
-  descriptors' top-level `position`/`rotation` (`toWireDescriptor`/`fromWireDescriptor`).
+  descriptors' top-level `position`/`rotation` (`toWireDescriptor`/`fromWireDescriptor`). A
+  descriptor with a `position` but no `rotation` was built at the sender's local identity: the
+  sender adds its frame's global rotation, and a receiver with a frame turns a still-missing
+  rotation into the global identity in its own local terms, so the replica isn't turned by the
+  difference of the two yaws. Received heartbeat positions stay global in `PeerInfo.position`
+  (`peers$`, `netStats().peers`): an app placing peer markers converts them with
+  `world.toLocalPoint`.
   Class-specific vectors inside a descriptor's `config` (the `"Player"` class's `state` velocities)
   are not converted: the full network state applied with `snap` right after the spawn is built
   overwrites them. Received heartbeat positions are stored global and converted to local in
@@ -117,8 +123,13 @@ pose. Who converts what:
   `core/src/base/network/net-quantize.ts`); the controller rounds heartbeat positions and
   descriptors the same way. Global coordinates are ~1e5 m, and a full double serializes to 17
   digits; rounding also makes a resting entity's capture identical from tick to tick. A quantised
-  quaternion is a little off unit length - `correct` normalizes the target, and so does the
-  character's `applyRemoteInput`.
+  quaternion is a little off unit length - `correct` normalizes the target, the character's
+  `applyRemoteInput` its input rotation, and `fromWireDescriptor` a spawn descriptor's rotation
+  (with or without a frame), so an entity that is not `INetworkSyncable` is built with a unit
+  quaternion too. The unit-scaled default `deadzone` never goes below `2e-3` (twice the worst
+  3D rounding error of a position): with a small `unitScale` the scaled 0.02 m would fall inside the
+  1 mm wire step and a resting replica would keep blending toward rounding noise, never sleeping. An
+  explicitly passed `tuning.deadzone` is used as given.
 - **A frame switch needs nothing from the network layer.** `Gg3dWorld.switchFrame` moves a peer's
   content between two ticks without changing anything globally, and since nothing here caches a
   local coordinate (every conversion reads the frame at the call), the other peers see no change:

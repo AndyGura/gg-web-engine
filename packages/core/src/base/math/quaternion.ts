@@ -34,7 +34,7 @@ export class Qtrn {
   static normalize(q: Point4): Point4 {
     const l = Math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
     if (!(l > 1e-12)) {
-      return Qtrn.O;
+      return { x: 0, y: 0, z: 0, w: 1 };
     }
     return { x: q.x / l, y: q.y / l, z: q.z / l, w: q.w / l };
   }
