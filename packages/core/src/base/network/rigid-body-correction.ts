@@ -4,18 +4,26 @@ import {
   CorrectionTuning,
   DEFAULT_CORRECTION_TUNING,
   NetworkApplyContext,
+  NetworkFrame,
 } from '../interfaces/i-network-syncable';
 import { Point3 } from '../models/points';
 import {
   avClone,
   avLerp,
+  avQuantize,
+  avToGlobal,
+  avToLocal,
+  NET_POSITION_STEP,
+  NET_VELOCITY_STEP,
+  rNormalize,
+  rQuantize,
+  vQuantize,
   extrapolationSeconds,
   gainFactor,
   integrateRotation,
   isCoasting,
   NetRot,
   NetVec,
-  rClone,
   rotationError,
   rotationLerp,
   vAdd,
@@ -67,14 +75,54 @@ export interface RigidBodyNetState<D = unknown, R = unknown> {
  * `ctx.dt`.
  */
 export class RigidBodyCorrection {
-  /** Owner side: snapshot `body` as plain JSON. */
-  static capture<D, R>(body: IRigidBodyComponent<D, R>): RigidBodyNetState<D, R> {
-    return {
-      p: vClone(body.position as unknown as NetVec) as unknown as D,
-      r: rClone(body.rotation as unknown as NetRot) as unknown as R,
-      lv: vClone(body.linearVelocity as unknown as NetVec) as unknown as D,
-      av: avClone(body.angularVelocity as unknown as number | Point3) as unknown as R | D,
+  /**
+   * Owner side: snapshot `body` as plain JSON, quantised for the wire (positions to 1 mm,
+   * velocities to 1 mm/s, quaternion components to 5 decimals - see `quantizeNetPosition`).
+   * @param body - the owner's local body
+   * @param frame - the world's frame (`Gg3dWorld.frame`): the snapshot is converted to global
+   * coordinates through it. Omitted (2D, or an identity frame), the snapshot is in world coordinates.
+   */
+  static capture<D, R>(body: IRigidBodyComponent<D, R>, frame?: NetworkFrame<D, R> | null): RigidBodyNetState<D, R> {
+    const state: RigidBodyNetState<D, R> = {
+      p: body.position,
+      r: body.rotation,
+      lv: body.linearVelocity,
+      av: body.angularVelocity,
       s: body.isSleeping,
+    };
+    const global = frame ? RigidBodyCorrection.toGlobal(state, frame) : state;
+    return {
+      p: vQuantize(global.p as unknown as NetVec, NET_POSITION_STEP) as unknown as D,
+      r: rQuantize(global.r as unknown as NetRot) as unknown as R,
+      lv: vQuantize(global.lv as unknown as NetVec, NET_VELOCITY_STEP) as unknown as D,
+      av: avQuantize(global.av as unknown as number | Point3) as unknown as R | D,
+      s: global.s,
+    };
+  }
+
+  /**
+   * `state` (local) converted to global coordinates through `frame`: position as a point, rotation
+   * as an orientation, both velocities as directions. Every other field of `state` is kept as is, so
+   * it works on a payload that extends `RigidBodyNetState`.
+   */
+  static toGlobal<D, R, S extends RigidBodyNetState<D, R>>(state: S, frame: NetworkFrame<D, R>): S {
+    return {
+      ...state,
+      p: frame.toGlobalPoint(state.p),
+      r: frame.toGlobalRotation(state.r),
+      lv: frame.toGlobalDirection(state.lv),
+      av: avToGlobal(state.av as unknown as number | Point3, frame) as unknown as R | D,
+    };
+  }
+
+  /** `state` (global) converted to the local coordinates of `frame` - the inverse of {@link toGlobal}. */
+  static toLocal<D, R, S extends RigidBodyNetState<D, R>>(state: S, frame: NetworkFrame<D, R>): S {
+    return {
+      ...state,
+      p: frame.toLocalPoint(state.p),
+      r: frame.toLocalRotation(state.r),
+      lv: frame.toLocalDirection(state.lv),
+      av: avToLocal(state.av as unknown as number | Point3, frame) as unknown as R | D,
     };
   }
 
@@ -97,14 +145,22 @@ export class RigidBodyCorrection {
    * @param body - the replica's local body
    * @param target - the owner's snapshot
    * @param ctx - age/silence/dt/snap/tuning of this application
-   * @param tuning - overrides `ctx.tuning` when given
+   * @param tuning - overrides `ctx.tuning` when given (`undefined` for `ctx.tuning`)
+   * @param frame - the world's frame, read now: `target` is global and gets converted to local
+   * coordinates through it. Omitted (2D, or an identity frame), `target` is in world coordinates.
    */
   static correct<D, R>(
     body: IRigidBodyComponent<D, R>,
     target: RigidBodyNetState<D, R>,
     ctx: NetworkApplyContext,
     tuning: CorrectionTuning = ctx.tuning ?? DEFAULT_CORRECTION_TUNING,
+    frame?: NetworkFrame<D, R> | null,
   ): CorrectionOutcome {
+    if (frame) {
+      target = RigidBodyCorrection.toLocal(target, frame);
+    }
+    // a quantised quaternion is a little off unit length
+    target = { ...target, r: rNormalize(target.r as unknown as NetRot) as unknown as R };
     const bodyType = body.bodyOptions.bodyType;
     if (bodyType === 'static') {
       return 'none';

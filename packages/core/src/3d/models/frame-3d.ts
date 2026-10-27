@@ -1,4 +1,4 @@
-import { Point3, Point4 } from '../../base';
+import { NetworkFrame, Point3, Point4 } from '../../base';
 
 /**
  * Plain-data shape of a {@link Frame3d}: a translation plus a yaw (radians, counter-clockwise about
@@ -43,7 +43,7 @@ function wrapYaw(yaw: number): number {
  *
  * `yaw` is always kept in (-PI, PI].
  */
-export class Frame3d implements Frame3dLike {
+export class Frame3d implements Frame3dLike, NetworkFrame<Point3, Point4> {
   /** The identity frame: local coordinates are global coordinates. */
   static readonly IDENTITY: Frame3d = new Frame3d();
 

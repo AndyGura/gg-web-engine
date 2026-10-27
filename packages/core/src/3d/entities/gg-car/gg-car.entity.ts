@@ -1,6 +1,7 @@
 import { RaycastVehicle3dEntity, RVEntityProperties, WheelDisplayOptions } from '../raycast-vehicle-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../gg-3d-world';
 import { IRenderable3dEntity } from '../i-renderable-3d.entity';
+import { networkFrameOf } from '../../network-frame';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import {
   AxisDirection3,
@@ -799,10 +800,13 @@ export class GgCarEntity<
     return !!this.raycastVehicle.objectBody;
   }
 
-  /** `INetworkSyncable`: chassis snapshot plus driving state - see `GgCarNetState`. */
+  /**
+   * `INetworkSyncable`: chassis snapshot plus driving state - see `GgCarNetState`. The chassis pose
+   * and velocities are global: converted through the world's `frame`.
+   */
   public captureNetworkState(): GgCarNetState {
     return {
-      ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent),
+      ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent, networkFrameOf(this.world)),
       gear: this.gear,
       shiftMs: this._shiftRemainingMs,
       steering: this.steeringFactor,
@@ -818,10 +822,17 @@ export class GgCarEntity<
    * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
    * spring from the old pose. The gear change in progress is adopted as the owner has it
    * (`shiftMs`), not restarted by the replica's own `gear` setter, so the replica's engine
-   * reconnects when the owner's does.
+   * reconnects when the owner's does. The chassis part of `target` is global, converted through the
+   * world's `frame` as it is now.
    */
   public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome {
-    const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
+    const outcome = RigidBodyCorrection.correct(
+      this.raycastVehicle.vehicleComponent,
+      target,
+      ctx,
+      undefined,
+      networkFrameOf(this.world),
+    );
     if (outcome === 'snap') {
       this.raycastVehicle.vehicleComponent.resetSuspension();
     }

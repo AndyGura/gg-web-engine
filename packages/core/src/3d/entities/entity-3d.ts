@@ -9,6 +9,8 @@ import {
   Point3,
   Point4,
   Qtrn,
+  quantizeNetPosition,
+  quantizeNetRotation,
   RigidBodyCorrection,
   RigidBodyNetState,
   TickOrder,
@@ -17,6 +19,7 @@ import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.com
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { networkFrameOf } from '../network-frame';
 import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
 
 export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
@@ -166,16 +169,27 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
     return !!this.objectBody && this.objectBody.bodyOptions.bodyType !== 'static';
   }
 
-  /** `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. */
+  /**
+   * `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. In global
+   * coordinates: converted through the world's `frame`.
+   */
   public captureNetworkState(): RigidBodyNetState<Point3, Point4> {
+    const frame = networkFrameOf(this.world);
     if (!this.objectBody) {
-      return { p: this.position, r: this.rotation, lv: Pnt3.O, av: Pnt3.O, s: true };
+      const p = frame ? frame.toGlobalPoint(this.position) : this.position;
+      const r = frame ? frame.toGlobalRotation(this.rotation) : this.rotation;
+      return { p: quantizeNetPosition(p), r: quantizeNetRotation(r), lv: Pnt3.O, av: Pnt3.O, s: true };
     }
-    return RigidBodyCorrection.capture(this.objectBody);
+    return RigidBodyCorrection.capture(this.objectBody, frame);
   }
 
-  /** `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body. */
+  /**
+   * `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. `target` is
+   * global, converted through the world's `frame` as it is now. No-op without a body.
+   */
   public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome {
-    return this.objectBody ? RigidBodyCorrection.correct(this.objectBody, target, ctx) : 'none';
+    return this.objectBody
+      ? RigidBodyCorrection.correct(this.objectBody, target, ctx, undefined, networkFrameOf(this.world))
+      : 'none';
   }
 }
