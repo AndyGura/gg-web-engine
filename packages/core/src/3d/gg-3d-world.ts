@@ -154,6 +154,16 @@ export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> =
     ? Gg3dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld3dComponent<TD['pTypeDoc']> }>
     : never;
 
+/** What `Gg3dWorld.frameSwitched$` emits. */
+export type FrameSwitch = {
+  /** The transform applied to the world's content: `frame.inverse().compose(previousFrame)`. */
+  readonly delta: Frame3d;
+  /** The frame before the switch. */
+  readonly previousFrame: Frame3d;
+  /** The frame after the switch, now `Gg3dWorld.frame`. */
+  readonly frame: Frame3d;
+};
+
 /**
  * The root object of a 3D game: a world clock plus one visual scene, one physics world and an
  * optional audio scene, all 3D. Every 3D world is Z-up: `{x, y}` is the ground plane, `+Z` points
@@ -188,16 +198,6 @@ export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> =
  * world.start();
  * ```
  */
-/** What `Gg3dWorld.frameSwitched$` emits. */
-export type FrameSwitch = {
-  /** The transform applied to the world's content: `frame.inverse().compose(previousFrame)`. */
-  readonly delta: Frame3d;
-  /** The frame before the switch. */
-  readonly previousFrame: Frame3d;
-  /** The frame after the switch, now `Gg3dWorld.frame`. */
-  readonly frame: Frame3d;
-};
-
 export class Gg3dWorld<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,
