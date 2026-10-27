@@ -1043,6 +1043,41 @@ guidance, and a drive-under-engine-force test asserting both net displacement an
 implausibly large) `wheelSpeed` - the last one is what originally caught both the axle-cancellation bug
 and would have caught a reintroduced unit-conversion bug in `wheelSpeed`.
 
+## Frame switch (`onFrameSwitch`, 3D): a broad-phase refresh needs a step
+
+The hooks (see `gg-engine-physics-adapter` for the contract) live on `Rapier3dRigidBodyComponent`
+(so triggers and the vehicle chassis too), `Rapier3dCharacterControllerComponent`,
+`Rapier3dRaycastVehicleComponent` and `Rapier3dWorldComponent`.
+
+- **Bodies** teleport with `setTranslation`/`setRotation(..., false)` and rotated
+  `setLinvel`/`setAngvel(..., false)`. A `kinematic_pos` body's `nextTranslation()`/`nextRotation()`
+  move with it (`setNextKinematic*`), or the next step reads the switch as kinematic motion. A body
+  out of the world moves its `_bodyDescr`. Contacts need nothing: Rapier keeps contact points and
+  normals in the colliders' local frames.
+- **Character controller**: body and next kinematic target to the same moved pose (as its setters),
+  `up` and the cached ground normal rotated, then `propagateModifiedBodyPositionsToColliders`.
+- **Vehicle**: `wheelContactPoint`/`wheelContactNormal`/`wheelHardPoint` stay in the frame of the
+  last `updateVehicle`; the composed switches since then (`castFrameDelta`, cleared by
+  `stepVehicleController`) carry them in `getWheelContact`. Without it a switch with a vertical
+  offset left the contact points meters off until the next step. `getWheelTransform` already places
+  wheels from the chassis' current pose.
+- **World: a broad-phase refresh needs a real step.** Raycasts and every other query walk the broad
+  phase's BVH, which only `World.step()` refreshes, and a step with `timestep = 0` is skipped
+  entirely. `propagateModifiedBodyPositionsToColliders` alone moves the colliders but not their BVH
+  leaves: a raycast at the new place hit nothing, and the vehicles' wheel casts in the next
+  `simulate()` (they run before its first step) found no ground - the car dropped, 1.5 m off its
+  course over 20 s. The world hook therefore runs one `FRAME_SWITCH_STEP` (1 µs) step: every
+  `kinematic_pos` body targets its current pose for it (its target restored afterwards), every body
+  that slept before it is put back to sleep (Rapier wakes any body whose pose was written, whatever
+  `wakeUp` said), and its collision events are collected and delivered (there are none). Its cost:
+  a car's trajectory after an *identity* switch differs by ~0.7 mm over 20 s.
+- **Far from the origin, Rapier is single precision.** 15-21 km out a coordinate has a 1-2 mm step:
+  the frame-switch suite's `far` car drive differs from the near-origin one by ~14 cm in position
+  (heading and speed stay within the thresholds), and spawning the car there (switches on the first
+  two ticks, at rest) gives ~12 cm. Near the origin (the `recentred` scenario) it stays under 1 mm.
+  `rapier-3d-frame-switch.spec.ts` passes the measured `farBounds`, and a 2 km box as the ground
+  (no `PLANE`).
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/rapier2d` or `packages/rapier3d`

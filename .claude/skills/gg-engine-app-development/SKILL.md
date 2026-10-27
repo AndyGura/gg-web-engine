@@ -443,6 +443,19 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   offsets) and `toGlobalRotation`/`toLocalRotation` (quaternions). `Frame3d` composes
   (`a.compose(b)` applies `b` first) and inverts; `newFrame.inverse().compose(oldFrame)` maps content
   from one frame's local space into another's. 2D worlds have no frame.
+- **Switching a running world to another frame**: `world.switchFrame(newFrame)` moves everything the
+  world holds by `newFrame.inverse().compose(oldFrame)`, so nothing changes globally - the player
+  crossing into the next section keeps driving, nothing pops. Bodies keep their velocities, sleep
+  state and contacts, cars their wheels and suspension, cameras and their controllers their
+  smoothing, triggers their overlaps. Called from inside a tick (a tick listener, an entity's
+  `tick$`), it waits until after that tick's physics step and applies before rendering
+  (`world.pendingFrame` shows it meanwhile). `world.frameSwitched$` emits `{ delta, previousFrame,
+  frame }` afterwards: anything of the app's own holding world-space coordinates outside entities (a
+  cached target point, a path) moves through `delta.toGlobalPoint`/`toGlobalDirection`/
+  `toGlobalRotation`. An app entity class holding such state implements `IFrameSwitchable`
+  (`onFrameSwitch(delta)`; `Entity3d` subclasses call `super.onFrameSwitch(delta)` first); with the
+  dev console loaded, a switch warns once per positioned entity class without the hook. Keep the
+  content near the new origin: a far frame (km away) costs single-precision physics its accuracy.
 - **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
   not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
   it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.

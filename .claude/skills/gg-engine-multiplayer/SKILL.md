@@ -119,10 +119,17 @@ pose. Who converts what:
   digits; rounding also makes a resting entity's capture identical from tick to tick. A quantised
   quaternion is a little off unit length - `correct` normalizes the target, and so does the
   character's `applyRemoteInput`.
+- **A frame switch needs nothing from the network layer.** `Gg3dWorld.switchFrame` moves a peer's
+  content between two ticks without changing anything globally, and since nothing here caches a
+  local coordinate (every conversion reads the frame at the call), the other peers see no change:
+  no snap, no jump, owner or replica side alike.
 - **2D worlds have no frame**: their state is in world coordinates as is (still quantised).
 - Tests: `test/harness/world-frame.spec.ts` (3D adapters) runs two worlds ~100 km from the origin,
   yawed against each other; a mutation that skips either the entity-side or the controller-side
-  conversion fails it.
+  conversion fails it. `test/harness/switch-frame.spec.ts` switches the owner's or the replica
+  peer's frame while a possessed car drives, and checks that neither peer sees the car or its
+  replica move further in one tick around the switch than just outside it (setting `world.frame`
+  without moving the content fails it).
 
 ## Tick integration
 
