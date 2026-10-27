@@ -69,7 +69,14 @@ export function createSkyPanel(root: HTMLElement, apply: (settings: SkySettings)
     root.appendChild(h);
   };
 
-  const slider = (label: string, min: number, max: number, step: number, get: () => number, set: (v: number) => void) => {
+  const slider = (
+    label: string,
+    min: number,
+    max: number,
+    step: number,
+    get: () => number,
+    set: (v: number) => void,
+  ) => {
     const row = document.createElement('label');
     row.className = 'row';
     const name = document.createElement('span');
@@ -127,28 +134,145 @@ export function createSkyPanel(root: HTMLElement, apply: (settings: SkySettings)
   const s = settings.sky;
   const c = settings.sky.clouds;
   section('Rendering');
-  checkbox('Baked (cube texture, redrawn on change)', () => s.mode === 'BAKED', v => (s.mode = v ? 'BAKED' : 'DYNAMIC'));
-  checkbox('Sky lights the scene (environment map)', () => settings.lightWithSky, v => (settings.lightWithSky = v));
+  checkbox(
+    'Baked (cube texture, redrawn on change)',
+    () => s.mode === 'BAKED',
+    v => (s.mode = v ? 'BAKED' : 'DYNAMIC'),
+  );
+  checkbox(
+    'Sky lights the scene (environment map)',
+    () => settings.lightWithSky,
+    v => (settings.lightWithSky = v),
+  );
   section('Sun and time');
-  slider('Time of day', 0, 24, 0.01, () => s.timeOfDay!, v => (s.timeOfDay = v));
-  checkbox('Animate time', () => animate, v => (animate = v));
-  slider('Hours per second', 0.05, 4, 0.05, () => hoursPerSecond, v => (hoursPerSecond = v));
-  slider('Sun azimuth (°)', 0, 360, 1, () => s.sunAzimuth! / deg, v => (s.sunAzimuth = v * deg));
-  slider('Sun noon elevation (°)', 5, 90, 1, () => s.sunPeakElevation! / deg, v => (s.sunPeakElevation = v * deg));
-  slider('Sun size', 0.005, 0.08, 0.001, () => s.sunSize!, v => (s.sunSize = v));
+  slider(
+    'Time of day',
+    0,
+    24,
+    0.01,
+    () => s.timeOfDay!,
+    v => (s.timeOfDay = v),
+  );
+  checkbox(
+    'Animate time',
+    () => animate,
+    v => (animate = v),
+  );
+  slider(
+    'Hours per second',
+    0.05,
+    4,
+    0.05,
+    () => hoursPerSecond,
+    v => (hoursPerSecond = v),
+  );
+  slider(
+    'Sun azimuth (°)',
+    0,
+    360,
+    1,
+    () => s.sunAzimuth! / deg,
+    v => (s.sunAzimuth = v * deg),
+  );
+  slider(
+    'Sun noon elevation (°)',
+    5,
+    90,
+    1,
+    () => s.sunPeakElevation! / deg,
+    v => (s.sunPeakElevation = v * deg),
+  );
+  slider(
+    'Sun size',
+    0.005,
+    0.08,
+    0.001,
+    () => s.sunSize!,
+    v => (s.sunSize = v),
+  );
   section('Air');
-  slider('Haze', 0, 1, 0.01, () => s.haze!, v => (s.haze = v));
-  slider('Exposure', 0.2, 3, 0.01, () => s.exposure!, v => (s.exposure = v));
+  slider(
+    'Haze',
+    0,
+    1,
+    0.01,
+    () => s.haze!,
+    v => (s.haze = v),
+  );
+  slider(
+    'Exposure',
+    0.2,
+    3,
+    0.01,
+    () => s.exposure!,
+    v => (s.exposure = v),
+  );
   section('Clouds');
-  slider('Coverage', 0, 1, 0.01, () => c.coverage, v => (c.coverage = v));
-  slider('Density', 0, 1, 0.01, () => c.density, v => (c.density = v));
-  slider('Scale', 0.2, 4, 0.01, () => c.scale, v => (c.scale = v));
-  slider('Wind speed', 0, 0.05, 0.001, () => windSpeed, v => (windSpeed = v));
-  slider('Wind direction (°)', 0, 360, 1, () => windDirection / deg, v => (windDirection = v * deg));
+  slider(
+    'Coverage',
+    0,
+    1,
+    0.01,
+    () => c.coverage,
+    v => (c.coverage = v),
+  );
+  slider(
+    'Density',
+    0,
+    1,
+    0.01,
+    () => c.density,
+    v => (c.density = v),
+  );
+  slider(
+    'Scale',
+    0.2,
+    4,
+    0.01,
+    () => c.scale,
+    v => (c.scale = v),
+  );
+  slider(
+    'Wind speed',
+    0,
+    0.05,
+    0.001,
+    () => windSpeed,
+    v => (windSpeed = v),
+  );
+  slider(
+    'Wind direction (°)',
+    0,
+    360,
+    1,
+    () => windDirection / deg,
+    v => (windDirection = v * deg),
+  );
   section('Night');
-  slider('Stars', 0, 1, 0.01, () => s.stars!, v => (s.stars = v));
-  slider('Moon', 0, 1, 0.01, () => s.moon!, v => (s.moon = v));
-  slider('Moon size', 0.005, 0.08, 0.001, () => s.moonSize!, v => (s.moonSize = v));
+  slider(
+    'Stars',
+    0,
+    1,
+    0.01,
+    () => s.stars!,
+    v => (s.stars = v),
+  );
+  slider(
+    'Moon',
+    0,
+    1,
+    0.01,
+    () => s.moon!,
+    v => (s.moon = v),
+  );
+  slider(
+    'Moon size',
+    0.005,
+    0.08,
+    0.001,
+    () => s.moonSize!,
+    v => (s.moonSize = v),
+  );
 
   changed();
 
