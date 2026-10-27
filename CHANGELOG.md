@@ -39,6 +39,10 @@ where one exists.
 - core: `IInput.running$` reports every input's running state on start and stop.
 - core: `DirectionHeldOutput`, the type of `DirectionInput.output$`; `DirectionKeyboardOutput` is
   its deprecated alias.
+- core: the level JSON `"Trigger"` class (2D and 3D) takes `shape` and the same shape fields as
+  `"Primitive"` - `"COMPOUND"` with `children`, `"SPHERE"`, `"CYLINDER"`, ... `shape` defaults to
+  `"BOX"` with `dimensions`, so existing levels load unchanged. `serializeEntity` reconstructs a
+  trigger of any shape, a compound one included.
 
 ### Changed
 - core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the
@@ -54,6 +58,16 @@ where one exists.
   stops and starts again while the control is held pushes its direction again, instead of staying
   pressed without effect until the finger lifts.
 - core: `DirectionInput.pressDirection` ignores, with a warning, a name that is not a direction.
+- ammo: a trigger fires only for a body its shape really touches. A box trigger rotated about Z
+  fired for bodies in the corners of its bounding box, and a compound trigger anywhere in its
+  children's bounding boxes.
+- rapier3d: a compound trigger, or a compound body entering a trigger, fires `onEntityEntered` and
+  `onEntityLeft` once per body, not once per touching part.
+- core: `loadGgGlb` applies its `rotation` in front of each loaded object's own rotation and each
+  prop dummy's rotation. A loaded object whose own rotation did not commute with the load
+  rotation (for example a tilted object under a yawed load), and a nested prop whose dummy and
+  object rotations did not commute, even under an identity load rotation, ended up wrongly
+  oriented.
 
 ## [0.0.88] - 2026-10-25
 

@@ -764,6 +764,46 @@ component should default to this same deferred-emission shape rather than assumi
 are safe to reenter synchronously - they generally aren't, since nothing about their own call sites
 was written expecting to run nested inside arbitrary unrelated removal code.
 
+## `AmmoTriggerComponent.checkOverlaps()`: broadphase pairs, then one `contactPairTest` each
+
+A `btPairCachingGhostObject`'s `getNumOverlappingObjects()`/`getOverlappingObject(i)` list is filled
+by the broadphase alone: every object whose AABB overlaps the ghost's AABB. That AABB is the
+world-space bounding box of the rotated shape, so on its own a box trigger rotated 45 degrees about
+Z fires for a body in its bounding box's corners, and a `COMPOUND` trigger anywhere in the union of
+its children's AABBs (the empty quadrant of an L). `checkOverlaps()` therefore runs one narrowphase
+test per listed object, `btCollisionWorld.contactPairTest(ghost, other, callback)`, and keeps only
+the objects for which Bullet reports a contact point with `getDistance() <= 0`. Contact points at a
+small positive distance (within the collision margins) are reported too and do not count.
+
+**Why `contactPairTest` and not the manifolds `stepSimulation` already computed** (the ghost's
+pairs do get manifolds - a trigger's ghost object has collision flags `5`, `CF_STATIC_OBJECT` from
+`btCollisionObject`'s default plus `CF_NO_CONTACT_RESPONSE`, and stays active, so the dispatcher
+runs the narrowphase for its pairs, static partners included): reaching the manifold of one pair
+goes through `btBroadphasePair.m_algorithm`/`btCollisionAlgorithm.getAllContactManifolds`/
+`btManifoldArray`, none of which this build's `ammo.idl` binds, and the alternative, the
+dispatcher's world-wide `getNumManifolds()`/`getManifoldByIndexInternal(i)` list, would be walked in
+full by every trigger every tick. `contactPairTest` finds and runs the collision algorithm for the
+one pair directly, with no dispatcher or collision-group filtering (the broadphase already applied
+the groups when it listed the pair). Adding those bindings would save the second narrowphase run
+per pair, at the cost of an `ammo.idl` patch and a rebuild.
+
+**Cost**: one `contactPairTest` per broadphase pair per `checkOverlaps()` call (one per tick from
+`Trigger3dEntity`); bodies outside the trigger's AABB cost nothing. Each call creates and frees a
+collision algorithm from the dispatcher's pool. The `ConcreteContactResultCallback` is created once
+per trigger on first use and destroyed in `dispose()`, so a tick allocates nothing native; its
+`addSingleResult` override gets raw pointers (`wrapPointer(cpPtr, Ammo.btManifoldPoint)`, as in
+`recoverFromPenetration()`). The binding (`contactPairTest` on `btCollisionWorld`,
+`ConcreteContactResultCallback`, `btManifoldPoint.getDistance`) is already in `ammo.idl`; no rebuild
+was needed.
+
+Enter/leave semantics are untouched by this: `overlaps` still holds the wrapper objects
+`getOverlappingObject()` returns (identity-stable per pointer), a body that stops touching while its
+AABB still overlaps leaves through the same diff as one whose AABB left, and the `removed$` purge
+above still matches by pointer. A body touching several children of a `COMPOUND` trigger is one
+pair, so it enters and leaves once. Regression: `ammo-trigger.component.spec.ts`'s "exact shape
+overlap" block (rotated box, L-shaped compound, a static body, a body crossing from one child into
+the other and out).
+
 ## `IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`: Bullet's own semantics fit the contract
 
 Bullet accumulates `applyForce`/`applyTorque` into the body's `m_totalForce`/`m_totalTorque`, uses

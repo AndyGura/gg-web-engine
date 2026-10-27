@@ -1991,6 +1991,17 @@ story intact for adapters. Both `Pnt2` and `Pnt3` expose named axis constants â€
 each namespace's own `O` origin) â€” use those instead of spelling out a unit-vector literal when the
 value represents a world axis or up-vector, not an arbitrary position.
 
+`Qtrn.mult(a, b)` is the Hamilton product: rotating by it applies `b` first, then `a`
+(`Pnt3.rot(v, Qtrn.mult(a, b))` equals `Pnt3.rot(Pnt3.rot(v, b), a)`), and `combineRotations(q1, q2,
+...)` multiplies left to right, so its last argument is applied first. Placing a pose given in a
+parent's frame into the world is therefore `Qtrn.mult(parentRotation, localRotation)`, with the
+position going through `Pnt3.add(Pnt3.rot(localPosition, parentRotation), parentPosition)` -
+`Gg3dLoader.loadGgGlb` does exactly this for every loaded object and prop dummy. The reverse order
+gives the same result only while the two rotations commute (both about one axis, or one of them
+identity), so a spec checking an ordering needs a tilted rotation under a rotation about another
+axis; compare by rotating the axes with `Pnt3.rot` one step at a time (see
+`test/3d/loader.spec.ts`'s "loadGgGlb placement") rather than with `Qtrn.mult` itself.
+
 `Pnt3.angle`/`Pnt2.angle` return `0` when either vector has zero length (a caller for which a
 zero-length vector means "no direction at all" checks the length itself - see
 `CharacterController3dEntity.isWalkableGround`). To orient something along a direction, use

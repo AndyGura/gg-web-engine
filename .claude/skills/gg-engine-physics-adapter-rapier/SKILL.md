@@ -663,6 +663,17 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   `fallbackContactGeometry` (midpoint, direction between the bodies, no impulse) - since a skipped
   start would leave the count one short of the stops to come. Regression: the 3D contract suite's
   "fires onCollisionStart once per body pair, for a compound body".
+- **Sensor intersections are per collider too, so a trigger counts them per body.** A `COMPOUND`
+  trigger (or a `COMPOUND` body entering any trigger) is one collider per part, and a body crossing
+  from one part of an L-shaped trigger into the other gets the start for the second part before the
+  stop for the first. `Rapier3dTriggerComponent.overlaps` is a `Map` of intersecting collider pairs
+  per body; `notifyOverlap` emits `onEntityEntered` only when a body's count goes from 0 to 1 and
+  `onEntityLeft` only when it returns to 0. Intersection itself is exact: Rapier's sensor events
+  come from its narrow phase, so a box trigger rotated 45 degrees doesn't fire for a body in its
+  bounding box's corners, nor an L-shaped compound in the empty quadrant of its bounding box - no
+  extra test is needed. Regression: `rapier-3d-trigger.component.spec.ts`'s "exact shape overlap"
+  block. `Rapier2dTriggerComponent.handleOverlapEvent` has no such count yet: it emits once per
+  collider-pair event.
 - **`relativeVelocity` reads each body's `linvel()` *after* the step that produced the `started` event
   has already fully resolved the contact** (both `drainCollisionEvents` and `contactPair` are read
   right after the `world.step()` the contact started in, there is no earlier point to read from without re-deriving the pre-solve state
