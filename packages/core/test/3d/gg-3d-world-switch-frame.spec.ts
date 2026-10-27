@@ -45,7 +45,8 @@ const expectPointClose = (actual: Point3, expected: Point3, digits = 9) => {
 
 const expectRotationClose = (actual: Point4, expected: Point4, digits = 9) => {
   // q and -q are the same orientation
-  const sign = Math.sign(actual.w * expected.w + actual.x * expected.x + actual.y * expected.y + actual.z * expected.z) || 1;
+  const sign =
+    Math.sign(actual.w * expected.w + actual.x * expected.x + actual.y * expected.y + actual.z * expected.z) || 1;
   expect(actual.x * sign).toBeCloseTo(expected.x, digits);
   expect(actual.y * sign).toBeCloseTo(expected.y, digits);
   expect(actual.z * sign).toBeCloseTo(expected.z, digits);
@@ -251,7 +252,10 @@ describe('Gg3dWorld.switchFrame', () => {
       get: () => chassis,
       set: v => (chassis = v),
     });
-    (vehicleComponent as any).getWheelTransform = () => ({ position: Pnt3.add(chassis, { x: 1, y: 2, z: 0 }), rotation: Qtrn.O });
+    (vehicleComponent as any).getWheelTransform = () => ({
+      position: Pnt3.add(chassis, { x: 1, y: 2, z: 0 }),
+      rotation: Qtrn.O,
+    });
     const props = mockCarProperties();
     (props as any).wheelBase.shared.display = { displayObject: mock3DObject() };
     const vehicle = new RaycastVehicle3dEntity(props, mock3DObject(), vehicleComponent);
