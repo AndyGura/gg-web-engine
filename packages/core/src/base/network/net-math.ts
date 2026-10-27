@@ -1,4 +1,4 @@
-import { CorrectionTuning } from '../interfaces/i-network-syncable';
+import { CorrectionTuning, NetworkFrame } from '../interfaces/i-network-syncable';
 import { Point2, Point3, Point4 } from '../models/points';
 import { Qtrn } from '../math/quaternion';
 import { lerpAngle } from '../math/numbers';
@@ -116,7 +116,7 @@ export function avLerp(a: number | Point3, b: number | Point3, t: number): numbe
   return vLerp(a, b, t);
 }
 
-function normalizeQuat(q: Point4): Point4 {
+export function normalizeQuat(q: Point4): Point4 {
   const l = Math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
   if (l < 1e-12) {
     return { x: 0, y: 0, z: 0, w: 1 };
@@ -148,4 +148,61 @@ export function isCoasting(sinceReceivedMs: number | undefined, tuning: Correcti
     sinceReceivedMs > tuning.extrapolateMaxMs &&
     sinceReceivedMs <= (tuning.coastMaxMs ?? 0)
   );
+}
+
+/** a normalized copy of a quaternion rotation; a 2D angle as is */
+export function rNormalize<R extends NetRot>(r: R): R {
+  return (typeof r === 'number' ? r : normalizeQuat(r)) as R;
+}
+
+/** wire resolution of positions: 1 mm (world units, i.e. meters in 3D) */
+export const NET_POSITION_STEP = 1e-3;
+/** wire resolution of linear and angular velocities: 1 mm/s (rad/s for angular velocity) */
+export const NET_VELOCITY_STEP = 1e-3;
+/** wire resolution of quaternion components (and 2D angles): 5 decimals */
+export const NET_ROTATION_STEP = 1e-5;
+
+function round(v: number, step: number): number {
+  // dividing by the integer reciprocal keeps the result the double closest to the decimal value, so
+  // it serializes as e.g. `100000.123` rather than `100000.12300000001`
+  const inv = Math.round(1 / step);
+  const r = Math.round(v * inv) / inv;
+  return r === 0 ? 0 : r; // no -0
+}
+
+/** a vector with every component rounded to `step` */
+export function vQuantize<D extends NetVec>(a: D, step: number): D {
+  return (
+    is3d(a)
+      ? { x: round(a.x, step), y: round(a.y, step), z: round(a.z, step) }
+      : { x: round(a.x, step), y: round(a.y, step) }
+  ) as D;
+}
+
+/** a rotation rounded to {@link NET_ROTATION_STEP}: each quaternion component, or the 2D angle */
+export function rQuantize<R extends NetRot>(r: R): R {
+  if (typeof r === 'number') {
+    return round(r, NET_ROTATION_STEP) as R;
+  }
+  return {
+    x: round(r.x, NET_ROTATION_STEP),
+    y: round(r.y, NET_ROTATION_STEP),
+    z: round(r.z, NET_ROTATION_STEP),
+    w: round(r.w, NET_ROTATION_STEP),
+  } as R;
+}
+
+/** an angular velocity rounded to {@link NET_VELOCITY_STEP}: a 2D scalar or a 3D vector */
+export function avQuantize(av: number | Point3): number | Point3 {
+  return typeof av === 'number' ? round(av, NET_VELOCITY_STEP) : vQuantize(av, NET_VELOCITY_STEP);
+}
+
+/** `frame`'s direction conversion for a 3D angular velocity vector; a 2D scalar is left as is */
+export function avToGlobal(av: number | Point3, frame: NetworkFrame<any, any>): number | Point3 {
+  return typeof av === 'number' ? av : (frame.toGlobalDirection(av) as Point3);
+}
+
+/** see {@link avToGlobal} */
+export function avToLocal(av: number | Point3, frame: NetworkFrame<any, any>): number | Point3 {
+  return typeof av === 'number' ? av : (frame.toLocalDirection(av) as Point3);
 }

@@ -138,6 +138,12 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   both character entities (`externalDisplacement` folded into the next `move()` then cleared,
   `jumpCount` incremented only by a jump that happened, `actualVelocity` = last tick's real
   displacement / dt).
+- Network state is global: `NetworkFrame<D, R>` (`toGlobal*`/`toLocal*` for points, directions,
+  rotations; `Frame3d` implements it) is an optional argument of both helpers' `capture` and
+  `correct`, and their `toGlobal`/`toLocal` convert a state alone. The 3D built-ins pass their
+  world's frame (`3d/network-frame.ts`, internal). Capture output is quantised (`net-quantize.ts`,
+  exported: `quantizeNetPosition`/`Velocity`/`AngularVelocity`/`Rotation`), and `correct`
+  normalizes the target quaternion. See `gg-engine-multiplayer` for the full split.
 - `TickOrder.NETWORK_IN` (100): after input controllers, before the movers/vehicles at
   `PHYSICS_SIMULATION - 5`, so remote input and corrections land in the same tick they're applied.
 - `GgWorld.eventAuthority` (consulted by `BlueprintBindingEntity` before each run) and
@@ -2025,6 +2031,8 @@ local = global and nothing about it changes.
   emits on `frame$` only when the value actually differs. It is meant for world creation (or the
   `frame` constructor option).
 - 2D worlds have no frame.
+- `Frame3d` implements `NetworkFrame<Point3, Point4>`; the network helpers and the 3D built-in
+  entities convert their state through it (see "Networking contracts" above).
 - Anything that must compare across sections (a network layer's wire format, saved global
   positions) goes through these helpers; never apply a frame to state the physics adapter reads.
 

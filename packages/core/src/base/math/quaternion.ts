@@ -27,6 +27,18 @@ export class Qtrn {
     return { x: q.x, y: q.y, z: q.z, w: q.w };
   }
 
+  /**
+   * `q` scaled to unit length (e.g. after its components were rounded); the identity rotation for a
+   * zero-length `q`.
+   */
+  static normalize(q: Point4): Point4 {
+    const l = Math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+    if (!(l > 1e-12)) {
+      return Qtrn.O;
+    }
+    return { x: q.x / l, y: q.y / l, z: q.z / l, w: q.w / l };
+  }
+
   /** spread quaternion components */
   static spr(p: Point4): [number, number, number, number] {
     return [p.x, p.y, p.z, p.w];

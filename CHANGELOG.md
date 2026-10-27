@@ -35,6 +35,19 @@ where one exists.
   sections each simulated near its own origin. Identity by default. `toGlobalPoint`/`toLocalPoint`,
   `toGlobalDirection`/`toLocalDirection` and `toGlobalRotation`/`toLocalRotation` convert through
   it; `Frame3d` is the immutable value behind it, with `compose`, `inverse` and `equals`.
+- core: `RigidBodyCorrection` and `MoverCorrection` take an optional `NetworkFrame` (`Frame3d`
+  implements it): `capture(body, frame)` returns global state, `correct(..., tuning, frame)` converts
+  a global target to local; `toGlobal`/`toLocal` convert a state alone. `Entity3d`, `GgCarEntity`
+  and `CharacterController3dEntity` (state and input rotation) convert their network state through
+  their world's frame.
+- core: `quantizeNetPosition` (1 mm), `quantizeNetVelocity` (1 mm/s),
+  `quantizeNetAngularVelocity` and `quantizeNetRotation` (5 decimals), for network payloads.
+- core: `Qtrn.normalize`.
+- multiplayer: everything on the wire is in global coordinates. `Network3dController` sends heartbeat
+  positions (zoning cells, distance arbitration, takeover elections) and spawn descriptors'
+  `position`/`rotation` globally; received state stays global until it is applied, through the
+  world's frame as it is then. Peers whose worlds have different frames share entities at the same
+  global pose.
 - core: `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` hold a direction the
   way its key does, for an on-screen button or anything else that is either pushed or not: it is
   part of `output$`, and `oppositeKeys` decides it together with the keys. Analog contributions
@@ -46,6 +59,10 @@ where one exists.
   its deprecated alias.
 
 ### Changed
+- core, multiplayer: network state is quantised: `RigidBodyCorrection.capture`/`MoverCorrection.capture`
+  round positions to 1 mm, velocities to 1 mm/s and quaternion components to 5 decimals, and the
+  correction helpers normalize the received rotation. Heartbeat positions and spawn descriptors'
+  `position`/`rotation` are rounded the same way.
 - core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the
   input, on a key or press that leaves it as it was, or on a stop with nothing resolved.
 

@@ -3,8 +3,14 @@ import {
   CorrectionTuning,
   DEFAULT_CORRECTION_TUNING,
   NetworkApplyContext,
+  NetworkFrame,
 } from '../interfaces/i-network-syncable';
 import {
+  NET_POSITION_STEP,
+  NET_VELOCITY_STEP,
+  rNormalize,
+  rQuantize,
+  vQuantize,
   extrapolationSeconds,
   gainFactor,
   isCoasting,
@@ -64,15 +70,58 @@ export interface INetworkMover<D, R> {
  * rotation through the setters and resets both momentum vectors to the owner's.
  */
 export class MoverCorrection {
-  /** Owner side: snapshot `mover` as plain JSON. */
-  static capture<D, R>(mover: INetworkMover<D, R>): MoverNetState<D, R> {
-    return {
-      p: vClone(mover.position as unknown as NetVec) as unknown as D,
-      r: rClone(mover.rotation as unknown as NetRot) as unknown as R,
-      fv: vClone(mover.fallVelocity as unknown as NetVec) as unknown as D,
-      ahv: vClone(mover.airHorizontalVelocity as unknown as NetVec) as unknown as D,
+  /**
+   * Owner side: snapshot `mover` as plain JSON, quantised for the wire (positions to 1 mm,
+   * velocities to 1 mm/s, quaternion components to 5 decimals - see `quantizeNetPosition`).
+   * @param mover - the owner's local character entity
+   * @param frame - the world's frame (`Gg3dWorld.frame`): the snapshot is converted to global
+   * coordinates through it. Omitted (2D, or an identity frame), the snapshot is in world coordinates.
+   */
+  static capture<D, R>(mover: INetworkMover<D, R>, frame?: NetworkFrame<D, R> | null): MoverNetState<D, R> {
+    const state: MoverNetState<D, R> = {
+      p: mover.position,
+      r: mover.rotation,
+      fv: mover.fallVelocity,
+      ahv: mover.airHorizontalVelocity,
       crouch: mover.isCrouching,
-      v: vClone(mover.actualVelocity as unknown as NetVec) as unknown as D,
+      v: mover.actualVelocity,
+    };
+    const global = frame ? MoverCorrection.toGlobal(state, frame) : state;
+    const vel = (v: D) => vQuantize(v as unknown as NetVec, NET_VELOCITY_STEP) as unknown as D;
+    return {
+      p: vQuantize(global.p as unknown as NetVec, NET_POSITION_STEP) as unknown as D,
+      r: rQuantize(global.r as unknown as NetRot) as unknown as R,
+      fv: vel(global.fv),
+      ahv: vel(global.ahv),
+      crouch: global.crouch,
+      v: vel(global.v!),
+    };
+  }
+
+  /**
+   * `state` (local) converted to global coordinates through `frame`: position as a point, rotation
+   * as an orientation, every velocity as a direction. Every other field is kept as is.
+   */
+  static toGlobal<D, R, S extends MoverNetState<D, R>>(state: S, frame: NetworkFrame<D, R>): S {
+    return {
+      ...state,
+      p: frame.toGlobalPoint(state.p),
+      r: frame.toGlobalRotation(state.r),
+      fv: frame.toGlobalDirection(state.fv),
+      ahv: frame.toGlobalDirection(state.ahv),
+      ...(state.v !== undefined ? { v: frame.toGlobalDirection(state.v) } : {}),
+    };
+  }
+
+  /** `state` (global) converted to the local coordinates of `frame` - the inverse of {@link toGlobal}. */
+  static toLocal<D, R, S extends MoverNetState<D, R>>(state: S, frame: NetworkFrame<D, R>): S {
+    return {
+      ...state,
+      p: frame.toLocalPoint(state.p),
+      r: frame.toLocalRotation(state.r),
+      fv: frame.toLocalDirection(state.fv),
+      ahv: frame.toLocalDirection(state.ahv),
+      ...(state.v !== undefined ? { v: frame.toLocalDirection(state.v) } : {}),
     };
   }
 
@@ -94,14 +143,22 @@ export class MoverCorrection {
    * @param mover - the replica's local character entity
    * @param target - the owner's snapshot
    * @param ctx - age/silence/dt/snap/tuning of this application
-   * @param tuning - overrides `ctx.tuning` when given
+   * @param tuning - overrides `ctx.tuning` when given (`undefined` for `ctx.tuning`)
+   * @param frame - the world's frame, read now: `target` is global and gets converted to local
+   * coordinates through it. Omitted (2D, or an identity frame), `target` is in world coordinates.
    */
   static correct<D, R>(
     mover: INetworkMover<D, R>,
     target: MoverNetState<D, R>,
     ctx: NetworkApplyContext,
     tuning: CorrectionTuning = ctx.tuning ?? DEFAULT_CORRECTION_TUNING,
+    frame?: NetworkFrame<D, R> | null,
   ): CorrectionOutcome {
+    if (frame) {
+      target = MoverCorrection.toLocal(target, frame);
+    }
+    // a quantised quaternion is a little off unit length
+    target = { ...target, r: rNormalize(target.r as unknown as NetRot) as unknown as R };
     const tP = MoverCorrection.targetPosition(target, ctx.ageMs, tuning) as unknown as NetVec;
     const lP = mover.position as unknown as NetVec;
     const error = vSub(tP, lP);
