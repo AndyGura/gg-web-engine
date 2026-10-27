@@ -25,6 +25,20 @@ describe('procedural sky', () => {
     expect(material.uniforms.uCoverage.value).toBe(0);
   });
 
+  it('turns the cirrus layer on and off, its streaks along its wind', async () => {
+    const scene = new ThreeSceneComponent();
+    await scene.init();
+    scene.setEnvironment({ background: { type: 'PROCEDURAL' } });
+    const u = (skyMesh(scene)!.material as ShaderMaterial).uniforms;
+    expect(u.uCirrusCoverage.value).toBe(0);
+    scene.setEnvironment({ background: { type: 'PROCEDURAL', cirrus: { coverage: 0.7, wind: { x: 0, y: 0.01 } } } });
+    expect(u.uCirrusCoverage.value).toBe(0.7);
+    expect(u.uCirrusAxis.value.x).toBeCloseTo(0);
+    expect(u.uCirrusAxis.value.y).toBeCloseTo(1);
+    scene.setEnvironment({ background: { type: 'PROCEDURAL', cirrus: null } });
+    expect(u.uCirrusCoverage.value).toBe(0);
+  });
+
   it('removes the sky and frees it when the background becomes something else', async () => {
     const scene = new ThreeSceneComponent();
     await scene.init();

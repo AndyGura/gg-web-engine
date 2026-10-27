@@ -92,6 +92,7 @@ ${ATMOSPHERE_GLSL}
 varying vec3 vDirection;
 varying vec3 vCloudSun;
 varying vec3 vCloudMoon;
+varying vec3 vCirrusSun;
 varying vec3 vSkyAmbient;
 
 void main() {
@@ -107,6 +108,8 @@ void main() {
   // direct light through the air at the clouds' height
   vCloudSun = SUN_ILLUMINANCE * sunUp * exp(-tau * airMass(uSunDirection.z) * 0.6);
   vCloudMoon = MOON_ILLUMINANCE * moonUp * exp(-tau * airMass(uMoonDirection.z) * 0.6);
+  // cirrus is higher still: less air between it and the sun, so it stays lit longer at dusk
+  vCirrusSun = SUN_ILLUMINANCE * smoothstep(-0.16, 0.0, uSunDirection.z) * exp(-tau * airMass(uSunDirection.z + 0.03) * 0.35);
   vec3 zenith = vec3(0.0, 0.0, 1.0);
   vec3 viewT;
   vec3 lightT;
@@ -133,6 +136,11 @@ uniform float uCoverage;
 uniform float uDensity;
 uniform float uCloudScale;
 uniform vec2 uCloudOffset;
+uniform float uCirrusCoverage;
+uniform float uCirrusDensity;
+uniform float uCirrusScale;
+uniform vec2 uCirrusOffset;
+uniform vec2 uCirrusAxis;
 uniform float uStars;
 uniform float uMoonSize;
 uniform float uTime;
@@ -140,6 +148,7 @@ uniform float uTime;
 varying vec3 vDirection;
 varying vec3 vCloudSun;
 varying vec3 vCloudMoon;
+varying vec3 vCirrusSun;
 varying vec3 vSkyAmbient;
 
 // "Hash without Sine" by David Hoskins (MIT)
@@ -230,6 +239,23 @@ void main() {
   // nothing of them shows through the ground
   color += bodies * step(0.0, v.z);
 
+  // cirrus: thin streaks on a plane above the main layer, stretched along their wind
+  if (uCirrusCoverage > 0.0 && uCirrusDensity > 0.0) {
+    float lift = sky.z + 0.04;
+    vec2 q = sky.xy / lift / uCirrusScale * 1.4 + uCirrusOffset;
+    vec2 r = vec2(dot(q, uCirrusAxis) * 0.7, dot(q, vec2(-uCirrusAxis.y, uCirrusAxis.x)) * 3.5);
+    // a slow warp bends the streaks into wisps
+    float warp = fbm(r * vec2(0.5, 0.12) + 11.0, 2);
+    float n = fbm(r + vec2(0.0, (warp - 0.5) * 3.0), 4);
+    float streak = smoothstep(0.0, 0.22, n - 1.05 + uCirrusCoverage * 0.95);
+    // fine fibres across the streaks
+    float fibres = valueNoise(r * vec2(1.5, 9.0) + warp * 4.0);
+    float cirrusAlpha = streak * (0.35 + 0.65 * fibres) * uCirrusDensity * 0.7 * smoothstep(0.0, 0.08, sky.z);
+    vec3 cirrusColor = vCirrusSun * (0.13 + 0.12 * henyeyGreenstein(cosSun, 0.7)) + vCloudMoon * 0.14 + vSkyAmbient * 1.1;
+    cirrusColor = mix(cirrusColor, skyLight, 1.0 - exp(-(1.0 / lift) * (0.04 + 0.06 * uHaze)));
+    color = mix(color, cirrusColor, cirrusAlpha);
+  }
+
   // cloud layer: noise on a plane high above the viewer, seen through the atmosphere
   if (uCoverage > 0.0 && uDensity > 0.0) {
     float lift = sky.z + 0.06;
@@ -314,6 +340,11 @@ export class ThreeProceduralSky {
         uDensity: { value: 0 },
         uCloudScale: { value: 1 },
         uCloudOffset: { value: new Vector2() },
+        uCirrusCoverage: { value: 0 },
+        uCirrusDensity: { value: 0 },
+        uCirrusScale: { value: 1 },
+        uCirrusOffset: { value: new Vector2() },
+        uCirrusAxis: { value: new Vector2(1, 0) },
         uStars: { value: 1 },
         uMoon: { value: 1 },
         uMoonSize: { value: 0.025 },
@@ -351,6 +382,16 @@ export class ThreeProceduralSky {
     u.uCoverage.value = options.clouds ? options.clouds.coverage : 0;
     u.uDensity.value = options.clouds ? options.clouds.density : 0;
     u.uCloudScale.value = options.clouds ? Math.max(0.01, options.clouds.scale) : 1;
+    const cirrus = options.cirrus;
+    u.uCirrusCoverage.value = cirrus ? cirrus.coverage : 0;
+    u.uCirrusDensity.value = cirrus ? cirrus.density : 0;
+    u.uCirrusScale.value = cirrus ? Math.max(0.01, cirrus.scale) : 1;
+    const windLength = cirrus ? Math.hypot(cirrus.wind.x, cirrus.wind.y) : 0;
+    if (cirrus && windLength > 1e-9) {
+      u.uCirrusAxis.value.set(cirrus.wind.x / windLength, cirrus.wind.y / windLength);
+    } else {
+      u.uCirrusAxis.value.set(1, 0);
+    }
     u.uStars.value = options.stars;
     u.uMoon.value = options.moon;
     u.uMoonSize.value = options.moonSize;
@@ -367,11 +408,18 @@ export class ThreeProceduralSky {
       u.uCloudOffset.value.x += wind.x * dt;
       u.uCloudOffset.value.y += wind.y * dt;
     }
+    const cirrusWind = this._options?.cirrus?.wind;
+    if (cirrusWind) {
+      u.uCirrusOffset.value.x += cirrusWind.x * dt;
+      u.uCirrusOffset.value.y += cirrusWind.y * dt;
+    }
   }
 
   private currentKey(resolution: number): string {
-    const { clouds, mode, ...rest } = this._options!;
-    return JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, resolution]);
+    const { clouds, cirrus, mode, ...rest } = this._options!;
+    // a wind direction still turns the cirrus streaks, so only its length is left out
+    const cirrusKey = cirrus ? { ...cirrus, wind: Math.atan2(cirrus.wind.y, cirrus.wind.x) } : null;
+    return JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, cirrusKey, resolution]);
   }
 
   /** The sky drawn into a cube texture `resolution` pixels per side; drawn again only when a setting changed. */

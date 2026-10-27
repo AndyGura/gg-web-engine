@@ -33,7 +33,8 @@ where one exists.
 - core, three: a shader-drawn sky, `ProceduralSky3dOpts` (`{ type: 'PROCEDURAL', timeOfDay, haze,
   clouds: { coverage, density, scale, wind }, stars, moon, ... }`), accepted by
   `setEnvironment({ background, environmentMap })` and the `"Environment"` level class. Every
-  setting can change at any time; `clouds.coverage: 1` gives a full overcast. `mode: 'DYNAMIC'`
+  setting can change at any time; `clouds.coverage: 1` gives a full overcast, and an optional
+  `cirrus: { coverage, density, scale, wind }` layer adds high streaks above the clouds. `mode: 'DYNAMIC'`
   (default) draws it every frame with drifting clouds, `'BAKED'` draws it into a cube texture only
   when a setting changes. As `environmentMap` it lights `'standart'` and PBR materials.
   `proceduralSkyBodies(sky)` returns the sun and moon directions and the sunlight's color and

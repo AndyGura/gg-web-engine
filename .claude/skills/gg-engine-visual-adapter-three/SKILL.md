@@ -61,8 +61,13 @@ procedural `environmentMap`, and updates their uniforms on every `setEnvironment
   dispose listener, so its PMREM target would outlive the sky.
 - **Cloud drift and star twinkle advance on wall-clock time between renders, capped at 0.1 s a
   step** (`advance(performance.now())` from `prepareFrame`): a paused world stops rendering, so the
-  cap keeps the clouds from jumping on resume. The cloud offset accumulates `wind * dt`, so changing
-  `wind` changes the speed without moving the clouds.
+  cap keeps the clouds from jumping on resume. Each layer's offset accumulates `wind * dt`, so
+  changing `wind` changes the speed without moving the clouds.
+- **Cirrus** is a second plane above the main layer, sampled in a frame turned to its wind
+  (`uCirrusAxis`, `+X` for a zero wind) and stretched across it, with a low-frequency warp for
+  wisps and a high-frequency fibre noise on top; it is lit through less air than the main layer, so
+  it stays colored after sunset. It costs about a sixth more than the sky without it; off, the
+  shader skips it on a uniform branch.
 - **Output**: the shader applies its own `1 - exp(-color * exposure)` curve, then
   `tonemapping_fragment`/`colorspace_fragment`, so a renderer with tone mapping on treats the
   dynamic sky like the baked one, whose half-float cube is linear and goes through three.js's own

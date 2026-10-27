@@ -537,7 +537,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   17.5, haze: 0.3, clouds: { coverage: 0.6, density: 0.8, scale: 1, wind: { x: 0.006, y: 0 } },
   stars: 1, moon: 1 }`, every field optional (`PROCEDURAL_SKY_DEFAULTS`). `timeOfDay` runs `0..24`
   (sunrise `6`, noon `12`, sunset `18`), the sun's path is set by `sunAzimuth`/`sunPeakElevation`,
-  `clouds: { coverage: 1, density: 1 }` is a full overcast and `clouds: null` a cloudless sky. Call
+  `clouds: { coverage: 1, density: 1 }` is a full overcast and `clouds: null` a cloudless sky.
+  `cirrus: { coverage, density, scale, wind }` (off unless given; `{}` for its defaults) adds a
+  layer of high, thin streaks drawn along its `wind`, above the main clouds. Call
   `setEnvironment` again with changed fields any time, e.g. every tick to animate the time of day.
   `mode: 'DYNAMIC'` (default) draws it every frame with drifting clouds and twinkling stars;
   `mode: 'BAKED'` draws it into a cube texture (`bakeResolution` per side) only when a setting

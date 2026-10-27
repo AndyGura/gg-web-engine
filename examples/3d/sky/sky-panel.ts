@@ -1,9 +1,14 @@
-import { ProceduralSky3dOpts, ProceduralSkyClouds3dOpts } from '@gg-web-engine/core';
+import { ProceduralSky3dOpts, ProceduralSkyCirrus3dOpts, ProceduralSkyClouds3dOpts } from '@gg-web-engine/core';
 
-/** What the panel edits: the sky itself, and whether it also lights the scene. */
+/**
+ * What the panel edits: the sky itself, whether it also lights the scene, and the cirrus layer's
+ * settings, kept while the layer is off (`sky.cirrus` is `null` then).
+ */
 export type SkySettings = {
   sky: ProceduralSky3dOpts & { clouds: Required<ProceduralSkyClouds3dOpts> };
   lightWithSky: boolean;
+  cirrusOn: boolean;
+  cirrus: Required<ProceduralSkyCirrus3dOpts>;
 };
 
 const deg = Math.PI / 180;
@@ -12,18 +17,24 @@ const PRESETS: Record<string, (s: SkySettings) => void> = {
   'Clear noon': s => {
     Object.assign(s.sky, { timeOfDay: 12, haze: 0.1 });
     Object.assign(s.sky.clouds, { coverage: 0.15, density: 0.7 });
+    s.cirrusOn = true;
+    Object.assign(s.cirrus, { coverage: 0.35, density: 0.6 });
   },
   Sunset: s => {
     Object.assign(s.sky, { timeOfDay: 17.75, haze: 0.35 });
-    Object.assign(s.sky.clouds, { coverage: 0.45, density: 0.8 });
+    Object.assign(s.sky.clouds, { coverage: 0.3, density: 0.8 });
+    s.cirrusOn = true;
+    Object.assign(s.cirrus, { coverage: 0.6, density: 0.7 });
   },
   'Winter overcast': s => {
     Object.assign(s.sky, { timeOfDay: 11, haze: 0.6 });
     Object.assign(s.sky.clouds, { coverage: 1, density: 1 });
+    s.cirrusOn = false;
   },
   Night: s => {
     Object.assign(s.sky, { timeOfDay: 0.5, haze: 0.1, stars: 1, moon: 1 });
     Object.assign(s.sky.clouds, { coverage: 0.25, density: 0.6 });
+    s.cirrusOn = false;
   },
 };
 
@@ -50,15 +61,24 @@ export function createSkyPanel(root: HTMLElement, apply: (settings: SkySettings)
       moonSize: 0.025,
     },
     lightWithSky: true,
+    cirrusOn: true,
+    cirrus: { coverage: 0.4, density: 0.6, scale: 1, wind: { x: 0.004, y: 0.001 } },
   };
   let animate = false;
   let hoursPerSecond = 0.5;
   let windSpeed = Math.hypot(settings.sky.clouds.wind.x, settings.sky.clouds.wind.y);
   let windDirection = Math.atan2(settings.sky.clouds.wind.y, settings.sky.clouds.wind.x);
+  let cirrusWindSpeed = Math.hypot(settings.cirrus.wind.x, settings.cirrus.wind.y);
+  let cirrusWindDirection = Math.atan2(settings.cirrus.wind.y, settings.cirrus.wind.x);
   const refreshers: (() => void)[] = [];
 
   const changed = () => {
     settings.sky.clouds.wind = { x: Math.cos(windDirection) * windSpeed, y: Math.sin(windDirection) * windSpeed };
+    settings.cirrus.wind = {
+      x: Math.cos(cirrusWindDirection) * cirrusWindSpeed,
+      y: Math.sin(cirrusWindDirection) * cirrusWindSpeed,
+    };
+    settings.sky.cirrus = settings.cirrusOn ? { ...settings.cirrus } : null;
     // a new object each time, as an app would pass it
     apply({ ...settings, sky: { ...settings.sky, clouds: { ...settings.sky.clouds } } });
   };
@@ -247,6 +267,53 @@ export function createSkyPanel(root: HTMLElement, apply: (settings: SkySettings)
     1,
     () => windDirection / deg,
     v => (windDirection = v * deg),
+  );
+  section('Cirrus (high streaks)');
+  const ci = settings.cirrus;
+  checkbox(
+    'Cirrus layer',
+    () => settings.cirrusOn,
+    v => (settings.cirrusOn = v),
+  );
+  slider(
+    'Cirrus coverage',
+    0,
+    1,
+    0.01,
+    () => ci.coverage,
+    v => (ci.coverage = v),
+  );
+  slider(
+    'Cirrus density',
+    0,
+    1,
+    0.01,
+    () => ci.density,
+    v => (ci.density = v),
+  );
+  slider(
+    'Cirrus scale',
+    0.2,
+    4,
+    0.01,
+    () => ci.scale,
+    v => (ci.scale = v),
+  );
+  slider(
+    'Cirrus wind speed',
+    0,
+    0.05,
+    0.001,
+    () => cirrusWindSpeed,
+    v => (cirrusWindSpeed = v),
+  );
+  slider(
+    'Cirrus direction (°)',
+    0,
+    360,
+    1,
+    () => cirrusWindDirection / deg,
+    v => (cirrusWindDirection = v * deg),
   );
   section('Night');
   slider(

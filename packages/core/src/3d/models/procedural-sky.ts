@@ -20,6 +20,25 @@ export type ProceduralSkyClouds3dOpts = {
 };
 
 /**
+ * The optional cirrus layer of a `ProceduralSky3dOpts`: thin, wispy streaks high above the main
+ * cloud layer, stretched along the direction of their `wind`. All fields are optional.
+ */
+export type ProceduralSkyCirrus3dOpts = {
+  /** How much of the sky the streaks cover, `0` (none) to `1`. Default `0.4`. */
+  coverage?: number;
+  /** How opaque the streaks are, `0` to `1`. Default `0.6`. */
+  density?: number;
+  /** Size of the streaks; `2` makes them twice as large. Default `1`. */
+  scale?: number;
+  /**
+   * Drift of the layer along the world X and Y axes, in the same units as
+   * `ProceduralSkyClouds3dOpts.wind`; the streaks are drawn along this direction (along X when it
+   * is zero). Default `{ x: 0.004, y: 0.001 }`.
+   */
+  wind?: Point2;
+};
+
+/**
  * A sky drawn by a shader instead of an image: sun, atmosphere, a cloud layer, and stars and a
  * moon at night, all set by the numbers below and changeable at any time. Use it as
  * `Environment3dOpts.background`, and also as `environmentMap` to light `'standart'`-shaded
@@ -73,6 +92,11 @@ export type ProceduralSky3dOpts = {
   groundColor?: number;
   /** The cloud layer; `null` for a cloudless sky. Default: the defaults of `ProceduralSkyClouds3dOpts`. */
   clouds?: ProceduralSkyClouds3dOpts | null;
+  /**
+   * A layer of cirrus streaks above `clouds`; `null` or absent (default) for none. `{}` turns it on
+   * with the defaults of `ProceduralSkyCirrus3dOpts`.
+   */
+  cirrus?: ProceduralSkyCirrus3dOpts | null;
   /** Brightness of the stars at night, `0` (none) to `1`. Default `1`. */
   stars?: number;
   /** Brightness of the moon, `0` (none) to `1`. The moon is opposite the sun. Default `1`. */
@@ -82,8 +106,17 @@ export type ProceduralSky3dOpts = {
 };
 
 /** Every setting of a `ProceduralSky3dOpts` with the defaults filled in. */
-export type ResolvedProceduralSky3dOpts = Required<Omit<ProceduralSky3dOpts, 'clouds'>> & {
+export type ResolvedProceduralSky3dOpts = Required<Omit<ProceduralSky3dOpts, 'clouds' | 'cirrus'>> & {
   clouds: Required<ProceduralSkyClouds3dOpts> | null;
+  cirrus: Required<ProceduralSkyCirrus3dOpts> | null;
+};
+
+/** The settings a cirrus layer gets for every field `ProceduralSky3dOpts.cirrus` leaves out. */
+export const PROCEDURAL_SKY_CIRRUS_DEFAULTS: Required<ProceduralSkyCirrus3dOpts> = {
+  coverage: 0.4,
+  density: 0.6,
+  scale: 1,
+  wind: { x: 0.004, y: 0.001 },
 };
 
 /** The default value of every `ProceduralSky3dOpts` setting. */
@@ -99,6 +132,7 @@ export const PROCEDURAL_SKY_DEFAULTS: ResolvedProceduralSky3dOpts = {
   exposure: 1,
   groundColor: 0x5a554f,
   clouds: { coverage: 0.45, density: 0.8, scale: 1, wind: { x: 0.006, y: 0.002 } },
+  cirrus: null,
   stars: 1,
   moon: 1,
   moonSize: 0.025,
@@ -112,7 +146,8 @@ export function isProceduralSky(value: unknown): value is ProceduralSky3dOpts {
 /** `sky` with every missing setting set to its default (see `PROCEDURAL_SKY_DEFAULTS`). */
 export function resolveProceduralSky(sky: ProceduralSky3dOpts): ResolvedProceduralSky3dOpts {
   const clouds = sky.clouds === null ? null : { ...PROCEDURAL_SKY_DEFAULTS.clouds!, ...(sky.clouds || {}) };
-  return { ...PROCEDURAL_SKY_DEFAULTS, ...sky, clouds };
+  const cirrus = sky.cirrus ? { ...PROCEDURAL_SKY_CIRRUS_DEFAULTS, ...sky.cirrus } : null;
+  return { ...PROCEDURAL_SKY_DEFAULTS, ...sky, clouds, cirrus };
 }
 
 /**

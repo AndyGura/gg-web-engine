@@ -1,5 +1,6 @@
 import {
   isProceduralSky,
+  PROCEDURAL_SKY_CIRRUS_DEFAULTS,
   PROCEDURAL_SKY_DEFAULTS,
   proceduralSkyBodies,
   ProceduralSky3dOpts,
@@ -14,6 +15,16 @@ describe('procedural sky', () => {
     expect(sky.haze).toBe(PROCEDURAL_SKY_DEFAULTS.haze);
     expect(sky.clouds).toEqual({ ...PROCEDURAL_SKY_DEFAULTS.clouds, coverage: 1 });
     expect(resolveProceduralSky({ type: 'PROCEDURAL', clouds: null }).clouds).toBeNull();
+  });
+
+  it('has no cirrus layer unless one is given, and fills in the defaults of one that is', () => {
+    expect(resolveProceduralSky({ type: 'PROCEDURAL' }).cirrus).toBeNull();
+    expect(resolveProceduralSky({ type: 'PROCEDURAL', cirrus: null }).cirrus).toBeNull();
+    expect(resolveProceduralSky({ type: 'PROCEDURAL', cirrus: {} }).cirrus).toEqual(PROCEDURAL_SKY_CIRRUS_DEFAULTS);
+    expect(resolveProceduralSky({ type: 'PROCEDURAL', cirrus: { coverage: 0.9 } }).cirrus).toEqual({
+      ...PROCEDURAL_SKY_CIRRUS_DEFAULTS,
+      coverage: 0.9,
+    });
   });
 
   it('tells a procedural sky from colors and textures', () => {
