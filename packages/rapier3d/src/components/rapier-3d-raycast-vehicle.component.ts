@@ -1,6 +1,7 @@
 import {
   buildWheelContact,
   defaultMaxSuspensionForce,
+  Frame3d,
   IRaycastVehicleComponent,
   Pnt3,
   Point3,
@@ -72,6 +73,14 @@ export class Rapier3dRaycastVehicleComponent
    * report no ground and hang at their rest length.
    */
   private wheelContactsReset = false;
+
+  /**
+   * The frame switches (`Gg3dWorld.switchFrame`) since the last `updateVehicle`, composed: the
+   * controller's world-space contact data (`wheelContactPoint`/`wheelContactNormal`/
+   * `wheelHardPoint`) stays in the frame it was cast in, so `getWheelContact` carries it through
+   * this until the next cast replaces it. `null` when nothing switched.
+   */
+  private castFrameDelta: Frame3d | null = null;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
@@ -151,6 +160,7 @@ export class Rapier3dRaycastVehicleComponent
       this.wheels[i].stepSteering = this.wheels[i].steering;
     }
     this.wheelContactsReset = false;
+    this.castFrameDelta = null;
     this._nativeVehicle.updateVehicle(dt, QueryFilterFlags.EXCLUDE_SENSORS, this.collisionGroups);
   }
 
@@ -278,12 +288,14 @@ export class Rapier3dRaycastVehicleComponent
     if (!point || !normal || !castHardPoint) {
       return null;
     }
-    const castPoint = Pnt3.clone(point);
-    const groundNormal = Pnt3.clone(normal);
+    const castDelta = this.castFrameDelta;
+    const castPoint = castDelta ? castDelta.toGlobalPoint(point) : Pnt3.clone(point);
+    const groundNormal = castDelta ? castDelta.toGlobalDirection(normal) : Pnt3.clone(normal);
+    const castFrom = castDelta ? castDelta.toGlobalPoint(castHardPoint) : castHardPoint;
     const ray = this.currentWheelRay(wheel);
     // the cast contact's distance along the ray, from the current hard point: the contact carried
     // with the chassis, on the wheel's current ray
-    const carried = Pnt3.add(ray.hardPoint, Pnt3.scalarMult(ray.direction, Pnt3.dist(castPoint, castHardPoint)));
+    const carried = Pnt3.add(ray.hardPoint, Pnt3.scalarMult(ray.direction, Pnt3.dist(castPoint, castFrom)));
     // slide it along that ray back onto the ground plane (along the normal instead for a ray nearly
     // parallel to the ground, which would otherwise meet the plane far away)
     const offGround = Pnt3.dot(Pnt3.sub(carried, castPoint), groundNormal);
@@ -354,6 +366,17 @@ export class Rapier3dRaycastVehicleComponent
    */
   resetSuspension(): void {
     this.wheelContactsReset = true;
+  }
+
+  /**
+   * Frame switch (`Gg3dWorld.switchFrame`): moves the chassis like any rigid body. The controller's
+   * suspension lengths, wheel spin, steering and engine/brake settings are frame-independent and
+   * stay; its world-space contact data is carried through `castFrameDelta` until the next cast.
+   * `getWheelTransform` places the wheels from the chassis' current pose, so they follow at once.
+   */
+  onFrameSwitch(delta: Frame3d): void {
+    super.onFrameSwitch(delta);
+    this.castFrameDelta = this.castFrameDelta ? delta.compose(this.castFrameDelta) : delta;
   }
 
   public clone(): Rapier3dRaycastVehicleComponent {

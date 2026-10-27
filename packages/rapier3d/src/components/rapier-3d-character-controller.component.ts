@@ -3,6 +3,7 @@ import {
   CharacterController3dOptions,
   CollisionGroup,
   DebugBody3DSettings,
+  Frame3d,
   ICharacterController3dComponent,
   IEntity,
   Pnt3,
@@ -226,6 +227,37 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
       const parent = collider.parent();
       return !parent || !ignoredHandles.has(parent.handle);
     };
+  }
+
+  /**
+   * Frame switch (`Gg3dWorld.switchFrame`): teleports the kinematic body by `delta` (its next
+   * kinematic target to the same pose, as the setters do, so the step after it reads no motion),
+   * rotates `up` and the last ground normal, and re-syncs the collider so a sweep right after the
+   * switch starts from the moved capsule. Nothing is woken. Out of the world, the stored descriptor
+   * moves instead.
+   */
+  onFrameSwitch(delta: Frame3d): void {
+    this.up = delta.toGlobalDirection(this._up);
+    if (this._groundNormal) {
+      this._groundNormal = delta.toGlobalDirection(this._groundNormal);
+    }
+    const body = this._nativeBody;
+    if (!body) {
+      const t = delta.toGlobalPoint(this._bodyDescr.translation);
+      const r = delta.toGlobalRotation(this._bodyDescr.rotation);
+      this._bodyDescr.setTranslation(t.x, t.y, t.z);
+      this._bodyDescr.setRotation(new Quaternion(r.x, r.y, r.z, r.w));
+      return;
+    }
+    const t = delta.toGlobalPoint(body.translation());
+    const r = delta.toGlobalRotation(body.rotation());
+    const v = new Vector3(t.x, t.y, t.z);
+    const q = new Quaternion(r.x, r.y, r.z, r.w);
+    body.setTranslation(v, false);
+    body.setNextKinematicTranslation(v);
+    body.setRotation(q, false);
+    body.setNextKinematicRotation(q);
+    this.syncColliderTransform();
   }
 
   move(desiredTranslation: Point3, dt?: number): void {

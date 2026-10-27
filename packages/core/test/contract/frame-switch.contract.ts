@@ -57,7 +57,10 @@ export type FrameSwitchDeviations = {
   speed: number;
   /** m/s, of the velocity vector */
   velocity: number;
-  /** meters: a wheel entity's global position, at the ticks of the switches and right after them */
+  /**
+   * meters: a wheel entity's global position and its contact point (`getWheelContact`), at the ticks
+   * of the switches and right after them
+   */
   wheels: number;
 };
 
@@ -148,7 +151,7 @@ class TickHook extends IEntity {
 
 const heading = (rotation: Point4): Point3 => Pnt3.rot(Pnt3.Y, rotation);
 
-type Sample = { position: Point3; forward: Point3; velocity: Point3; wheels: Point3[] };
+type Sample = { position: Point3; forward: Point3; velocity: Point3; wheels: Point3[]; contacts: (Point3 | null)[] };
 
 /** A frame switched to, or a function computing it from the world and the car right before the switch. */
 type SwitchTarget = Frame3d | ((world: Gg3dWorld, car: GgCarEntity) => Frame3d);
@@ -214,6 +217,10 @@ const drive = async (
       forward: world.toGlobalDirection(heading(car.rotation)),
       velocity: world.toGlobalDirection(car.raycastVehicle.vehicleComponent.linearVelocity),
       wheels: wheels.map(w => world.toGlobalPoint(w.object3D!.position)),
+      contacts: wheels.map((_, j) => {
+        const contact = car.raycastVehicle.vehicleComponent.getWheelContact(j);
+        return contact ? world.toGlobalPoint(contact.point) : null;
+      }),
     });
   }
   world.dispose();
@@ -230,14 +237,18 @@ const angleBetween = (a: Point3, b: Point3): number => {
   return (d * 180) / Math.PI;
 };
 
-/** Yaws of the `recentred` scenario's two switches. */
-const RECENTRED_YAWS: [number, number] = [1.234, -2.5];
+/** Yaws and heights of the `recentred` scenario's two new frames. */
+const RECENTRED: [{ yaw: number; z: number }, { yaw: number; z: number }] = [
+  { yaw: 1.234, z: 3.0 },
+  { yaw: -2.5, z: -2.0 },
+];
 
 /**
  * The switch targets of a scenario, at 10 s and 20 s. `far`: the content is moved by
- * {@link FRAME_SWITCH_DELTAS}. `recentred`: the new frame is placed under the car, turned by
- * {@link RECENTRED_YAWS} - the way a large world moves the origin along with the player, so the
- * content stays near the local origin.
+ * {@link FRAME_SWITCH_DELTAS}. `recentred`: the new frame is placed at the car's ground position
+ * (shifted vertically, as a section's origin need not lie on the ground), turned by
+ * {@link RECENTRED} - the way a large world moves the origin along with the player, so the content
+ * stays near the local origin.
  */
 const scenarioSwitches = (scenario: 'far' | 'recentred'): Map<number, SwitchTarget> => {
   const [t1, t2] = [10 * FPS, 20 * FPS];
@@ -248,13 +259,15 @@ const scenarioSwitches = (scenario: 'far' | 'recentred'): Map<number, SwitchTarg
       [t2, frame1.compose(FRAME_SWITCH_DELTAS[1].inverse())],
     ]);
   }
-  const under = (yaw: number) => (world: Gg3dWorld, car: GgCarEntity) => {
-    const global = world.toGlobalPoint(car.position);
-    return new Frame3d({ x: global.x, y: global.y, z: 0 }, world.frame.yaw + yaw);
-  };
+  const under =
+    ({ yaw, z }: { yaw: number; z: number }) =>
+    (world: Gg3dWorld, car: GgCarEntity) => {
+      const global = world.toGlobalPoint(car.position);
+      return new Frame3d({ x: global.x, y: global.y, z }, world.frame.yaw + yaw);
+    };
   return new Map([
-    [t1, under(RECENTRED_YAWS[0])],
-    [t2, under(RECENTRED_YAWS[1])],
+    [t1, under(RECENTRED[0])],
+    [t2, under(RECENTRED[1])],
   ]);
 };
 
@@ -281,6 +294,12 @@ export async function measureFrameSwitchDrive(
     for (const i of [tick - 1, tick]) {
       reference[i].wheels.forEach((w, j) => {
         deviations.wheels = Math.max(deviations.wheels, Pnt3.dist(w, switched[i].wheels[j]));
+      });
+      reference[i].contacts.forEach((c, j) => {
+        const other = switched[i].contacts[j];
+        // a contact in one run and none in the other is as far off as it gets
+        const off = c && other ? Pnt3.dist(c, other) : c || other ? Infinity : 0;
+        deviations.wheels = Math.max(deviations.wheels, off);
       });
     }
   }
