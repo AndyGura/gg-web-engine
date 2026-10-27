@@ -46,6 +46,7 @@ export * from './interfaces/i-positionable-3d';
 export * from './models/body-options';
 export * from './models/character-controller-options';
 export * from './models/environment';
+export * from './models/frame-3d';
 export * from './models/gg-meta';
 export * from './models/lights';
 export * from './models/shapes';

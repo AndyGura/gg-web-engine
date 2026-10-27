@@ -68,7 +68,7 @@ then hands `lobby.roomId`/`lobby.localPeerId` to its transport.
 - App classes: implement the interfaces, delegate to `RigidBodyCorrection.capture/correct` or
   `MoverCorrection.capture/correct` (the latter needs the `INetworkMover` surface:
   `position/rotation/fallVelocity/airHorizontalVelocity/isCrouching/externalDisplacement/
-  actualVelocity`).
+  actualVelocity`). Payloads are global and quantised - see "Global coordinates on the wire".
 
 `RigidBodyCorrection` (per body kind): extrapolate the snapshot by velocity (capped at
 `extrapolateMaxMs`; a dynamic replica of a moving target whose snapshot arrived longer ago than that,
@@ -83,6 +83,57 @@ velocity, kinematic = transform lerp only, static = never. `MoverCorrection` nev
 error becomes `externalDisplacement`, consumed by the next `move()`. It coasts through a stalled
 stream the same way, and extrapolates by `v` (the owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
 walking, so extrapolating by them makes every replica pull back toward a stale position.
+
+## Global coordinates on the wire (3D world frames)
+
+A 3D world may be one section of a larger open world, simulated near its own origin and placed by
+`Gg3dWorld.frame` (`Frame3d`: translation + yaw about +Z). Physics stays local; **everything a peer
+sends is global**, so two peers whose worlds have different frames agree on every entity's global
+pose. Who converts what:
+
+- **Entities convert their own payloads**, through their world's frame read at the call
+  (`networkFrameOf(world)` in `core/src/3d/network-frame.ts`, internal: `null` without a world or
+  for the identity frame, so identity-frame values stay bit-exact). `RigidBodyCorrection.capture(body,
+  frame)`/`MoverCorrection.capture(mover, frame)` return global state; `correct(..., tuning, frame)`
+  converts the global target to local first (`toGlobal`/`toLocal` on both helpers do the conversion
+  alone and keep extra fields, for a payload extending the base state). Positions are points,
+  `lv`/`av`/`fv`/`ahv`/`v` directions, `r` an orientation. `Entity3d`, `GgCarEntity` (chassis; its
+  driving state is scalars) and `CharacterController3dEntity` (state, plus the input's `rotation`;
+  its `moveDirection` is relative to the character and passes as is) do this.
+- **`Network3dController` converts what it sends itself**, through `worldFrame()` (`null` on the base
+  and 2D controllers): heartbeat `pos` (global, so zoning cells - `updateLocalPosition` - and the
+  takeover election compare global positions; `localPosition()` itself stays local), and spawn
+  descriptors' top-level `position`/`rotation` (`toWireDescriptor`/`fromWireDescriptor`). A
+  descriptor with a `position` but no `rotation` was built at the sender's local identity: the
+  sender adds its frame's global rotation, and a receiver with a frame turns a still-missing
+  rotation into the global identity in its own local terms, so the replica isn't turned by the
+  difference of the two yaws. Received heartbeat positions stay global in `PeerInfo.position`
+  (`peers$`, `netStats().peers`): an app placing peer markers converts them with
+  `world.toLocalPoint`.
+  Class-specific vectors inside a descriptor's `config` (the `"Player"` class's `state` velocities)
+  are not converted: the full network state applied with `snap` right after the spawn is built
+  overwrites them. Received heartbeat positions are stored global and converted to local in
+  `peerPositions()` for distance arbitration; a record's `snapshotVelocity` (global) is converted to
+  local before it is compared with a body's velocity in contact claims.
+- **Buffers stay global.** `rec.latest`, held state, held spawns and `claim.full` are kept as
+  received; conversion happens inside `applyNetworkState`, with the frame as it is then. A frame
+  change between receiving and applying can never apply a stale frame.
+- **Quantisation**: the capture helpers round positions to 1 mm, velocities to 1 mm/s (angular:
+  0.001 rad/s) and quaternion components to 5 decimals (`quantizeNet*` in
+  `core/src/base/network/net-quantize.ts`); the controller rounds heartbeat positions and
+  descriptors the same way. Global coordinates are ~1e5 m, and a full double serializes to 17
+  digits; rounding also makes a resting entity's capture identical from tick to tick. A quantised
+  quaternion is a little off unit length - `correct` normalizes the target, the character's
+  `applyRemoteInput` its input rotation, and `fromWireDescriptor` a spawn descriptor's rotation
+  (with or without a frame), so an entity that is not `INetworkSyncable` is built with a unit
+  quaternion too. The unit-scaled default `deadzone` never goes below `2e-3` (twice the worst
+  3D rounding error of a position): with a small `unitScale` the scaled 0.02 m would fall inside the
+  1 mm wire step and a resting replica would keep blending toward rounding noise, never sleeping. An
+  explicitly passed `tuning.deadzone` is used as given.
+- **2D worlds have no frame**: their state is in world coordinates as is (still quantised).
+- Tests: `test/harness/world-frame.spec.ts` (3D adapters) runs two worlds ~100 km from the origin,
+  yawed against each other; a mutation that skips either the entity-side or the controller-side
+  conversion fails it.
 
 ## Tick integration
 
@@ -328,6 +379,10 @@ open links (`peerInfos`), never on presence, and `false` on timeout or when the 
   left); `cutStream`/`openStream` two peers linked but outside each other's stream ring. The hub
   only reports stream targets (so out-of-view handling only runs) once `interestManagement` is on -
   `cutStream` turns it on, set it by hand to combine it with `cutLink` alone.
+- `Entity3d.position`/`rotation` read a cached value, refreshed from the body by each tick's
+  transform binding. A test that writes `objectBody.position` directly and reads `entity.position`
+  before the next tick reads the old pose (a frame-switch simulation looked like a 100 m snap that
+  way); write through `entity.position`, or read `objectBody.position`.
 - Adapter sources are mapped in jest (`@gg-web-engine/<adapter>` → `../<adapter>/src`) and resolve
   through the workspace - **don't add adapter packages to `devDependencies`**: the release script
   installs each package standalone against the freshly published core, and the old adapter versions'

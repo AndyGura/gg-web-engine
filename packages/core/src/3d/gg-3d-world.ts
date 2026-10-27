@@ -10,7 +10,9 @@ import {
   Qtrn,
   RendererOptions,
 } from '../base';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { Gg3dLoader } from './loader';
+import { Frame3d, Frame3dLike } from './models/frame-3d';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
 import { IVisualScene3dComponent } from './components/rendering/i-visual-scene-3d.component';
@@ -198,9 +200,81 @@ export class Gg3dWorld<
     pauseWhenHidden?: boolean;
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
+    /** the world's initial {@link Gg3dWorld.frame}; identity by default */
+    frame?: Frame3dLike;
   }) {
     super(assertWorldDimensions('Gg3dWorld', 3, args));
     this.loader = new Gg3dLoader(this);
+    this._frame$ = new BehaviorSubject<Frame3d>(args.frame ? Frame3d.from(args.frame) : Frame3d.IDENTITY);
+  }
+
+  private readonly _frame$: BehaviorSubject<Frame3d>;
+
+  /**
+   * The global placement of this world's local origin: a translation plus a yaw about `+Z`
+   * (`global = rotZ(yaw) * local + position`). Everything in the world - physics, rendering,
+   * entity positions - lives in local coordinates; the frame only says where that local space sits
+   * in a larger, global one, e.g. a section of an open world simulated near the origin. Identity by
+   * default, so a world that never sets it has local = global. Pitch and roll are not part of it:
+   * they would tilt gravity.
+   *
+   * Setting it only changes the mapping: no entity moves. It is meant for the moment a world is
+   * created (or before its content is placed). Accepts any {@link Frame3dLike}; reads back a
+   * {@link Frame3d}. Converting through it: {@link toGlobalPoint}/{@link toLocalPoint},
+   * {@link toGlobalDirection}/{@link toLocalDirection}, {@link toGlobalRotation}/{@link toLocalRotation}.
+   */
+  public get frame(): Frame3d {
+    return this._frame$.value;
+  }
+
+  public set frame(value: Frame3dLike) {
+    const frame = Frame3d.from(value);
+    if (!frame.equals(this._frame$.value)) {
+      this._frame$.next(frame);
+    }
+  }
+
+  /** The current {@link frame} on subscription, then every change. Completes in `dispose()`. */
+  public get frame$(): Observable<Frame3d> {
+    return this._frame$.asObservable();
+  }
+
+  /** Local point → global point, through {@link frame}. */
+  public toGlobalPoint(p: Point3): Point3 {
+    return this._frame$.value.toGlobalPoint(p);
+  }
+
+  /** Global point → local point, through {@link frame}. */
+  public toLocalPoint(p: Point3): Point3 {
+    return this._frame$.value.toLocalPoint(p);
+  }
+
+  /** Local direction (velocity, angular velocity, offset) → global, through {@link frame}: rotation only. */
+  public toGlobalDirection(v: Point3): Point3 {
+    return this._frame$.value.toGlobalDirection(v);
+  }
+
+  /** Global direction (velocity, angular velocity, offset) → local, through {@link frame}: rotation only. */
+  public toLocalDirection(v: Point3): Point3 {
+    return this._frame$.value.toLocalDirection(v);
+  }
+
+  /** Local orientation (quaternion) → global, through {@link frame}. */
+  public toGlobalRotation(q: Point4): Point4 {
+    return this._frame$.value.toGlobalRotation(q);
+  }
+
+  /** Global orientation (quaternion) → local, through {@link frame}. */
+  public toLocalRotation(q: Point4): Point4 {
+    return this._frame$.value.toLocalRotation(q);
+  }
+
+  public dispose(): void {
+    try {
+      super.dispose();
+    } finally {
+      this._frame$.complete();
+    }
   }
 
   /**

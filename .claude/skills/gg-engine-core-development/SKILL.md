@@ -138,6 +138,12 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   both character entities (`externalDisplacement` folded into the next `move()` then cleared,
   `jumpCount` incremented only by a jump that happened, `actualVelocity` = last tick's real
   displacement / dt).
+- Network state is global: `NetworkFrame<D, R>` (`toGlobal*`/`toLocal*` for points, directions,
+  rotations; `Frame3d` implements it) is an optional argument of both helpers' `capture` and
+  `correct`, and their `toGlobal`/`toLocal` convert a state alone. The 3D built-ins pass their
+  world's frame (`3d/network-frame.ts`, internal). Capture output is quantised (`net-quantize.ts`,
+  exported: `quantizeNetPosition`/`Velocity`/`AngularVelocity`/`Rotation`), and `correct`
+  normalizes the target quaternion. See `gg-engine-multiplayer` for the full split.
 - `TickOrder.NETWORK_IN` (100): after input controllers, before the movers/vehicles at
   `PHYSICS_SIMULATION - 5`, so remote input and corrections land in the same tick they're applied.
 - `GgWorld.eventAuthority` (consulted by `BlueprintBindingEntity` before each run) and
@@ -2012,6 +2018,34 @@ comes from an `up` vector and flips when the direction passes near it.
 full statement; `Pnt3.Z` is "up" everywhere in this engine's 3D code (core, every adapter, every
 example), with no per-world way to change it. Any new 3D interface/entity/math helper you add
 should assume this rather than taking an axis convention as a parameter.
+
+## World frame: `Gg3dWorld.frame` and `Frame3d` (3D only)
+
+A large open world can be split into sections, each simulated in its own `Gg3dWorld` near the
+origin, where float precision is best. `Gg3dWorld.frame` (a `Frame3d`, `src/3d/models/frame-3d.ts`)
+says where that world's local origin sits globally: `global = rotZ(yaw) * local + position`.
+Everything inside the world - physics, rendering, every entity's `position`/`rotation` - is local;
+the frame only maps it. Defaults to `Frame3d.IDENTITY`, so a world that never sets it has
+local = global and nothing about it changes.
+
+- **Yaw only, by design.** Pitch/roll would tilt the local `+Z` away from the global one, i.e. tilt
+  gravity; a frame never does that.
+- `Frame3d` is an immutable, frozen value (`yaw` wrapped to (-PI, PI], `toJSON()` gives
+  `{ position, yaw }`). Conversions: `toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+  `toLocalDirection` (rotation only: velocities, angular velocity vectors, offsets, normals) and
+  `toGlobalRotation`/`toLocalRotation` (quaternions: `yawQuat * q` and its inverse). The world has
+  the same six methods, delegating to its current frame.
+- Frames compose like functions: `a.compose(b)` = `a ∘ b` (apply `b` first). The transform moving
+  content from one frame's local space into another's, keeping its global pose, is
+  `newFrame.inverse().compose(oldFrame)`. `equals(other, posEps, yawEps)` compares yaw on the circle.
+- Setting `world.frame` (accepts any `Frame3dLike`) only changes the mapping - no entity moves - and
+  emits on `frame$` only when the value actually differs. It is meant for world creation (or the
+  `frame` constructor option).
+- 2D worlds have no frame.
+- `Frame3d` implements `NetworkFrame<Point3, Point4>`; the network helpers and the 3D built-in
+  entities convert their state through it (see "Networking contracts" above).
+- Anything that must compare across sections (a network layer's wire format, saved global
+  positions) goes through these helpers; never apply a frame to state the physics adapter reads.
 
 ## Build & test
 

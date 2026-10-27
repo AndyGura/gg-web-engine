@@ -65,6 +65,22 @@ export interface NetworkApplyContext {
   tuning: CorrectionTuning;
 }
 
+/**
+ * The mapping between a world's local coordinates and the global ones a network layer sends - see
+ * `Gg3dWorld.frame` (`Frame3d` implements it for `Point3`/`Point4`). Positions go through the point
+ * methods, anything that is a vector rather than a place (velocities, angular velocity vectors,
+ * offsets) through the direction methods, orientations through the rotation methods. 2D worlds
+ * have no frame: their network state is in world coordinates as is.
+ */
+export interface NetworkFrame<D = unknown, R = unknown> {
+  toGlobalPoint(p: D): D;
+  toLocalPoint(p: D): D;
+  toGlobalDirection(v: D): D;
+  toLocalDirection(v: D): D;
+  toGlobalRotation(r: R): R;
+  toLocalRotation(r: R): R;
+}
+
 /** What a correction ended up doing - handy for tests and debug overlays. */
 export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep' | 'coast';
 
@@ -75,6 +91,19 @@ export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep' | 'coast';
  * travels - a network layer (e.g. `@gg-web-engine/multiplayer`) calls `captureNetworkState` on the
  * owner, ships the result, and calls `applyNetworkState` on every other peer's copy. Built-in
  * entities implement it by delegating to `RigidBodyCorrection`/`MoverCorrection`.
+ *
+ * **State is global.** In a 3D world with a non-identity `Gg3dWorld.frame`, peers simulate in
+ * different local coordinates, so every pose, velocity or direction in `S` (and in an
+ * `INetworkInputDriven` payload) must be expressed globally: convert local → global in
+ * `captureNetworkState`/`captureFullNetworkState` and global → local in `applyNetworkState`, through
+ * the world's frame helpers (`world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+ * `toLocalDirection`, `toGlobalRotation`/`toLocalRotation`), and read the frame at apply time, never
+ * cache it. The correction helpers do this when given the frame (`RigidBodyCorrection.capture(body,
+ * frame)`, `correct(..., tuning, frame)`; the same on `MoverCorrection`). Values a frame doesn't
+ * change (a gear, a crouch flag, a body-relative move direction) pass as they are. With the default
+ * identity frame - and in every 2D world - local and global are the same. Quantise what you send
+ * (`quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`): global coordinates can be
+ * large, and full doubles make the JSON long.
  */
 export interface INetworkSyncable<S = unknown> {
   /** Owner side: the state to broadcast now. Must be plain JSON. */

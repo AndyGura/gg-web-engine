@@ -24,7 +24,9 @@ export interface WebRtcMeshTransportOptions {
   /**
    * Position zoning places this peer by; defaults to whatever the network controller reports as the
    * local player position. Set it for a spectator whose controller reports `null` but whose camera
-   * still moves around (then it still connects to the peers near the camera).
+   * still moves around (then it still connects to the peers near the camera). Must return global
+   * coordinates, like the default: in a 3D world with a non-identity `frame`, convert a local
+   * position with `world.toGlobalPoint`.
    */
   zonePosition?: () => { x: number; y: number } | null;
   /** `connect()` waits this long at most for the connections to the peers already present. Default 10000. */
