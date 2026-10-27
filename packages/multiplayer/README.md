@@ -63,6 +63,21 @@ nested under a networked entity travel with it. Each one is either:
 App classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a player
 drives them), typically by delegating to core's `RigidBodyCorrection`/`MoverCorrection` helpers.
 
+### Global coordinates (3D world frames)
+Everything on the wire is global. A 3D world can be one section of a larger open world, simulated
+near its own origin and placed by `Gg3dWorld.frame` (a translation plus a yaw about +Z); peers whose
+worlds have different frames still share entities at the same global pose. The built-in entities
+convert their state through their world's frame, and `Network3dController` converts heartbeat
+positions (so zoning cells and distance arbitration are global) and spawn descriptors'
+`position`/`rotation`. Received state is kept global and converted when applied, with the frame as it
+is then. An app class converts its own payload: local → global when capturing, global → local when
+applying, through `world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/`toLocalDirection`
+(velocities) and `toGlobalRotation`/`toLocalRotation` - or by passing the frame to the correction
+helpers (`RigidBodyCorrection.capture(body, frame)`, `correct(body, target, ctx, undefined, frame)`).
+Quantise what you send with `quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`
+(1 mm, 1 mm/s, 5 decimals); the built-in states already are. A world that never sets a frame has
+local = global. 2D worlds have no frame.
+
 ### Gameplay authority
 Every peer sees every collision and trigger. A gameplay consequence must happen once:
 `net.hasAuthority(entity, eventName, payload)` (installed as `world.eventAuthority` while joined, so
@@ -147,7 +162,7 @@ for a map small enough that players see most of it. Zoning is for a world much l
 player sees, with players spread over it.
 
 `new WebRtcMeshTransport({ ..., zoning: { cellSize } })` places each peer on a grid over the ground
-plane (x/y), connects only to peers within the 5×5 cell ring and streams state to the 3×3 ring;
+plane (x/y, global coordinates - see above), connects only to peers within the 5×5 cell ring and streams state to the 3×3 ring;
 connections outside the wide ring age out after 10 s. Sizing rule: the fastest entity's speed ×
 connection setup time must fit inside the one-cell margin between the two rings. Setup measured
 71–680 ms with every peer on one machine; peers on different networks add STUN/TURN round trips.

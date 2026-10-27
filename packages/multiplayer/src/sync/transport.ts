@@ -48,7 +48,8 @@ export interface ITransport {
 
   /**
    * Optional: tell the transport where the local player is, so a zoning transport can publish its
-   * cell. Called by `NetworkController` every heartbeat with `localPosition()`.
+   * cell. Called by `NetworkController` every heartbeat with `localPosition()` in global coordinates
+   * (converted through a 3D world's `frame`), so peers in differently placed worlds share one grid.
    */
   updateLocalPosition?(position: unknown | null): void;
 }
