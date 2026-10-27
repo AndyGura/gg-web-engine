@@ -47,8 +47,8 @@ Per entity:
 - `class` (required) - a class alias registered against the loader via `registerClass`. Every
   primitive shape shares the single `"Primitive"` alias (see below) - there is no per-shape class
   like `"BOX"` or `"CIRCLE"`.
-- `shape` (optional) - only meaningful when `class` is `"Primitive"`; selects which shape to build
-  (see next section).
+- `shape` (optional) - only meaningful when `class` is `"Primitive"` or `"Trigger"`; selects which
+  shape to build (see "Built-in classes" below).
 - `position`/`rotation` (optional) - `Point2`/`number` for a 2D level, `Point3`/`Point4`
   (quaternion) for a 3D level. Omit either to leave it at the generator's default.
 - `name` (optional) - the generator's returned entity's `.name` is set to this (overriding whatever
@@ -229,7 +229,8 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    work for an entity regardless of how (or by what code) it was actually built, and reflect
    however much its state has drifted since spawn (moved, given a different velocity, ...). The
    built-in `"Primitive"`/`"Trigger"` classes (2D and 3D) work this way: they recover `shape`/
-   `dimensions`/`radius`/etc. from the physics body's own `debugBodySettings.shape`,
+   `dimensions`/`radius`/etc. - for every shape, `COMPOUND` children with their offsets included -
+   from the physics body's own `debugBodySettings.shape`,
    `body`/`linearVelocity`/`angularVelocity` from the live body itself (`bodyOptions`,
    `linearVelocity`, `angularVelocity`), and `material` from the live display object when it
    implements `IMaterialReadable3dComponent`/`IMaterialReadable2dComponent` (see below) - not from
@@ -261,6 +262,12 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    match an entity's *exact* concrete class, not `instanceof`, so e.g. a `Grabbable3dEntity`
    (extends `Entity3d`, built via `world.addGrabbablePrimitive` - not itself a registered
    level-loader class) falls through instead of being mistaken for a plain, non-grabbable primitive.
+   `serializeEntity` also discards any live serializer's result whose `class` differs from the
+   alias `createEntity` built the entity under: an app class whose generator returns a plain
+   `Entity3d` (say a `"Rock"` with a `CONVEX_HULL` body and a loaded model), a plain
+   `Trigger3dEntity` or a plain `Light3dEntity` serializes as that class through its spawn record,
+   keeping its own `config`, not as a `"Primitive"`/`"Trigger"`/`"Light"`. This applies to live
+   serializers an app registers too, so one needn't check how the entity was built.
 
 2. **The entity's own `ISerializableEntity.serializeSettings()`**, if it implements that interface
    (`packages/core`'s `base/interfaces/i-serializable-entity.ts`) - the class-owned counterpart of
@@ -393,9 +400,40 @@ and `"CONE"` stand along +Z, and a `"CONE"`'s tip points to +Z (rotate it 180 de
 
 ### `"Trigger"` - a physics-only trigger volume, ready to use
 
-`config: { dimensions }` (a box). Returns a `Trigger2dEntity`/`Trigger3dEntity` wrapping the raw
-physics trigger component: already positioned, already parented under the level's group entity
-(hence already in the world), and ready to subscribe to:
+`shape` and its `config` fields are exactly `"Primitive"`'s (same values, same required fields, built
+by the same `buildShapeDescriptor`, so the same errors for a missing field), except that `shape` is
+optional and defaults to `"BOX"` - `config: { dimensions }` alone is a box. A `"COMPOUND"` trigger
+(`children`, each with its own `position`/`rotation`) covers a volume no single primitive does, e.g.
+an L-shaped zone:
+
+```json
+{
+  "class": "Trigger",
+  "shape": "COMPOUND",
+  "name": "LZone",
+  "position": { "x": 0, "y": 0, "z": 0 },
+  "config": {
+    "children": [
+      { "shape": "BOX", "position": { "x": 0, "y": -2.5, "z": 0 }, "dimensions": { "x": 10, "y": 5, "z": 5 } },
+      { "shape": "BOX", "position": { "x": -2.5, "y": 2.5, "z": 0 }, "dimensions": { "x": 5, "y": 5, "z": 5 } }
+    ]
+  }
+}
+```
+
+The trigger fires for a body whose shape overlaps the trigger's shape - touching its surface or
+fully inside it - not for one merely inside its bounding box (a rotated box's corners, the empty
+part of an L's bounding box) - that is part of the physics
+adapter contract (`gg-engine-physics-adapter`). A `"MESH"` trigger is the exception: a triangle mesh
+is a surface with no inside, so it fires only for a body crossing its triangles, and creating one
+logs a warning; a volume trigger is a `"CONVEX_HULL"` or a `"COMPOUND"` of convex shapes. Which shapes a trigger can be depends on the physics
+adapter's `createTrigger`, the same as for a `"Primitive"`'s body. `material`/`body` have no meaning
+for a trigger and are ignored. The live serializer reconstructs every shape, `COMPOUND` children
+included, and leaves `shape` out for a box.
+
+Returns a `Trigger2dEntity`/`Trigger3dEntity` wrapping the raw physics trigger component: already
+positioned, already parented under the level's group entity (hence already in the world), and ready
+to subscribe to:
 
 ```typescript
 const level = await world.loader.loadLevelFromUrl(LEVEL_URL, 'MainLevel'); // has a "Trigger" entity named "KillZone"
@@ -1303,7 +1341,10 @@ own coverage against a hand-rolled node type in
 `packages/core/test/base/blueprint/remove-entity.node.spec.ts`. `GgWorld.getEntityByName` and
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
-`packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in `"Primitive"`/`"Trigger"`/
+`packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in `"Primitive"`/`"Trigger"` (every
+trigger shape, and a `COMPOUND` trigger's `serializeEntity`/`createEntity` round trip, with
+`createTrigger` stubbed to return a `mock3DBody(shape)`/`mock2DBody(shape)` so the live serializer
+reads back the shape it was built with)/
 `"Player"`/`"Sound"` classes (both dimensions) plus the 3D-only `"Camera"`/`"GgCar"`/`"MapGraph"`
 (`"Light"`/`"Environment"` are in `packages/core/test/3d/lights-environment.spec.ts`, the 2D
 `"ParallaxLayer"`/`"Environment"` in `packages/core/test/2d/parallax-environment.spec.ts`)

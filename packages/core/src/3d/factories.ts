@@ -107,6 +107,11 @@ export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocR
     },
   ): PTypeDoc['rigidBody'];
 
+  /**
+   * A trigger of the given shape. It reports a body whose shape overlaps the trigger's: touching it
+   * or fully inside it. A `MESH` shape (alone or in a `COMPOUND`) is a surface with no inside, so it
+   * reports only bodies crossing its triangles; implementations call `warnIfMeshTrigger`.
+   */
   createTrigger(
     descriptor: Shape3DDescriptor,
     transform?: {

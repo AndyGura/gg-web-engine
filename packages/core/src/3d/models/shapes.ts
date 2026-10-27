@@ -1,4 +1,4 @@
-import { Point2, Point3, Point4 } from '../../base';
+import { Point2, Point3, Point4, warnOnce } from '../../base';
 import { Body3DOptions } from './body-options';
 
 /**
@@ -41,4 +41,37 @@ export type BodyShape3DDescriptor = { shape: Shape3DDescriptor; body: Partial<Bo
  */
 export function getCylinderRadii(shape: CylinderRadius): { radiusX: number; radiusY: number } {
   return 'radius' in shape ? { radiusX: shape.radius, radiusY: shape.radius } : shape;
+}
+
+/**
+ * `true` when `descriptor` is one of `kinds`, or a `COMPOUND` with one of them anywhere among its
+ * children, however deeply nested.
+ */
+export function shapeContains(descriptor: Shape3DDescriptor, kinds: readonly Shape3DDescriptor['shape'][]): boolean {
+  if (kinds.includes(descriptor.shape)) {
+    return true;
+  }
+  return descriptor.shape === 'COMPOUND' && descriptor.children.some(c => shapeContains(c.shape, kinds));
+}
+
+/**
+ * `true` when `descriptor` is a `MESH`, or a `COMPOUND` with a `MESH` anywhere among its children.
+ */
+export function shapeHasMesh(descriptor: Shape3DDescriptor): boolean {
+  return shapeContains(descriptor, ['MESH']);
+}
+
+/**
+ * Logs a one-time warning when a trigger's shape contains a `MESH`. A triangle mesh is a surface
+ * with no inside, so a `MESH` trigger reports a body crossing its triangles but not one fully
+ * enclosed by them; a volume trigger is a `CONVEX_HULL` or a `COMPOUND` of convex shapes. Called
+ * by every physics adapter's `createTrigger`.
+ */
+export function warnIfMeshTrigger(descriptor: Shape3DDescriptor): void {
+  if (shapeHasMesh(descriptor)) {
+    warnOnce(
+      'A trigger with a MESH shape detects only bodies crossing its triangles, not bodies fully ' +
+        'inside it. For a volume trigger use CONVEX_HULL or a COMPOUND of convex shapes.',
+    );
+  }
 }

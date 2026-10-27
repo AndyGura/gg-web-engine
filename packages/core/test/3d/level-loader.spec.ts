@@ -3,11 +3,13 @@ import {
   Camera3dEntity,
   CharacterController3dEntity,
   Entity3d,
+  EntityJson,
   Gg3dLevelLoader,
   Gg3dWorld,
   GgCarEntity,
   IEntity,
   LevelJson,
+  Light3dEntity,
   MapGraph3dEntity,
   Pnt3,
   RVEntityTractionBias,
@@ -357,6 +359,76 @@ describe('Gg3dLevelLoader', () => {
       expect(trigger).toBeInstanceOf(Trigger3dEntity);
       expect(trigger.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(trigger.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    it('should build a trigger of any primitive shape, through the same shape fields as "Primitive"', async () => {
+      await levelLoader.loadLevel(
+        {
+          entities: [
+            { class: 'Trigger', shape: 'SPHERE', config: { radius: 2 } },
+            { class: 'Trigger', shape: 'CYLINDER', config: { radius: 1, height: 3 } },
+          ],
+        },
+        'TestLevel',
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'SPHERE', radius: 2 },
+        expect.anything(),
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'CYLINDER', radius: 1, height: 3 },
+        expect.anything(),
+      );
+    });
+
+    it('should build a COMPOUND trigger, each child with its own position and rotation', async () => {
+      const yaw90 = { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 };
+      await levelLoader.loadLevel(
+        {
+          entities: [
+            {
+              class: 'Trigger',
+              shape: 'COMPOUND',
+              config: {
+                children: [
+                  { shape: 'BOX', position: { x: 0, y: -2.5, z: 0 }, dimensions: { x: 10, y: 5, z: 5 } },
+                  {
+                    shape: 'BOX',
+                    position: { x: -2.5, y: 2.5, z: 0 },
+                    rotation: yaw90,
+                    dimensions: { x: 5, y: 5, z: 5 },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        'TestLevel',
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        {
+          shape: 'COMPOUND',
+          children: [
+            {
+              position: { x: 0, y: -2.5, z: 0 },
+              rotation: undefined,
+              shape: { shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } },
+            },
+            {
+              position: { x: -2.5, y: 2.5, z: 0 },
+              rotation: yaw90,
+              shape: { shape: 'BOX', dimensions: { x: 5, y: 5, z: 5 } },
+            },
+          ],
+        },
+        expect.anything(),
+      );
+    });
+
+    it('should reject a BOX trigger (the default shape) without dimensions', async () => {
+      await expect(
+        levelLoader.loadLevel({ entities: [{ class: 'Trigger', config: {} }] }, 'TestLevel'),
+      ).rejects.toThrow('Dimensions are required for BOX primitive');
     });
 
     it('should load a level with cameras, wrapped ready-to-use in a Camera3dEntity parented under the level', async () => {
@@ -981,6 +1053,26 @@ describe('Gg3dLevelLoader', () => {
       });
     });
 
+    it('serializes a COMPOUND Primitive, children and their offsets included', () => {
+      const body = mock3DBody({
+        shape: 'COMPOUND',
+        children: [
+          { position: { x: 1, y: 0, z: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } } },
+          { rotation: { x: 0, y: 0, z: 1, w: 0 }, shape: { shape: 'SPHERE', radius: 0.5 } },
+        ],
+      });
+      const entity = new Entity3d({ objectBody: body });
+      entity.name = 'CompoundPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.class).toBe('Primitive');
+      expect(json.shape).toBe('COMPOUND');
+      expect(json.config.children).toEqual([
+        { position: { x: 1, y: 0, z: 0 }, shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+        { rotation: { x: 0, y: 0, z: 1, w: 0 }, shape: 'SPHERE', radius: 0.5 },
+      ]);
+    });
+
     it('recovers material from object3D when it implements IMaterialReadable3dComponent', () => {
       const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
       const object3D = { ...mock3DObject(), materialOptions: { color: 8947848, shading: 'phong' } };
@@ -1043,6 +1135,35 @@ describe('Gg3dLevelLoader', () => {
         rotation: { x: 0, y: 0, z: 0, w: 1 },
         config: { dimensions: { x: 4, y: 5, z: 6 } },
       });
+    });
+
+    it('round-trips a COMPOUND trigger through serializeEntity and createEntity', async () => {
+      (world.physicsWorld!.factory.createTrigger as jest.Mock).mockImplementation((shape: any) => mock3DBody(shape));
+      const yaw90 = { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 };
+      const json: EntityJson = {
+        class: 'Trigger',
+        shape: 'COMPOUND',
+        name: 'LZone',
+        position: { x: 1, y: 2, z: 3 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        config: {
+          children: [
+            { position: { x: 0, y: -2.5, z: 0 }, shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } },
+            {
+              position: { x: -2.5, y: 2.5, z: 0 },
+              rotation: yaw90,
+              shape: 'COMPOUND',
+              children: [{ shape: 'SPHERE', radius: 1 }],
+            },
+          ],
+        },
+      };
+      const trigger = (await levelLoader.createEntity(json)) as Trigger3dEntity;
+      const serialized = levelLoader.serializeEntity(trigger)!;
+      expect(serialized).toEqual(json);
+
+      const rebuilt = (await levelLoader.createEntity(serialized)) as Trigger3dEntity;
+      expect(rebuilt.objectBody.debugBodySettings.shape).toEqual(trigger.objectBody.debugBodySettings.shape);
     });
 
     it('does not mistake a richer Entity3d subclass for a plain Primitive', () => {
@@ -1108,6 +1229,36 @@ describe('Gg3dLevelLoader', () => {
       expect(copy.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
       expect(copy.fallVelocity).toEqual({ x: 0, y: 0, z: 2 });
       expect(copy.airHorizontalVelocity).toEqual({ x: 1.5, y: 0, z: 0 });
+    });
+
+    it('serializes an app class that builds a plain Entity3d, Trigger3dEntity or Light3dEntity as that class, not a built-in one', async () => {
+      levelLoader.registerClass(
+        'Rock',
+        () =>
+          new Entity3d({
+            objectBody: mock3DBody({ shape: 'CONVEX_HULL', vertices: [{ x: 0, y: 0, z: 0 }] }),
+          }),
+      );
+      levelLoader.registerClass(
+        'KillZone',
+        () => new Trigger3dEntity(mock3DBody({ shape: 'SPHERE', radius: 3 }) as any),
+      );
+      levelLoader.registerClass(
+        'Torch',
+        () =>
+          new Light3dEntity({
+            ...mock3DObject(),
+            lightOptions: { type: 'POINT', color: 0xffaa00, intensity: 2 },
+          } as any),
+      );
+
+      const rock = await levelLoader.createEntity({ class: 'Rock', name: 'RockOne', config: { model: 'rock.glb' } });
+      const zone = await levelLoader.createEntity({ class: 'KillZone', name: 'ZoneOne', config: { damage: 5 } });
+      const torch = await levelLoader.createEntity({ class: 'Torch', name: 'TorchOne', config: { flicker: true } });
+
+      expect(levelLoader.serializeEntity(rock!)).toMatchObject({ class: 'Rock', config: { model: 'rock.glb' } });
+      expect(levelLoader.serializeEntity(zone!)).toMatchObject({ class: 'KillZone', config: { damage: 5 } });
+      expect(levelLoader.serializeEntity(torch!)).toMatchObject({ class: 'Torch', config: { flicker: true } });
     });
 
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {
