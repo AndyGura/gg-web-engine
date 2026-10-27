@@ -120,7 +120,8 @@ export class AmmoTriggerComponent
    * trigger's AABB. That AABB is the world-space bounding box of the (rotated) shape, so on its own
    * a box rotated about Z would fire in its bounding box's corners, and a `COMPOUND` anywhere in the
    * union of its children's bounding boxes. Each broadphase pair therefore also gets one
-   * narrowphase `contactPairTest` (`shapesTouch`), and only pairs whose shapes really touch count
+   * narrowphase `contactPairTest` (`shapesTouch`), and only pairs whose shapes really overlap
+   * (touching, or one fully inside the other: a contact point at zero or negative distance) count
    * as overlaps.
    *
    * `contactPairTest` is used rather than the manifolds `stepSimulation` computed for these pairs:

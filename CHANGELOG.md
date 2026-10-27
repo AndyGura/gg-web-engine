@@ -58,9 +58,9 @@ where one exists.
   stops and starts again while the control is held pushes its direction again, instead of staying
   pressed without effect until the finger lifts.
 - core: `DirectionInput.pressDirection` ignores, with a warning, a name that is not a direction.
-- ammo: a trigger fires only for a body its shape really touches. A box trigger rotated about Z
-  fired for bodies in the corners of its bounding box, and a compound trigger anywhere in its
-  children's bounding boxes.
+- ammo: a trigger fires only for a body whose shape overlaps it (touching or fully inside), not
+  for one merely inside its bounding box. A box trigger rotated about Z fired for bodies in the
+  corners of its bounding box, and a compound trigger anywhere in its children's bounding boxes.
 - rapier3d: a compound trigger, or a compound body entering a trigger, fires `onEntityEntered` and
   `onEntityLeft` once per body, not once per touching part.
 - core: `loadGgGlb` applies its `rotation` in front of each loaded object's own rotation and each
