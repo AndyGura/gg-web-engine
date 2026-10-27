@@ -88,6 +88,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   }
 
   render(): void {
+    this.scene.prepareFrame(this.nativeRenderer);
     this.nativeRenderer.render(this.scene.nativeScene!, this.camera.nativeCamera);
     if (this.physicsDebugViewActive) {
       this.debugView!.render(this.nativeRenderer, this.camera.nativeCamera);

@@ -479,7 +479,10 @@ serializes too; the serialized form has `rotation` rather than `target`.
 ### `"Environment"` (3D) - background, environment map and fog for as long as the level is loaded
 
 `config: { background?, environmentMap?, fog? }`. `background` is a `0xRRGGBB` number, a texture
-reference, or `null`; `environmentMap` a texture reference or `null`; a texture reference is
+reference, a shader-drawn sky, or `null`; `environmentMap` a texture reference, a shader-drawn sky
+or `null`. A shader-drawn sky is a `ProceduralSky3dOpts` object, passed to the scene as it is
+(nothing is loaded), e.g. `{ "type": "PROCEDURAL", "timeOfDay": 18.5, "haze": 0.3, "clouds":
+{ "coverage": 0.7 } }` - every field but `type` is optional, see that type's doc. A texture reference is
 `{ "cube": { "px", "nx", "py", "ny", "pz", "nz" } }` (six image URLs, each named after the world
 direction it is seen in - `pz` is overhead; the side images' top edge is towards `+Z`, `pz`'s
 towards `+Y`, `nz`'s towards `-Y`) or `{ "equirectangular": "url" }` (a `.hdr` URL is

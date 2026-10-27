@@ -1,9 +1,11 @@
 import {
   Environment3dOpts,
+  isProceduralSky,
   IVisualScene3dComponent,
   MAIN_RENDER_LAYER,
   notInitializedError,
   RenderLayer,
+  resolveProceduralSky,
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
@@ -14,6 +16,7 @@ import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 import { ThreeComposerRendererComponent } from './three-composer-renderer.component';
+import { ThreeProceduralSky } from './three-procedural-sky';
 
 /**
  * The three.js visual scene of a `Gg3dWorld`: pass a new one as `visualScene`. Its `factory`
@@ -84,6 +87,12 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   private _environment: Environment3dOpts<Texture> = { background: null, environmentMap: null, fog: null };
+  /** The procedural sky of `environment.background`, when it is one. */
+  private backgroundSky: ThreeProceduralSky | null = null;
+  /** The procedural sky of `environment.environmentMap`, when it is one. */
+  private environmentSky: ThreeProceduralSky | null = null;
+  /** Pixels per cube side of a procedural sky baked for image-based lighting. */
+  private static readonly ENVIRONMENT_SKY_RESOLUTION = 128;
   public get environment(): Readonly<Environment3dOpts<Texture>> {
     return this._environment;
   }
@@ -108,21 +117,72 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
       return;
     }
     const { background, environmentMap, fog } = this._environment;
-    if (typeof background === 'number') {
-      scene.background = new Color(background);
-      scene.backgroundRotation.set(0, 0, 0);
+    if (isProceduralSky(background)) {
+      const options = resolveProceduralSky(background);
+      this.backgroundSky ??= new ThreeProceduralSky();
+      this.backgroundSky.setOptions(options);
+      // a baked sky is set as the background by `prepareFrame`, once there is a renderer to draw it
+      if (options.mode === 'BAKED') {
+        this.backgroundSky.mesh.removeFromParent();
+      } else {
+        scene.background = null;
+        if (this.backgroundSky.mesh.parent !== scene) {
+          scene.add(this.backgroundSky.mesh);
+        }
+      }
     } else {
-      scene.background = background;
-      scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(background), 0, 0);
+      this.backgroundSky?.dispose();
+      this.backgroundSky = null;
+      if (typeof background === 'number') {
+        scene.background = new Color(background);
+        scene.backgroundRotation.set(0, 0, 0);
+      } else {
+        scene.background = background;
+        scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(background), 0, 0);
+      }
     }
-    scene.environment = environmentMap;
-    scene.environmentRotation.set(ThreeSceneComponent.zUpRotationX(environmentMap), 0, 0);
+    if (isProceduralSky(environmentMap)) {
+      this.environmentSky ??= new ThreeProceduralSky();
+      this.environmentSky.setOptions(resolveProceduralSky(environmentMap));
+    } else {
+      this.environmentSky?.dispose();
+      this.environmentSky = null;
+      scene.environment = environmentMap;
+      scene.environmentRotation.set(ThreeSceneComponent.zUpRotationX(environmentMap), 0, 0);
+    }
     if (!fog) {
       scene.fog = null;
     } else if (fog.type === 'LINEAR') {
       scene.fog = new Fog(fog.color, fog.near, fog.far);
     } else {
       scene.fog = new FogExp2(fog.color, fog.density);
+    }
+  }
+
+  /**
+   * Called by a renderer of this scene before each render: advances the clouds of a `'DYNAMIC'`
+   * procedural sky, and draws a baked procedural sky (background or environment map) into its cube
+   * texture when its settings changed since the last bake. A baked sky lives in the WebGL context
+   * of the renderer that drew it first.
+   */
+  prepareFrame(renderer: WebGLRenderer): void {
+    const scene = this._nativeScene;
+    if (!scene) {
+      return;
+    }
+    const backgroundOptions = this.backgroundSky?.options;
+    if (this.backgroundSky && backgroundOptions) {
+      if (backgroundOptions.mode === 'BAKED') {
+        // a cube render target is sampled in world space, no Z-up turn needed
+        scene.background = this.backgroundSky.bake(renderer, backgroundOptions.bakeResolution);
+        scene.backgroundRotation.set(0, 0, 0);
+      } else {
+        this.backgroundSky.advance(performance.now());
+      }
+    }
+    if (this.environmentSky) {
+      scene.environment = this.environmentSky.bakeEnvironment(renderer, ThreeSceneComponent.ENVIRONMENT_SKY_RESOLUTION);
+      scene.environmentRotation.set(0, 0, 0);
     }
   }
 
@@ -167,6 +227,10 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   dispose(): void {
     this.beforeRenderHooks.clear();
+    this.backgroundSky?.dispose();
+    this.backgroundSky = null;
+    this.environmentSky?.dispose();
+    this.environmentSky = null;
     this._nativeScene = this.createNativeScene();
     this._environment = { background: null, environmentMap: null, fog: null };
   }

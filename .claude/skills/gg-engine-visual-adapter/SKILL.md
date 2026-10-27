@@ -201,6 +201,16 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   carry a marker on their top and left edges, since solid-colored faces show the direction but not a
   rotated or mirrored image - and, for the environment map, the reflection on a mirror-like sphere.
   The loader's `disposeTexture(texture)` frees a texture either load method returned.
+  `background` and `environmentMap` can also be a `ProceduralSky3dOpts` (`isProceduralSky` tells it
+  from a color or texture; a native texture class may well have a numeric `type` field of its own):
+  a sky the adapter draws itself from those settings, with `resolveProceduralSky` filling in
+  defaults and `proceduralSkyBodies` giving the sun, moon and star-field positions so every adapter
+  puts them in the same place. `mode: 'DYNAMIC'` draws it every frame, behind everything (clouds
+  advanced by `clouds.wind` per second); `mode: 'BAKED'` draws it into a cube texture and shows that,
+  redrawing only when a setting other than `wind`/`mode` changes; as `environmentMap` it is baked and
+  prefiltered for image-based lighting. A setting change through `setEnvironment` must update the
+  existing sky rather than rebuild it, since apps call it every tick to animate `timeOfDay`. A
+  renderer-less `setEnvironment` call can't bake, so baking happens just before the next render.
 - **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
   `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
   `zoom` 1, `origin` `'center'`) on the 2D one. A 2D camera's `position` is the world point drawn

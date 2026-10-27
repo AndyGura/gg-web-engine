@@ -1908,7 +1908,10 @@ Changing any of these is a breaking change for every adapter package — grep
   `particleSystemExtraOpts` members for them), and `ParticleRenderBuffers`, the layout an adapter
   reads
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
-  `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
+  `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former).
+  `models/procedural-sky.ts` holds the shader-drawn sky's settings (`ProceduralSky3dOpts`, an
+  alternative `background`/`environmentMap` value), their defaults and `proceduralSkyBodies`, the
+  sun/moon/star positions and sunlight every adapter and app derive from the same settings
 - `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's
   `environment`/`setEnvironment` (`VisualTypeDocRepo2D` has a `parallaxLayer` member for the
   layer). `resolveParallaxLayer2dOpts` fills in `ParallaxLayer2dOpts` defaults, so every adapter

@@ -34,6 +34,49 @@ with faces that carry a marker on their top and left edges (solid-colored faces 
 but not a rotated or mirrored image), and, for the environment map, the reflection on a
 mirror-like sphere.
 
+## Procedural sky
+
+`ThreeProceduralSky` (`components/three-procedural-sky.ts`) is one `ShaderMaterial` on a unit
+`BoxGeometry` (`BackSide`). The vertex shader writes `projectionMatrix * vec4(mat3(viewMatrix) *
+position, 1.0)` as `.xyww`, so the box sits at the far plane around any camera, whatever its
+`near`/`far` and position, and the mesh needs no per-camera update. `depthTest`/`depthWrite` off,
+`renderOrder` the lowest safe integer, `frustumCulled` false, `layers.enableAll()` (every camera
+draws it) and a no-op `raycast`. `ThreeSceneComponent` keeps one instance for a procedural
+`background` (added to `nativeScene` as `gg-procedural-sky` in `'DYNAMIC'` mode) and one for a
+procedural `environmentMap`, and updates their uniforms on every `setEnvironment`.
+
+- **Baking needs a renderer, so it happens in `ThreeSceneComponent.prepareFrame(renderer)`**, which
+  `ThreeRendererComponent.render` and `ThreeComposerRendererComponent.render` call first. Doing it
+  from `Scene.onBeforeRender` would nest a `CubeCamera.update` inside the outer render call. A bake
+  is skipped while the settings key (everything but `mode` and `clouds.wind`) is unchanged. The
+  cube target lives in the WebGL context of the renderer that drew it: two renderers with separate
+  contexts sharing one scene would need a bake each, which isn't done.
+- **A cube render target is sampled in world space**: `CubeCamera` renders the Z-up world as it is,
+  and three.js doesn't X-flip a render-target cube the way it does a `CubeTexture` from images, so
+  a baked background or environment gets `backgroundRotation`/`environmentRotation` `0`, not the
+  quarter turn image skies need.
+- **The environment map is prefiltered with the component's own `PMREMGenerator.fromCubemap`**
+  into a target it owns and disposes. Handing the raw cube render target to `scene.environment`
+  makes the renderer prefilter it itself (keyed by `pmremVersion`), but that path never registers a
+  dispose listener, so its PMREM target would outlive the sky.
+- **Cloud drift and star twinkle advance on wall-clock time between renders, capped at 0.1 s a
+  step** (`advance(performance.now())` from `prepareFrame`): a paused world stops rendering, so the
+  cap keeps the clouds from jumping on resume. The cloud offset accumulates `wind * dt`, so changing
+  `wind` changes the speed without moving the clouds.
+- **Output**: the shader applies its own `1 - exp(-color * exposure)` curve, then
+  `tonemapping_fragment`/`colorspace_fragment`, so a renderer with tone mapping on treats the
+  dynamic sky like the baked one, whose half-float cube is linear and goes through three.js's own
+  background material.
+- Light that is the same for every pixel (sun and moon light at cloud height, the zenith sky used as
+  ambient) is computed in the vertex shader and passed as varyings; the moon, twilight and stars
+  branch on uniforms so a daytime sky skips them. In SwiftShader at 400x260 the dynamic sky costs
+  about 14 ms against 1.4 ms for a trivial full-screen shader and 3-4 ms baked; a real GPU is far
+  faster, but the ratios hold.
+- Verified by rendering in headless Chromium (SwiftShader) and looking at the images: noon,
+  sunset, dusk, full overcast, night with moon and stars, high haze, a baked sky matching the
+  dynamic one view for view, and `'standart'` meshes lit by it. Repeat that for any shader change:
+  a GLSL error only shows up in a real context.
+
 ## Display objects
 
 - **`Object3D.traverse()` fires on the root node itself first, then recursively on children.**

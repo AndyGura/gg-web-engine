@@ -136,6 +136,23 @@ describe('environment', () => {
     expect(visualScene.loader.disposeTexture.mock.calls).toEqual([['cube-texture'], ['equirect-texture']]);
   });
 
+  it('"Environment" level class passes a procedural sky through without loading anything', async () => {
+    const visualScene = mockScene();
+    const world = { visualScene, addEntity: jest.fn(), removeEntity: jest.fn() } as unknown as Gg3dWorld;
+    const loader = new Gg3dLevelLoader(world);
+    const sky = { type: 'PROCEDURAL' as const, timeOfDay: 20, clouds: { coverage: 0.9 } };
+    const group = await loader.loadLevel(
+      { entities: [{ class: 'Environment', name: 'Env', config: { background: sky, environmentMap: sky } }] },
+      'L',
+    );
+    expect(visualScene.loader.loadTexture).not.toHaveBeenCalled();
+    expect(visualScene.loader.loadCubeTexture).not.toHaveBeenCalled();
+    const env = group.getChildEntityByName<Environment3dEntity>('Env');
+    expect(env.environment).toEqual({ background: sky, environmentMap: sky });
+    group.dispose();
+    expect(visualScene.loader.disposeTexture).not.toHaveBeenCalled();
+  });
+
   it('keeps a later environment applied when an earlier one is removed first', () => {
     const visualScene = mockScene();
     visualScene.setEnvironment({ background: 0x000001 });
