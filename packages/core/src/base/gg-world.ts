@@ -322,6 +322,26 @@ export abstract class GgWorld<
   public commandGuard: ((command: string, args: string[]) => string | null) | null = null;
 
   readonly children: IEntity[] = [];
+
+  private _isBeforePhysicsStep: boolean = false;
+
+  /**
+   * `true` from the start of a world tick until its physics step (`physicsWorld.simulate`, or where
+   * it would run in a world without physics) is done: while the entities ticking before
+   * `TickOrder.PHYSICS_SIMULATION` run, and during the step itself (collision and trigger
+   * callbacks). `false` for the rest of the tick and between ticks.
+   */
+  protected get isBeforePhysicsStep(): boolean {
+    return this._isBeforePhysicsStep;
+  }
+
+  /**
+   * Runs once per world tick, right after the physics step (every fixed substep of it) and before
+   * the entities ticking after `TickOrder.PHYSICS_SIMULATION` - before the transforms are bound and
+   * anything is rendered. Runs in a world without physics too. Does nothing by default.
+   */
+  protected onPhysicsStepped(): void {}
+
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
   // name -> entity index over every entity in `children`, kept in sync by addEntity/removeEntity/
@@ -531,6 +551,7 @@ export abstract class GgWorld<
       }
     };
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
+      this._isBeforePhysicsStep = true;
       this.tickStarted$.next();
       let i = 0;
       // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
@@ -568,6 +589,8 @@ export abstract class GgWorld<
         }
         this.tickForwardedTo$.next('PHYSICS_WORLD');
       }
+      this._isBeforePhysicsStep = false;
+      this.onPhysicsStepped();
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
         forwardTick(this.tickListeners[i], elapsed, delta);

@@ -1,5 +1,6 @@
 import { IBodyComponent, Point3, Point4 } from '../../../base';
 import { PhysicsTypeDocRepo3D } from '../../gg-3d-world';
+import { Frame3d } from '../../models/frame-3d';
 
 /**
  * A capsule-shaped kinematic character controller: a thin, physics-engine-specific "move and
@@ -83,4 +84,12 @@ export interface ICharacterController3dComponent<
   move(desiredTranslation: Point3, dt?: number): void;
 
   clone(): ICharacterController3dComponent<PTypeDoc>;
+
+  /**
+   * Optional. Moves the capsule by `delta` for a frame switch (see `IRigidBody3dComponent
+   * .onFrameSwitch`): pose, `up` and the last `move()`'s `groundNormal` (rotated), keeping
+   * `isGrounded`. Without it, core falls back to the `position`/`rotation`/`up` setters, and
+   * `groundNormal` stays as it was until the next `move()`.
+   */
+  onFrameSwitch?(delta: Frame3d): void;
 }

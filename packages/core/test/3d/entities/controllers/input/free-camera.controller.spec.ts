@@ -4,6 +4,7 @@ import {
   DEFAULT_FREE_CAMERA_GAMEPAD_BINDING,
   FreeCameraController,
   GamepadInput,
+  Frame3d,
   KeyboardInput,
   Pnt3,
   Qtrn,
@@ -145,6 +146,41 @@ describe('FreeCameraController', () => {
       camera.tick$.next([0, 1000]);
       expect(camera.position).toEqual({ x: 0, y: 0, z: 0 });
       controller.onRemoved();
+    });
+  });
+
+  describe('onFrameSwitch', () => {
+    it('keeps the elastic look under way, turned by the yaw', async () => {
+      const make = async () => {
+        const keyboard = new KeyboardInput();
+        const camera = fakeCamera();
+        const controller = new FreeCameraController(keyboard, camera, { cameraRotationElasticity: 100 });
+        await controller.onSpawned({} as any);
+        // a mouse drag in flight: the elastic look heads towards theta 0.8
+        (controller as any).sphericalTarget$.next({ phi: Math.PI / 2, theta: 0.8, radius: 1 });
+        controller.tick$.next([0, 16]);
+        controller.tick$.next([0, 16]);
+        return { camera, controller };
+      };
+      const reference = await make();
+      const switched = await make();
+      const delta = new Frame3d({ x: 100, y: -50, z: 2 }, 1.234);
+      switched.camera.position = delta.toGlobalPoint(switched.camera.position);
+      switched.camera.rotation = delta.toGlobalRotation(switched.camera.rotation);
+      switched.controller.onFrameSwitch(delta);
+      for (let i = 0; i < 10; i++) {
+        for (const { camera, controller } of [reference, switched]) {
+          controller.tick$.next([0, 16]);
+          camera.tick$.next([0, 16]);
+        }
+        const expected = delta.toGlobalDirection(Pnt3.rot(Pnt3.nZ, reference.camera.rotation));
+        const actual = Pnt3.rot(Pnt3.nZ, switched.camera.rotation);
+        expect(actual.x).toBeCloseTo(expected.x, 9);
+        expect(actual.y).toBeCloseTo(expected.y, 9);
+        expect(actual.z).toBeCloseTo(expected.z, 9);
+      }
+      reference.controller.onRemoved();
+      switched.controller.onRemoved();
     });
   });
 });

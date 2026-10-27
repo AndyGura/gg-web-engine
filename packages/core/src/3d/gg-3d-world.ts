@@ -10,7 +10,8 @@ import {
   Qtrn,
   RendererOptions,
 } from '../base';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { isFrameSwitchable } from './interfaces/i-frame-switchable';
 import { Gg3dLoader } from './loader';
 import { Frame3d, Frame3dLike } from './models/frame-3d';
 import { Entity3d } from './entities/entity-3d';
@@ -38,6 +39,7 @@ import { IAudioScene3dComponent } from './components/audio/i-audio-scene-3d.comp
 import { IAudioSource3dComponent } from './components/audio/i-audio-source-3d.component';
 import { IDisplayObject3dComponentLoader, IPhysicsBody3dComponentLoader } from './loaders';
 import { CharacterController3dEntity } from './entities/character-controller-3d.entity';
+import { IEntity } from '../base/entities/i-entity';
 import { PlayerCharacterController } from './entities/controllers/input/player-character.controller';
 import { Grabbable3dEntity, Grabbable3dEntityOptions } from './entities/grabbable-3d.entity';
 import {
@@ -186,6 +188,16 @@ export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> =
  * world.start();
  * ```
  */
+/** What `Gg3dWorld.frameSwitched$` emits. */
+export type FrameSwitch = {
+  /** The transform applied to the world's content: `frame.inverse().compose(previousFrame)`. */
+  readonly delta: Frame3d;
+  /** The frame before the switch. */
+  readonly previousFrame: Frame3d;
+  /** The frame after the switch, now `Gg3dWorld.frame`. */
+  readonly frame: Frame3d;
+};
+
 export class Gg3dWorld<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,
@@ -219,7 +231,8 @@ export class Gg3dWorld<
    * they would tilt gravity.
    *
    * Setting it only changes the mapping: no entity moves. It is meant for the moment a world is
-   * created (or before its content is placed). Accepts any {@link Frame3dLike}; reads back a
+   * created (or before its content is placed); {@link switchFrame} changes it while keeping
+   * everything's global placement, moving the content instead. Accepts any {@link Frame3dLike}; reads back a
    * {@link Frame3d}. Converting through it: {@link toGlobalPoint}/{@link toLocalPoint},
    * {@link toGlobalDirection}/{@link toLocalDirection}, {@link toGlobalRotation}/{@link toLocalRotation}.
    */
@@ -232,6 +245,115 @@ export class Gg3dWorld<
     if (!frame.equals(this._frame$.value)) {
       this._frame$.next(frame);
     }
+  }
+
+  /**
+   * Moves this world into another frame: one rigid transform applied, between two ticks, to
+   * everything in it, so that its global placement doesn't change while its local coordinates do.
+   * For an open world made of sections each simulated near its own origin: crossing into the next
+   * section switches to that section's frame, and whatever outlives the section (the player's car,
+   * the camera, ...) carries on near the new origin.
+   *
+   * The transform is `delta = newFrame.inverse().compose(oldFrame)` (see `Frame3d`): positions are
+   * rotated about `+Z` by its yaw, then translated; orientations get the yaw multiplied in front;
+   * linear and angular velocities are rotated only. Every entity of the world receives it through
+   * `IFrameSwitchable.onFrameSwitch` (children before their parents), then the physics world through
+   * its optional `onFrameSwitch`; then `frame` becomes `newFrame` and `frameSwitched$` emits. The
+   * camera moves with everything else, so the next rendered frame looks exactly like the previous
+   * one, and the simulation carries on as if nothing happened.
+   *
+   * Called during a world tick before its physics step is done (from an entity ticking before
+   * `TickOrder.PHYSICS_SIMULATION`, or from a collision or trigger callback), the switch waits for
+   * that step to finish and is applied right after it, before the transforms are bound and the
+   * frame is rendered; a second call in the meantime replaces the pending target. Called at any
+   * other time, it is applied immediately.
+   *
+   * Entities without the hook keep their state. While the dev console is loaded
+   * (`window.ggstatic`), each such entity class with a `position` and `rotation` is reported once
+   * with a console warning.
+   *
+   * @param newFrame - the frame to switch to (any `Frame3dLike`)
+   *
+   * @example
+   * ```ts
+   * // the car crossed into the next section of the map
+   * world.switchFrame(nextSection.frame);
+   * world.frameSwitched$.subscribe(({ delta }) => {
+   *   // app-held world-space state: markers, waypoints, cached positions
+   *   waypoints = waypoints.map(p => delta.toGlobalPoint(p));
+   * });
+   * ```
+   */
+  public switchFrame(newFrame: Frame3dLike): void {
+    const target = Frame3d.from(newFrame);
+    if (this.isBeforePhysicsStep) {
+      this.pendingFrameSwitch = target;
+      return;
+    }
+    this.pendingFrameSwitch = null;
+    this.applyFrameSwitch(target);
+  }
+
+  /** The frame a `switchFrame` call made before this tick's physics step will switch to, or `null`. */
+  public get pendingFrame(): Frame3d | null {
+    return this.pendingFrameSwitch;
+  }
+
+  /**
+   * Emits after every frame switch (`switchFrame`), once everything in the world has moved: `delta`
+   * is the transform that was applied, `previousFrame` and `frame` the frames before and after.
+   * App-held world-space state - waypoints, markers, a cached position - maps through `delta`
+   * (`toGlobalPoint`, `toGlobalRotation`, `toGlobalDirection`). Completes in `dispose()`.
+   */
+  public get frameSwitched$(): Observable<FrameSwitch> {
+    return this._frameSwitched$.asObservable();
+  }
+
+  private pendingFrameSwitch: Frame3d | null = null;
+  // entity classes switchFrame already warned about (dev console only)
+  private readonly frameSwitchWarnedTypes: Set<string> = new Set();
+  private readonly _frameSwitched$: Subject<FrameSwitch> = new Subject<FrameSwitch>();
+
+  protected onPhysicsStepped(): void {
+    super.onPhysicsStepped();
+    const pending = this.pendingFrameSwitch;
+    if (pending) {
+      this.pendingFrameSwitch = null;
+      this.applyFrameSwitch(pending);
+    }
+  }
+
+  private applyFrameSwitch(target: Frame3d): void {
+    const previousFrame = this._frame$.value;
+    const delta = target.inverse().compose(previousFrame);
+    // deepest first: a parent that places its children (a vehicle's wheels) has the last word
+    const depthOf = (e: IEntity): number => {
+      let depth = 0;
+      for (let p = e.parent; p; p = p.parent) {
+        depth++;
+      }
+      return depth;
+    };
+    const entities = this.children.map(e => [e, depthOf(e)] as const).sort((a, b) => b[1] - a[1]);
+    const warn = typeof window !== 'undefined' && !!(window as any).ggstatic;
+    for (const [entity] of entities) {
+      if (isFrameSwitchable(entity)) {
+        entity.onFrameSwitch(delta);
+      } else if (warn && 'position' in entity && 'rotation' in entity) {
+        const typeName = (entity.constructor as typeof IEntity).entityTypeName ?? 'an entity class';
+        if (!this.frameSwitchWarnedTypes.has(typeName)) {
+          this.frameSwitchWarnedTypes.add(typeName);
+          console.warn(
+            `Gg3dWorld "${this.name}": ${typeName} has a position but does not implement ` +
+              `IFrameSwitchable.onFrameSwitch, so switchFrame left every ${typeName} (e.g. "${entity.name}") ` +
+              `where it was while everything else moved.`,
+          );
+        }
+      }
+    }
+    this.physicsWorld?.onFrameSwitch?.(delta);
+    this._frame$.next(target);
+    this._frameSwitched$.next({ delta, previousFrame, frame: target });
   }
 
   /** The current {@link frame} on subscription, then every change. Completes in `dispose()`. */
@@ -274,6 +396,7 @@ export class Gg3dWorld<
       super.dispose();
     } finally {
       this._frame$.complete();
+      this._frameSwitched$.complete();
     }
   }
 

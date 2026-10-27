@@ -10,6 +10,7 @@ import {
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
+import { Frame3d } from '../models/frame-3d';
 
 export type WheelDisplayOptions = {
   displayObject?: IDisplayObject3dComponent;
@@ -534,6 +535,18 @@ export class RaycastVehicle3dEntity<
     this._impact$.complete();
     this._airborne$.complete();
     this._landed$.complete();
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the chassis by `delta` (pose and velocities - the physics adapter's
+   * vehicle also moves its wheel transforms and the last step's wheel contacts) and places the
+   * wheel entities from it, so no frame shows them where they were. Suspension, steering, engine
+   * and brake forces, the airborne state and the sampled velocities (rotated) carry on.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    super.onFrameSwitch(delta);
+    this._velocityBeforeStep = delta.toGlobalDirection(this._velocityBeforeStep);
+    this._angularVelocityBeforeStep = delta.toGlobalDirection(this._angularVelocityBeforeStep);
   }
 
   /** Forgets the airborne state and pending impacts, and samples the chassis velocities anew. */
