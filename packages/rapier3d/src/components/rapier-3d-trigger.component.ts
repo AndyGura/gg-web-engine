@@ -23,7 +23,15 @@ export class Rapier3dTriggerComponent
     return this.onLeft$.asObservable();
   }
 
-  protected readonly overlaps: Set<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> = new Set();
+  /**
+   * Overlapping bodies, each with its number of currently intersecting collider pairs. Rapier
+   * reports sensor intersections per collider, and a `COMPOUND` trigger (or a `COMPOUND` body) is one
+   * collider per part, so a body crossing from one part of an L-shaped trigger into the other gets
+   * a native start for the second part before the stop for the first. `onEntityEntered` fires only
+   * when a body's count goes from 0 to 1 and `onEntityLeft` only when it returns to 0.
+   */
+  protected readonly overlaps: Map<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent, number> =
+    new Map();
   protected readonly onEnter$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
     new Subject();
   protected readonly onLeft$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
@@ -55,7 +63,7 @@ export class Rapier3dTriggerComponent
   }
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean) {
-    for (const body of this.overlaps) {
+    for (const body of this.overlaps.keys()) {
       this.onLeft$.next(body);
     }
     this.overlaps.clear();
@@ -89,12 +97,19 @@ export class Rapier3dTriggerComponent
     // rigid body, since a character controller only satisfies `IBodyComponent`, not
     // `IRigidBodyComponent` (no `linearVelocity`/`resetMotion()`/collision events). This mirrors the
     // ammo adapter's own `AmmoTriggerComponent`, which resolves the same overlap case the same way.
+    const count = this.overlaps.get(otherBody) ?? 0;
     if (started) {
-      this.overlaps.add(otherBody);
-      this.onEnter$.next(otherBody);
-    } else {
-      this.overlaps.delete(otherBody);
-      this.onLeft$.next(otherBody);
+      this.overlaps.set(otherBody, count + 1);
+      if (count === 0) {
+        this.onEnter$.next(otherBody);
+      }
+    } else if (count > 0) {
+      if (count === 1) {
+        this.overlaps.delete(otherBody);
+        this.onLeft$.next(otherBody);
+      } else {
+        this.overlaps.set(otherBody, count - 1);
+      }
     }
   }
 
