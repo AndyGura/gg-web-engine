@@ -43,6 +43,9 @@ where one exists.
   `"Primitive"` - `"COMPOUND"` with `children`, `"SPHERE"`, `"CYLINDER"`, ... `shape` defaults to
   `"BOX"` with `dimensions`, so existing levels load unchanged. `serializeEntity` reconstructs a
   trigger of any shape, a compound one included.
+- core: `warnIfMeshTrigger` and `shapeHasMesh`. Creating a trigger whose shape contains a `MESH`
+  (ammo, rapier3d) logs a one-time warning: a triangle mesh is a surface, so such a trigger does not
+  fire for a body fully inside it. Use `CONVEX_HULL` or a `COMPOUND` of convex shapes for a volume.
 
 ### Changed
 - core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the

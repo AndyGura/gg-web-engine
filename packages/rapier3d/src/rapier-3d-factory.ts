@@ -9,6 +9,7 @@ import {
   Point4,
   Qtrn,
   Shape3DDescriptor,
+  warnIfMeshTrigger,
 } from '@gg-web-engine/core';
 import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
@@ -75,6 +76,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       rotation?: Point4;
     },
   ): Rapier3dTriggerComponent {
+    warnIfMeshTrigger(descriptor);
     const colliderDescr = this.createColliderDescr(descriptor);
     colliderDescr.forEach(c => {
       c.isSensor = true;

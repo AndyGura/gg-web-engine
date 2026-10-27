@@ -241,4 +241,27 @@ describe(`Rapier3dTriggerComponent`, () => {
       expect(events).toEqual(['enter', 'left']);
     });
   });
+  it('warns that a MESH trigger is a surface, and does not fire for a body fully inside it', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    // a closed 10 m cube made of triangles, and a ball fully inside it, touching no triangle
+    const v: { x: number; y: number; z: number }[] = [];
+    for (const x of [-5, 5]) for (const y of [-5, 5]) for (const z of [-5, 5]) v.push({ x, y, z });
+    const faces: [number, number, number][] = [
+      [0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+      [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3],
+    ];
+    const trigger = factory.createTrigger({ shape: 'MESH', vertices: v, faces });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('MESH'));
+    warn.mockRestore();
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const ball = factory.createRigidBody(
+      { shape: { shape: 'SPHERE', radius: 0.5 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 1, y: 1, z: 1 } },
+    );
+    ball.addToWorld({ physicsWorld: world } as any);
+    let fired = false;
+    trigger.onEntityEntered.subscribe(obj => (fired = fired || obj === ball));
+    advance(30, () => trigger.checkOverlaps());
+    expect(fired).toBe(false);
+  });
 });

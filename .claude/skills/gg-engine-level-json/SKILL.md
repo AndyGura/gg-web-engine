@@ -417,7 +417,9 @@ an L-shaped zone:
 The trigger fires for a body whose shape overlaps the trigger's shape - touching its surface or
 fully inside it - not for one merely inside its bounding box (a rotated box's corners, the empty
 part of an L's bounding box) - that is part of the physics
-adapter contract (`gg-engine-physics-adapter`). Which shapes a trigger can be depends on the physics
+adapter contract (`gg-engine-physics-adapter`). A `"MESH"` trigger is the exception: a triangle mesh
+is a surface with no inside, so it fires only for a body crossing its triangles, and creating one
+logs a warning; a volume trigger is a `"CONVEX_HULL"` or a `"COMPOUND"` of convex shapes. Which shapes a trigger can be depends on the physics
 adapter's `createTrigger`, the same as for a `"Primitive"`'s body. `material`/`body` have no meaning
 for a trigger and are ignored. The live serializer reconstructs every shape, `COMPOUND` children
 included, and leaves `shape` out for a box.

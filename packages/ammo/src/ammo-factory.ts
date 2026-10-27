@@ -10,6 +10,7 @@ import {
   Point4,
   Qtrn,
   Shape3DDescriptor,
+  warnIfMeshTrigger,
 } from '@gg-web-engine/core';
 import Ammo from './ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './components/ammo-rigid-body.component';
@@ -64,6 +65,7 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       rotation?: Point4;
     },
   ): AmmoTriggerComponent {
+    warnIfMeshTrigger(descriptor);
     return this.createTriggerFromShape(this.createShape(descriptor), descriptor, transform);
   }
 
