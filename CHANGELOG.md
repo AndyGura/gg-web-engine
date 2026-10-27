@@ -81,6 +81,9 @@ where one exists.
 - core: `serializeEntity` reconstructs a `"Primitive"` of any shape - `COMPOUND`, `CONVEX_HULL`,
   `MESH`, and in 2D `CAPSULE` and `POLYGON` - from its live body, instead of falling back to its
   spawn record or returning `undefined`.
+- core: an app class whose generator builds a plain `Entity3d`/`Entity2d` with a body, or a plain
+  `Trigger3dEntity`/`Trigger2dEntity`, serializes as that class with its own `config`, not as a
+  `"Primitive"` or `"Trigger"` that lost the class and its model.
 - core: `loadGgGlb` applies its `rotation` in front of each loaded object's own rotation and each
   prop dummy's rotation. A loaded object whose own rotation did not commute with the load
   rotation (for example a tilted object under a yawed load), and a nested prop whose dummy and

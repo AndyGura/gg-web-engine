@@ -772,6 +772,23 @@ describe('Gg2dLevelLoader', () => {
       expect(copy.airHorizontalVelocity).toEqual({ x: 1.5, y: 0 });
     });
 
+    it('serializes an app class that builds a plain Entity2d or Trigger2dEntity as that class, not a built-in one', async () => {
+      levelLoader.registerClass(
+        'Rock',
+        () => new Entity2d({ objectBody: mock2DBody({ shape: 'CONVEX_HULL', vertices: [{ x: 0, y: 0 }] }) }),
+      );
+      levelLoader.registerClass(
+        'KillZone',
+        () => new Trigger2dEntity(mock2DBody({ shape: 'CIRCLE', radius: 3 }) as any),
+      );
+
+      const rock = await levelLoader.createEntity({ class: 'Rock', name: 'RockOne', config: { model: 'rock.png' } });
+      const zone = await levelLoader.createEntity({ class: 'KillZone', name: 'ZoneOne', config: { damage: 5 } });
+
+      expect(levelLoader.serializeEntity(rock!)).toMatchObject({ class: 'Rock', config: { model: 'rock.png' } });
+      expect(levelLoader.serializeEntity(zone!)).toMatchObject({ class: 'KillZone', config: { damage: 5 } });
+    });
+
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {
       levelLoader.registerClass('Custom', () => new TestEntity());
 

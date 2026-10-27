@@ -347,13 +347,18 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   /**
    * Live serializer for the built-in `"Primitive"` class - see the 3D loader's
    * `Gg3dLevelLoader.serializePrimitive` for the general approach and rationale (identical here,
-   * just 2D-typed): matches `entity.constructor === Entity2d` exactly, recovers shape/dimensions
+   * just 2D-typed): matches `entity.constructor === Entity2d` exactly, unless `createEntity` built
+   * it under another class alias (`spawnedAsOtherClass`), recovers shape/dimensions
    * from `objectBody.debugBodySettings.shape`, `body`/velocity from the live physics body
    * (`objectBody.bodyOptions`/`.linearVelocity`/`.angularVelocity`), and `material` from
    * `object2D` when it implements `IMaterialReadable2dComponent`.
    */
   private serializePrimitive(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
-    if (entity.constructor !== Entity2d || !(entity as Entity2d<TypeDoc>).objectBody) {
+    if (
+      entity.constructor !== Entity2d ||
+      !(entity as Entity2d<TypeDoc>).objectBody ||
+      this.spawnedAsOtherClass(entity, 'Primitive')
+    ) {
       return undefined;
     }
     const positionable = entity as Entity2d<TypeDoc>;
@@ -378,12 +383,13 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 
   /**
    * Live serializer for the built-in `"Trigger"` class - see the 3D loader's own doc for the
-   * general approach. Matches `entity.constructor === Trigger2dEntity` exactly. Every
+   * general approach. Matches `entity.constructor === Trigger2dEntity` exactly, unless
+   * `createEntity` built it under another class alias (`spawnedAsOtherClass`). Every
    * `Shape2DDescriptor` round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`); a
    * `"BOX"` trigger omits `shape`, since that is the class's default.
    */
   private serializeTrigger(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
-    if (entity.constructor !== Trigger2dEntity) {
+    if (entity.constructor !== Trigger2dEntity || this.spawnedAsOtherClass(entity, 'Trigger')) {
       return undefined;
     }
     const trigger = entity as Trigger2dEntity<TypeDoc['pTypeDoc']>;

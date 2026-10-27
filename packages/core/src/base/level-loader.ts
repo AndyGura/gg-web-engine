@@ -208,7 +208,9 @@ export type EntitySerializer<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> = (
  * `Gg3dLevelLoader`) are the reference implementation: they match on the entity's own concrete
  * class (`entity.constructor === Entity3d`, not `instanceof`, so a richer subclass like
  * `Grabbable3dEntity` - which needs its own dedicated serializer to round-trip correctly, not yet
- * provided - doesn't get silently mistaken for a plain primitive), then read shape (`objectBody
+ * provided - doesn't get silently mistaken for a plain primitive), skip an entity that
+ * `createEntity` built under another class alias (`LevelLoader.spawnedAsOtherClass` - an app class
+ * may build the same plain `Entity3d`), then read shape (`objectBody
  * .debugBodySettings.shape`), body options (`objectBody.bodyOptions`), and velocity
  * (`objectBody.linearVelocity`/`angularVelocity`) straight off the live physics body.
  * @param entity - The entity to serialize
@@ -266,6 +268,20 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * see {@link EntitySpawnRecord}.
    */
   private readonly spawnRecords = new WeakMap<IEntity<D, R, TypeDoc>, EntitySpawnRecord>();
+
+  /**
+   * Whether `entity` was built by {@link createEntity} under a class alias other than `classAlias`.
+   * A live serializer that matches a plain engine class (`Entity3d`, `Trigger3dEntity`, ...) checks
+   * this first and returns `undefined` when it holds: an app class whose generator builds that same
+   * plain class (a `"Rock"` building an `Entity3d` with a hull body and a loaded model) must
+   * serialize as itself, through its spawn record, not as the built-in class.
+   * @param entity - The entity being serialized
+   * @param classAlias - The class alias the live serializer produces, e.g. `"Primitive"`
+   */
+  protected spawnedAsOtherClass(entity: IEntity<D, R, TypeDoc>, classAlias: string): boolean {
+    const record = this.spawnRecords.get(entity);
+    return !!record && record.classAlias !== classAlias;
+  }
 
   /**
    * Class alias each entity constructor is registered under - the optional third argument to

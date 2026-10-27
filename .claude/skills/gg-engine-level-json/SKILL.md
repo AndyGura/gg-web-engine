@@ -262,6 +262,11 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    match an entity's *exact* concrete class, not `instanceof`, so e.g. a `Grabbable3dEntity`
    (extends `Entity3d`, built via `world.addGrabbablePrimitive` - not itself a registered
    level-loader class) falls through instead of being mistaken for a plain, non-grabbable primitive.
+   They also skip an entity `createEntity` built under another class alias: an app class whose
+   generator returns a plain `Entity3d` (say a `"Rock"` with a `CONVEX_HULL` body and a loaded
+   model) or a plain `Trigger3dEntity` serializes as that class through its spawn record, keeping
+   its own `config`, not as a `"Primitive"`/`"Trigger"`. A live serializer you register for a plain
+   engine class should do the same, via the loader's protected `spawnedAsOtherClass(entity, alias)`.
 
 2. **The entity's own `ISerializableEntity.serializeSettings()`**, if it implements that interface
    (`packages/core`'s `base/interfaces/i-serializable-entity.ts`) - the class-owned counterpart of
