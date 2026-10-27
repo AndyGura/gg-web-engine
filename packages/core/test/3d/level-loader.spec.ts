@@ -3,6 +3,7 @@ import {
   Camera3dEntity,
   CharacterController3dEntity,
   Entity3d,
+  EntityJson,
   Gg3dLevelLoader,
   Gg3dWorld,
   GgCarEntity,
@@ -357,6 +358,60 @@ describe('Gg3dLevelLoader', () => {
       expect(trigger).toBeInstanceOf(Trigger3dEntity);
       expect(trigger.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(trigger.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    it('should build a trigger of any primitive shape, through the same shape fields as "Primitive"', async () => {
+      await levelLoader.loadLevel(
+        {
+          entities: [
+            { class: 'Trigger', shape: 'SPHERE', config: { radius: 2 } },
+            { class: 'Trigger', shape: 'CYLINDER', config: { radius: 1, height: 3 } },
+          ],
+        },
+        'TestLevel',
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith({ shape: 'SPHERE', radius: 2 }, expect.anything());
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'CYLINDER', radius: 1, height: 3 },
+        expect.anything(),
+      );
+    });
+
+    it('should build a COMPOUND trigger, each child with its own position and rotation', async () => {
+      const yaw90 = { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 };
+      await levelLoader.loadLevel(
+        {
+          entities: [
+            {
+              class: 'Trigger',
+              shape: 'COMPOUND',
+              config: {
+                children: [
+                  { shape: 'BOX', position: { x: 0, y: -2.5, z: 0 }, dimensions: { x: 10, y: 5, z: 5 } },
+                  { shape: 'BOX', position: { x: -2.5, y: 2.5, z: 0 }, rotation: yaw90, dimensions: { x: 5, y: 5, z: 5 } },
+                ],
+              },
+            },
+          ],
+        },
+        'TestLevel',
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        {
+          shape: 'COMPOUND',
+          children: [
+            { position: { x: 0, y: -2.5, z: 0 }, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } } },
+            { position: { x: -2.5, y: 2.5, z: 0 }, rotation: yaw90, shape: { shape: 'BOX', dimensions: { x: 5, y: 5, z: 5 } } },
+          ],
+        },
+        expect.anything(),
+      );
+    });
+
+    it('should reject a BOX trigger (the default shape) without dimensions', async () => {
+      await expect(levelLoader.loadLevel({ entities: [{ class: 'Trigger', config: {} }] }, 'TestLevel')).rejects.toThrow(
+        'Dimensions are required for BOX primitive',
+      );
     });
 
     it('should load a level with cameras, wrapped ready-to-use in a Camera3dEntity parented under the level', async () => {
@@ -1043,6 +1098,35 @@ describe('Gg3dLevelLoader', () => {
         rotation: { x: 0, y: 0, z: 0, w: 1 },
         config: { dimensions: { x: 4, y: 5, z: 6 } },
       });
+    });
+
+    it('round-trips a COMPOUND trigger through serializeEntity and createEntity', async () => {
+      (world.physicsWorld!.factory.createTrigger as jest.Mock).mockImplementation((shape: any) => mock3DBody(shape));
+      const yaw90 = { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 };
+      const json: EntityJson = {
+        class: 'Trigger',
+        shape: 'COMPOUND',
+        name: 'LZone',
+        position: { x: 1, y: 2, z: 3 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        config: {
+          children: [
+            { position: { x: 0, y: -2.5, z: 0 }, shape: 'BOX', dimensions: { x: 10, y: 5, z: 5 } },
+            {
+              position: { x: -2.5, y: 2.5, z: 0 },
+              rotation: yaw90,
+              shape: 'COMPOUND',
+              children: [{ shape: 'SPHERE', radius: 1 }],
+            },
+          ],
+        },
+      };
+      const trigger = (await levelLoader.createEntity(json)) as Trigger3dEntity;
+      const serialized = levelLoader.serializeEntity(trigger)!;
+      expect(serialized).toEqual(json);
+
+      const rebuilt = (await levelLoader.createEntity(serialized)) as Trigger3dEntity;
+      expect(rebuilt.objectBody.debugBodySettings.shape).toEqual(trigger.objectBody.debugBodySettings.shape);
     });
 
     it('does not mistake a richer Entity3d subclass for a plain Primitive', () => {

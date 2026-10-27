@@ -57,6 +57,28 @@ function primitiveConfigFromShape(
 }
 
 /**
+ * Full inverse of `Gg2dLevelLoader.buildShapeDescriptor`: turns any live `Shape2DDescriptor` (as
+ * read off a trigger's `debugBodySettings.shape`) back into the flat `shape` + shape-fields form a
+ * level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
+ * `rotation`). `collisionMargin` has no level-JSON field and is left out. Backs
+ * `Gg2dLevelLoader.serializeTrigger`.
+ */
+function shapeSettingsFromDescriptor(shape: Shape2DDescriptor): Primitive2DShapeSettings {
+  if (shape.shape === 'COMPOUND') {
+    return {
+      shape: 'COMPOUND',
+      children: shape.children.map(child => ({
+        ...(child.position !== undefined ? { position: child.position } : {}),
+        ...(child.rotation !== undefined ? { rotation: child.rotation } : {}),
+        ...shapeSettingsFromDescriptor(child.shape),
+      })),
+    };
+  }
+  const { collisionMargin: _collisionMargin, ...settings } = shape;
+  return settings;
+}
+
+/**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 2D level JSON, via the
  * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
  * `Shape2DDescriptor['shape']` values used at the engine API level, so no translation is needed
@@ -155,9 +177,16 @@ export interface PrimitiveSettings extends Primitive2DShapeSettings {
 }
 
 /**
- * Settings for a trigger entity
+ * Settings for a trigger entity: the same shape-selecting fields as a `"Primitive"`
+ * (`Primitive2DShapeSettings`, built by the same `buildShapeDescriptor`), except that `shape` is
+ * optional and defaults to `"BOX"` (which needs `dimensions`).
  */
-export interface TriggerSettings {
+export interface TriggerSettings extends Omit<Primitive2DShapeSettings, 'shape'> {
+  /**
+   * Which trigger volume shape to construct. Defaults to `"BOX"`.
+   */
+  shape?: Primitive2DShapeName;
+
   /**
    * Position of the trigger
    */
@@ -167,11 +196,6 @@ export interface TriggerSettings {
    * Rotation of the trigger in radians
    */
   rotation?: number;
-
-  /**
-   * Dimensions of the trigger
-   */
-  dimensions: Point2;
 }
 
 /**
@@ -375,23 +399,23 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 
   /**
    * Live serializer for the built-in `"Trigger"` class - see the 3D loader's own doc for the
-   * general approach. Matches `entity.constructor === Trigger2dEntity` exactly.
+   * general approach. Matches `entity.constructor === Trigger2dEntity` exactly. Every
+   * `Shape2DDescriptor` round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`); a
+   * `"BOX"` trigger omits `shape`, since that is the class's default.
    */
   private serializeTrigger(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
     if (entity.constructor !== Trigger2dEntity) {
       return undefined;
     }
     const trigger = entity as Trigger2dEntity<TypeDoc['pTypeDoc']>;
-    const shape = trigger.objectBody.debugBodySettings.shape;
-    if (shape.shape !== 'BOX') {
-      return undefined;
-    }
+    const { shape, ...config } = shapeSettingsFromDescriptor(trigger.objectBody.debugBodySettings.shape);
     return {
       class: 'Trigger',
+      ...(shape !== 'BOX' ? { shape } : {}),
       name: trigger.name,
       position: trigger.position,
       rotation: trigger.rotation,
-      config: { dimensions: shape.dimensions },
+      config,
     };
   }
 
@@ -493,8 +517,8 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     world: Gg2dWorld<TypeDoc>,
     settings: TriggerSettings,
   ): Trigger2dEntity<TypeDoc['pTypeDoc']> | undefined {
-    const { position, rotation, dimensions } = settings;
-    const shape: Shape2DDescriptor = { shape: 'BOX', dimensions };
+    const { position, rotation } = settings;
+    const shape = this.buildShapeDescriptor({ ...settings, shape: settings.shape ?? 'BOX' });
     const trigger = world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
     if (!trigger) {
       return undefined;

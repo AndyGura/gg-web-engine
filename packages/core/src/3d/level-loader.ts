@@ -129,6 +129,28 @@ function primitiveConfigFromShape(
 }
 
 /**
+ * Full inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns any live `Shape3DDescriptor` (as
+ * read off a trigger's `debugBodySettings.shape`) back into the flat `shape` + shape-fields form a
+ * level JSON uses, recursing into a `COMPOUND`'s children (each keeping its own `position`/
+ * `rotation`). `collisionMargin` has no level-JSON field and is left out. Backs
+ * `Gg3dLevelLoader.serializeTrigger`.
+ */
+function shapeSettingsFromDescriptor(shape: Shape3DDescriptor): Primitive3DShapeSettings {
+  if (shape.shape === 'COMPOUND') {
+    return {
+      shape: 'COMPOUND',
+      children: shape.children.map(child => ({
+        ...(child.position !== undefined ? { position: child.position } : {}),
+        ...(child.rotation !== undefined ? { rotation: child.rotation } : {}),
+        ...shapeSettingsFromDescriptor(child.shape),
+      })),
+    };
+  }
+  const { collisionMargin: _collisionMargin, ...settings } = shape;
+  return settings;
+}
+
+/**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
  * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
  * `Shape3DDescriptor['shape']` values used at the engine API level, so no translation is needed
@@ -252,9 +274,16 @@ export interface Primitive3DSettings extends Primitive3DShapeSettings {
 }
 
 /**
- * Settings for a trigger entity
+ * Settings for a trigger entity: the same shape-selecting fields as a `"Primitive"`
+ * (`Primitive3DShapeSettings`, built by the same `buildShapeDescriptor`), except that `shape` is
+ * optional and defaults to `"BOX"` (which needs `dimensions`).
  */
-export interface Trigger3DSettings {
+export interface Trigger3DSettings extends Omit<Primitive3DShapeSettings, 'shape'> {
+  /**
+   * Which trigger volume shape to construct. Defaults to `"BOX"`.
+   */
+  shape?: Primitive3DShapeName;
+
   /**
    * Position of the trigger
    */
@@ -264,11 +293,6 @@ export interface Trigger3DSettings {
    * Rotation of the trigger
    */
   rotation?: Point4;
-
-  /**
-   * Dimensions of the trigger
-   */
-  dimensions: Point3;
 }
 
 /**
@@ -863,23 +887,23 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   /**
    * Live serializer for the built-in `"Trigger"` class - see `serializePrimitive`'s own doc for the
    * general approach (same `debugBodySettings.shape`-based recovery, applied to a trigger's `ITrigger3dComponent`
-   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly.
+   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly. Every
+   * `Shape3DDescriptor` round-trips, `COMPOUND` included (see `shapeSettingsFromDescriptor`); a
+   * `"BOX"` trigger omits `shape`, since that is the class's default.
    */
   private serializeTrigger(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
     if (entity.constructor !== Trigger3dEntity) {
       return undefined;
     }
     const trigger = entity as Trigger3dEntity<TypeDoc['pTypeDoc']>;
-    const shape = trigger.objectBody.debugBodySettings.shape;
-    if (shape.shape !== 'BOX') {
-      return undefined;
-    }
+    const { shape, ...config } = shapeSettingsFromDescriptor(trigger.objectBody.debugBodySettings.shape);
     return {
       class: 'Trigger',
+      ...(shape !== 'BOX' ? { shape } : {}),
       name: trigger.name,
       position: trigger.position,
       rotation: trigger.rotation,
-      config: { dimensions: shape.dimensions },
+      config,
     };
   }
 
@@ -1007,8 +1031,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     world: Gg3dWorld<TypeDoc>,
     settings: Trigger3DSettings,
   ): Trigger3dEntity<TypeDoc['pTypeDoc']> | undefined {
-    const { position, rotation, dimensions } = settings;
-    const shape: Shape3DDescriptor = { shape: 'BOX', dimensions };
+    const { position, rotation } = settings;
+    const shape = this.buildShapeDescriptor({ ...settings, shape: settings.shape ?? 'BOX' });
     const trigger = world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
     if (!trigger) {
       return undefined;
