@@ -211,6 +211,11 @@ export type EntitySerializer<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> = (
  * provided - doesn't get silently mistaken for a plain primitive), then read shape (`objectBody
  * .debugBodySettings.shape`), body options (`objectBody.bodyOptions`), and velocity
  * (`objectBody.linearVelocity`/`angularVelocity`) straight off the live physics body.
+ *
+ * A live serializer needn't check how the entity was built: `serializeEntity` discards its result
+ * when `createEntity` built the entity under a class alias other than the result's `class` - an app
+ * class whose generator returns the same plain `Entity3d`/`Light3dEntity`/... a built-in class
+ * does serializes as itself, through its spawn record.
  * @param entity - The entity to serialize
  * @returns The entity's `EntityJson`, or `undefined` if this serializer doesn't apply to it
  */
@@ -718,7 +723,10 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    *    {@link registerLiveSerializer}) - these read the entity's own current physics/visual state
    *    directly, so they work regardless of how the entity was actually built. This is the
    *    mechanism the built-in `"Primitive"`/`"Trigger"` classes use, since there's no single entity
-   *    class those two alone would own (`"Primitive"` alone covers every shape).
+   *    class those two alone would own (`"Primitive"` alone covers every shape). A result whose
+   *    `class` differs from the alias `createEntity` built the entity under is skipped: that entity
+   *    belongs to an app class whose generator returns the same plain engine class, and serializes
+   *    through (2)/(3) as that class.
    * 2. The entity's own {@link ISerializableEntity.serializeSettings}, if it implements that
    *    interface - the class-owned counterpart of (1), for a class (built-in, like `"GgCar"`, or
    *    app-defined) that *does* have one entity class to own the logic. Its `class` alias is
@@ -748,14 +756,16 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * @returns The entity's `EntityJson` descriptor, or `undefined` if nothing could reconstruct it
    */
   public serializeEntity(entity: IEntity<D, R, TypeDoc>): EntityJson | undefined {
+    const record = this.spawnRecords.get(entity);
+
     for (const liveSerializer of this.liveSerializers) {
       const json = liveSerializer(entity);
-      if (json) {
+      // an app class whose generator builds a plain engine class (a "Rock" building an `Entity3d`)
+      // serializes as itself, not as the built-in class whose live serializer recognizes that class
+      if (json && (!record || json.class === record.classAlias)) {
         return json;
       }
     }
-
-    const record = this.spawnRecords.get(entity);
 
     if (isSerializableEntity(entity)) {
       const classAlias = record?.classAlias ?? this.classAliasesByCtor.get(entity.constructor);

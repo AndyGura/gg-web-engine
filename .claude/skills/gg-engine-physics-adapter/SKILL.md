@@ -263,7 +263,22 @@ four; a force wakes a sleeping body):
 native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time
 (see `Rapier2dFactory.createTrigger` calling `colliderDescr.setActiveEvents(ActiveEvents.
-COLLISION_EVENTS)`).
+COLLISION_EVENTS)`). Two requirements a native mechanism may not meet on its own:
+
+- **Overlap means the shapes overlap** (touching or one fully inside the other), not their
+  bounding boxes. A broadphase pair list (AABB overlaps) is only a candidate list: a box trigger
+  rotated 45 degrees must not fire for a body in its bounding box's corners, nor a two-box
+  L-shaped `COMPOUND` for one in the empty quadrant of its bounding box. If the engine only hands
+  out broadphase pairs, run a narrowphase test on each. A `MESH` shape is a surface with no inside,
+  so a `MESH` trigger reports only bodies crossing its triangles; `createTrigger` calls core's
+  `warnIfMeshTrigger(descriptor)` to say so.
+- **One enter and one leave per body**, however many parts touch. An engine reporting events per
+  collider pair reports a `COMPOUND` trigger (or body) once per touching part; count touching pairs
+  per body and emit on 0 -> 1 and 1 -> 0, the way a rigid body's `onCollisionStart`/`onCollisionEnd`
+  already must.
+
+Specs for both belong in `<lib>-trigger.component.spec.ts` (a rotated box, an L-shaped compound, a
+body crossing from one compound part into the other).
 
 ### Collision events
 

@@ -382,8 +382,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    *
    * `EventQueue.drainCollisionEvents` reports *collider* handles, not rigid-body handles -
    * `handleIdEntityMap` is keyed by rigid-body handle (see `addToWorld`), so each handle is resolved
-   * via `World.getCollider(handle)` (returns `null` for a since-removed collider, not a throw - safe
-   * to just skip) then `Collider.parent()` to reach the owning `RigidBody` before the map lookup.
+   * via `World.getCollider(handle)` then `Collider.parent()` to reach the owning `RigidBody` before
+   * the map lookup. A removed collider's stop arrives at the next step under its old handle, and
+   * `getCollider` looks a handle up by its arena index alone, ignoring the generation: once a new
+   * collider has taken the freed slot, the old handle resolves to *that* collider (of whichever
+   * body created it - possibly the same body re-added). Such an event is skipped unless the
+   * resolved collider's own `handle` equals the reported one; an unoccupied slot gives `null`.
    *
    * `handleIdEntityMap` also holds `Rapier3dCharacterControllerComponent`s (see its own doc), so
    * `comp1`/`comp2` below can each be a character controller as well as a rigid body/trigger - the
@@ -399,7 +403,8 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     this.eventQueue.drainCollisionEvents((h1, h2, started) => {
       const collider1 = nativeWorld.getCollider(h1);
       const collider2 = nativeWorld.getCollider(h2);
-      if (!collider1 || !collider2) {
+      // a stale handle of a removed collider resolves to whichever collider took its slot since
+      if (!collider1 || !collider2 || collider1.handle !== h1 || collider2.handle !== h2) {
         return;
       }
       const body1 = collider1.parent();
@@ -414,7 +419,15 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       }
 
       if (collider1.isSensor() || collider2.isSensor()) {
+        const handle1 = body1.handle;
+        const handle2 = body2.handle;
         out.push(() => {
+          // an earlier notification's subscriber may have removed either side (a pickup removing the
+          // body it caught) or removed and re-added it under a new native body - this event is then
+          // about a body no longer in the world, and its stop has already been accounted for
+          if (comp1.nativeBody?.handle !== handle1 || comp2.nativeBody?.handle !== handle2) {
+            return;
+          }
           if (comp1 instanceof Rapier3dTriggerComponent) {
             comp1.notifyOverlap(comp2, started);
           }
