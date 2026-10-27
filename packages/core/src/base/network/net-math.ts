@@ -75,7 +75,7 @@ export function integrateRotation<R extends NetRot>(r: R, av: number | Point3, s
   }
   const axis = { x: av.x / rate, y: av.y / rate, z: av.z / rate };
   // world-space angular velocity: the increment is applied on the left
-  return normalizeQuat(Qtrn.mult(Qtrn.fromAngle(axis, angle) as Point4, r)) as R;
+  return Qtrn.normalize(Qtrn.mult(Qtrn.fromAngle(axis, angle) as Point4, r)) as R;
 }
 
 /** Smallest angle (radians, >= 0) between two rotations. */
@@ -101,9 +101,9 @@ export function rotationLerp<R extends NetRot>(a: R, b: R, t: number): R {
     target = { x: -target.x, y: -target.y, z: -target.z, w: -target.w };
   }
   if (Math.abs(dot) > 0.9995) {
-    return normalizeQuat(Qtrn.lerp(a, target, t)) as R;
+    return Qtrn.normalize(Qtrn.lerp(a, target, t)) as R;
   }
-  return normalizeQuat(Qtrn.slerp(a, target, t)) as R;
+  return Qtrn.normalize(Qtrn.slerp(a, target, t)) as R;
 }
 
 /** Interpolate angular velocity (scalar in 2D, vector in 3D). */
@@ -114,14 +114,6 @@ export function avLerp(a: number | Point3, b: number | Point3, t: number): numbe
     return an + (bn - an) * t;
   }
   return vLerp(a, b, t);
-}
-
-export function normalizeQuat(q: Point4): Point4 {
-  const l = Math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-  if (l < 1e-12) {
-    return { x: 0, y: 0, z: 0, w: 1 };
-  }
-  return { x: q.x / l, y: q.y / l, z: q.z / l, w: q.w / l };
 }
 
 /**
@@ -152,7 +144,7 @@ export function isCoasting(sinceReceivedMs: number | undefined, tuning: Correcti
 
 /** a normalized copy of a quaternion rotation; a 2D angle as is */
 export function rNormalize<R extends NetRot>(r: R): R {
-  return (typeof r === 'number' ? r : normalizeQuat(r)) as R;
+  return (typeof r === 'number' ? r : Qtrn.normalize(r)) as R;
 }
 
 /** wire resolution of positions: 1 mm (world units, i.e. meters in 3D) */

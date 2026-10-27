@@ -15,6 +15,8 @@ import {
   LevelJson,
   LevelLoader,
   NetworkFrame,
+  Point4,
+  Qtrn,
   quantizeNetPosition,
   quantizeNetRotation,
   TickOrder,
@@ -38,7 +40,11 @@ import { NetDebugPanel } from './net-debug-panel';
 /** What the network layer reports about one connected peer. */
 export interface PeerInfo {
   peerId: string;
-  /** last position the peer reported (`null` = spectating), `undefined` until its first heartbeat */
+  /**
+   * last position the peer reported (`null` = spectating), `undefined` until its first heartbeat. In
+   * global coordinates, rounded to 1 mm, as its heartbeat carries it: in a 3D world with a non-identity
+   * `frame`, `world.toLocalPoint(position)` places it in this world (e.g. a peer marker).
+   */
   position: unknown | null | undefined;
   /** lowest round-trip time among the latest clock-sync samples, ms */
   rttMs: number;
@@ -286,11 +292,17 @@ interface PendingJoin {
   resolve: () => void;
 }
 
-/** `lv` of a `RigidBodyNetState`-shaped payload (any syncable whose state carries one), else null */
 const isVec = (v: unknown): boolean =>
   !!v && typeof (v as { x?: unknown }).x === 'number' && typeof (v as { y?: unknown }).y === 'number';
 const isRot = (r: unknown): boolean =>
   typeof r === 'number' || (isVec(r) && typeof (r as { w?: unknown }).w === 'number');
+
+/** `lv` of a `RigidBodyNetState`-shaped payload (any syncable whose state carries one), else null */
+/** floor of the unit-scaled default deadzone: twice the worst-case 3D wire rounding error (~0.87 mm) */
+const MIN_DEFAULT_DEADZONE = 2e-3;
+
+/** a quaternion's identity; frames (and so the descriptor conversions that use it) exist in 3D only */
+const IDENTITY_ROTATION: Point4 = { x: 0, y: 0, z: 0, w: 1 };
 
 function velocityOfState(s: unknown): any | null {
   const lv = (s as any)?.lv;
@@ -462,7 +474,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.keepaliveRate = options.keepaliveRate ?? 2;
     this.tuning = {
       ...DEFAULT_CORRECTION_TUNING,
-      deadzone: DEFAULT_CORRECTION_TUNING.deadzone * unit,
+      // never inside the wire's 1 mm position rounding, or a resting replica would never settle
+      deadzone: Math.max(DEFAULT_CORRECTION_TUNING.deadzone * unit, MIN_DEFAULT_DEADZONE),
       snapDistance: DEFAULT_CORRECTION_TUNING.snapDistance * unit,
       ...(options.tuning ?? {}),
     };
@@ -1063,6 +1076,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     if (isRot(d.rotation)) {
       out.rotation = quantizeNetRotation(frame ? frame.toGlobalRotation(d.rotation as R) : d.rotation);
+    } else if (frame && isVec(d.position) && d.rotation === undefined) {
+      // placed without a rotation: built at this world's local identity, i.e. turned by the frame's yaw
+      out.rotation = quantizeNetRotation(
+        frame.toGlobalRotation(IDENTITY_ROTATION as unknown as R) as unknown as Point4,
+      );
     }
     return out;
   }
@@ -1070,15 +1088,17 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /** a spawn descriptor from the wire, its `position`/`rotation` converted to local coordinates */
   private fromWireDescriptor(d: EntityJson): EntityJson {
     const frame = this.worldFrame();
-    if (!frame) {
-      return d;
-    }
     const out = { ...d };
-    if (isVec(d.position)) {
+    if (frame && isVec(d.position)) {
       out.position = frame.toLocalPoint(d.position as D);
     }
     if (isRot(d.rotation) && typeof d.rotation !== 'number') {
-      out.rotation = frame.toLocalRotation(d.rotation as R);
+      // rounded on the wire: back to unit length before anything is built with it
+      const r = Qtrn.normalize(d.rotation as Point4);
+      out.rotation = frame ? frame.toLocalRotation(r as unknown as R) : r;
+    } else if (frame && isVec(d.position) && d.rotation === undefined) {
+      // placed without a rotation means the global identity (a sender with a yawed frame sends one)
+      out.rotation = frame.toLocalRotation(IDENTITY_ROTATION as unknown as R);
     }
     return out;
   }
