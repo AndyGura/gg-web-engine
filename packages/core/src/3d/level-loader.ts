@@ -544,22 +544,27 @@ export type GgCar3DSettings = GgCar3DCommonSettings & {
 
   /** Initial driving state, applied once right after the car is built - see {@link GgCarStateSettings}. */
   state?: GgCarStateSettings;
-} & (
-    | {
-        wheelBase: {
-          shared?: GgCarSharedWheelSettings;
-          front: GgCarAxleSettings;
-          rear: GgCarAxleSettings;
-        };
-        wheelOptions?: undefined;
-        sharedWheelOptions?: undefined;
-      }
-    | {
-        wheelOptions: GgCarWheelSettings[];
-        sharedWheelOptions?: GgCarSharedWheelSettings;
-        wheelBase?: undefined;
-      }
-  );
+} & GgCarWheelLayoutSettings;
+
+/**
+ * Where a `"GgCar"`'s wheels are: either per axle (`wheelBase`), or one entry per wheel
+ * (`wheelOptions`), never both.
+ */
+export type GgCarWheelLayoutSettings =
+  | {
+      wheelBase: {
+        shared?: GgCarSharedWheelSettings;
+        front: GgCarAxleSettings;
+        rear: GgCarAxleSettings;
+      };
+      wheelOptions?: undefined;
+      sharedWheelOptions?: undefined;
+    }
+  | {
+      wheelOptions: GgCarWheelSettings[];
+      sharedWheelOptions?: GgCarSharedWheelSettings;
+      wheelBase?: undefined;
+    };
 
 /**
  * JSON-friendly counterpart of `MapGraphNodeType`: identical except `loadOptions` may be omitted

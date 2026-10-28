@@ -2192,6 +2192,63 @@ properties, not just this one.
   `toThrow` now, same signature. A grep for `toThrowError` across `test/` after bumping `jest`/
   `@types/jest` past 29 catches every call site at once.
 
+## Level JSON schemas (`packages/core/schema`)
+
+`schema/level-3d.schema.json` and `schema/level-2d.schema.json` ship in the core tarball (`files`
+in `package.json`) and are generated, never edited: `etc/generate_level_schema.mjs` (repo root)
+runs `ts-json-schema-generator` (a pinned devDependency of `packages/core`) over
+`packages/core/etc/level-schema/level-{3d,2d}.ts`, which compose the level loader's exported
+settings types (`Primitive3DSettings`, `Trigger3DSettings`, ..., `LevelJson`, `EntityJson`) into
+one `Level3DJson`/`Level2DJson` whose entities are a union discriminated on `class` (and `shape`).
+The script then rewrites the draft-07 output as draft 2020-12 (`$defs`, `prefixItems`), turns each
+union tagged by `class`/`shape`/`type` into `if`/`then` branches so a validator reports only the
+selected branch's errors, adds `default` where a field's JSDoc states a literal default ("Default
+`0.5`.", "Defaults to `true`", "(default `5`)", kept only if it validates against that field),
+adds the fallback for app-registered classes (`LevelEntityJson`: a built-in `class` goes to its
+branch, any other to plain `EntityJson`) and a top-level `$schema` key.
+
+```bash
+npm run level-schema        # regenerate both files in place; commit them with the type change
+npm run check:level-schema  # regenerate to a temp dir, fail if the committed files differ (PR CI, release preflight)
+npm run validate:levels     # validate every level in examples/ and templates/ (PR CI)
+```
+
+When to regenerate: any change to a level settings type or its JSDoc (descriptions are part of the
+schema), a type it references (`Body3DOptions`, `DisplayObject3dOpts`, `Light3dDescriptor`,
+`ProceduralSky3dOpts`, ...), or `EntityJson`/`LevelJson`/`BlueprintJson`. A **new built-in level
+class** also needs a member in `etc/level-schema/level-{3d,2d}.ts` (its entity type in the
+`BuiltIn*EntityJson` union, plus the `Same<>`/`ConfigRequired<>` checks at the end of the file);
+`test/base/level-schema.spec.ts` fails until the schema's class enum equals the aliases a fresh
+`Gg3dLoader`/`Gg2dLevelLoader` registers. `validate:levels` finds a TypeScript level by a
+top-level `const x: LevelJson = ...`; it cuts that declaration out of its module with the
+top-level declarations and imports it uses, bundles it with esbuild against `packages/core/src`
+and runs it, so the rest of the module (creating a world, touching the DOM) never runs. A level
+built some other way (a `let`, a function's return value) is not seen.
+
+Generator pitfalls, each hit while building this:
+
+- **`ts-json-schema-generator` depends on TypeScript 5.9**, which rejects this repo's TS 6 code
+  (e.g. a generic assignment in `base/level-loader.ts` TS 6 accepts and 5.9 does not). The root
+  `package.json` `overrides` entry makes it use the workspace's TS 6 instead; keep it when bumping
+  the generator. The composition files have their own `etc/level-schema/tsconfig.json`
+  (`moduleResolution: "bundler"`, no `ignoreDeprecations`), and `packages/core/tsconfig.json`
+  excludes `etc/**` so the library build never sees them.
+- **It fails with `Reference type ID not set yet`** on the deep generic graph behind live engine
+  objects (`IDisplayObject3dComponent`, reached through `WheelDisplayOptions.displayObject` even
+  when the level type `Omit`s that field). The script maps those type names to `any` with a custom
+  node parser (`OPAQUE_TYPES`); add a name there if a new level type reaches another one.
+- **It does not evaluate conditional types** (`{} extends C ? ...` comes out wrong, distributive
+  conditionals don't distribute) and **`Omit` over a union collapses the union** (a cylinder's
+  `radius` | `radiusX`+`radiusY` became one object requiring all three; `Light3dDescriptor`'s
+  per-`type` members merged). So the composition files spell unions out member by member, decide
+  `config?` vs `config` per class by hand, and prove both against the real types with
+  `Same<>`/`ConfigRequired<>` assertions the generator's own type check runs.
+- **It misreads `ShapeFields3D['BOX']`-style indexed access once the `COMPOUND` recursion is
+  involved** (the whole interface came out as one object with a property per shape). Each shape's
+  fields are therefore a named alias (`BoxFields3D`, ...) that the unions reference directly.
+- **`Required<Pick<...>>` loses `required`**; intersect the `Pick` (which carries the JSDoc
+  descriptions) with the descriptor's own required fields instead, as `DescriptorFields3D` does.
+
 ## Debugging a running example live, without real keyboard/mouse input
 
 Useful when a bug only shows up in a real, GLB-loaded scene (real gravity, real compound colliders)

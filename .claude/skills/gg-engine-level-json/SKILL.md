@@ -67,6 +67,53 @@ generator, so a generator's settings parameter sees one flat object:
 `{ ...config, shape?, position?, rotation?, name? }`. A generator may be `async`/return a `Promise`
 (the built-in `"Glb"` 3D class does) - `loadLevel` awaits each one before moving to the next entity.
 
+## Validating a level: the JSON schemas
+
+`@gg-web-engine/core` ships one JSON Schema (draft 2020-12) per dimension, describing exactly what
+`world.loader.loadLevel` accepts:
+
+- `@gg-web-engine/core/schema/level-3d.schema.json` - for a `Gg3dWorld` (`position`: `Point3`,
+  `rotation`: `Point4` quaternion).
+- `@gg-web-engine/core/schema/level-2d.schema.json` - for a `Gg2dWorld` (`position`: `Point2`,
+  `rotation`: number, radians).
+
+The package has no `exports` map, so both resolve as plain deep paths (`node_modules/@gg-web-engine/
+core/schema/...`). `entities[]` is discriminated on `class`: each built-in class requires its own
+`config` type, `"Primitive"`/`"Trigger"` additionally on `shape` (a `BOX` requires
+`config.dimensions`, a `SPHERE` `config.radius`, ...), and unknown fields are rejected. An entity
+whose `class` is not a built-in alias is an app-registered class: it is checked only against
+`EntityJson` (`class` required, `config` open), since the schema can't know what an app registers.
+`EntityEventBinding`, `BlueprintJson` and every settings type are reusable definitions under
+`$defs`; JSDoc on the settings fields is each property's `description`, and a default the JSDoc
+states as a literal ("Default `0.5`.") is its `default`. A validator reports only the errors of
+the branch the `class`/`shape` selects, e.g. `/entities/0/config must have required property
+'dimensions'`.
+
+From app code (any draft 2020-12 validator; with `ajv` it is the `ajv/dist/2020` build):
+
+```ts
+import Ajv2020 from 'ajv/dist/2020';
+import schema from '@gg-web-engine/core/schema/level-3d.schema.json';
+
+const validate = new Ajv2020({ allErrors: true }).compile(schema);
+if (!validate(levelJson)) {
+  console.error(validate.errors); // each with an `instancePath` like "/entities/3/config"
+}
+```
+
+From the command line, e.g. with `ajv-cli`:
+`npx ajv-cli validate --spec=draft2020 -s node_modules/@gg-web-engine/core/schema/level-3d.schema.json -d level.json`.
+An editor validates and autocompletes a JSON level file that names its schema in a top-level
+`$schema` key (`"$schema": "./node_modules/@gg-web-engine/core/schema/level-3d.schema.json"`); the
+schema allows that key and `loadLevel` ignores it.
+
+The schema is a check in addition to `loadLevel`, not part of it: `loadLevel` does not validate
+against it, and still throws on what it can't build. The schemas are generated from the level
+loader's TypeScript settings types and are never edited by hand - see `gg-engine-core-development`
+("Level JSON schemas") for how they are regenerated. In this repo, `npm run validate:levels`
+validates every level in `examples/` and `templates/` (JSON files and `LevelJson` constants) and
+runs on every PR.
+
 ## Loading a level, and tearing it back down
 
 ```typescript

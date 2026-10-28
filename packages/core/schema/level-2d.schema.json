@@ -1,0 +1,2310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "gg-web-engine 2D level",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The JSON Schema this level is written against. Ignored by `loadLevel`."
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LevelEntityJson"
+      },
+      "description": "Entities in the level"
+    },
+    "blueprints": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/BlueprintJson"
+      },
+      "description": "Blueprint graphs available to this level's entities, keyed by name - referenced from an `EntityJson.events` entry to run a blueprint whenever the named observable on that entity fires. See `BlueprintJson` and the `gg-engine-level-json` skill's \"Blueprints\" section."
+    }
+  },
+  "required": [
+    "entities"
+  ],
+  "description": "A level for a 2D world, as `world.loader.loadLevel` accepts it.",
+  "$comment": "Generated from the level loader types by etc/generate_level_schema.mjs in the gg-web-engine repository. Do not edit by hand.",
+  "$defs": {
+    "BuiltIn2DEntityJson": {
+      "description": "One entity of a 2D level, discriminated on `class`.",
+      "type": "object",
+      "properties": {
+        "class": {
+          "enum": [
+            "Primitive",
+            "Trigger",
+            "ParallaxLayer",
+            "Environment",
+            "Player",
+            "Sound"
+          ]
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Primitive"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Primitive2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Trigger"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Trigger2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "ParallaxLayer"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/ParallaxLayer2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Environment"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Environment2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Player"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Player2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Sound"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Sound2DEntityJson"
+          }
+        }
+      ]
+    },
+    "Primitive2DEntityJson": {
+      "description": "A `\"Primitive\"` entity; `shape` picks which fields `config` needs.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "BOX",
+            "CIRCLE",
+            "CAPSULE",
+            "CONVEX_HULL",
+            "POLYGON",
+            "COMPOUND"
+          ],
+          "description": "Which primitive shape to construct"
+        }
+      },
+      "required": [
+        "shape"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "BOX"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dimensions": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Dimensions of the primitive (for Box)"
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "dimensions"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "BOX",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CIRCLE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "radius": {
+                    "type": "number",
+                    "description": "Radius of the primitive (for Circle/Capsule)"
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "radius"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CIRCLE",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CAPSULE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "radius": {
+                    "type": "number",
+                    "description": "Radius of the primitive (for Circle/Capsule)"
+                  },
+                  "centersDistance": {
+                    "type": "number",
+                    "description": "Distance between the two hemisphere centers (for Capsule)"
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "centersDistance",
+                  "radius"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CAPSULE",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CONVEX_HULL"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Point2"
+                    },
+                    "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "vertices"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CONVEX_HULL",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "POLYGON"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Point2"
+                    },
+                    "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "vertices"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "POLYGON",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "COMPOUND"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/CompoundChild2DJson"
+                    },
+                    "description": "Child shapes making up a Compound primitive, each with its own local `position`/`rotation` offset. A child's `shape` may itself be `\"COMPOUND\"`, nesting arbitrarily deep."
+                  },
+                  "material": {
+                    "$ref": "#/$defs/DisplayObject2dOpts",
+                    "description": "Material options for the primitive"
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "bodyType": {
+                        "$ref": "#/$defs/BodyType"
+                      },
+                      "mass": {
+                        "type": "number",
+                        "description": "Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is - low between the wheels for a car chassis. How rotational inertia follows from the shape is up to each physics adapter."
+                      },
+                      "restitution": {
+                        "type": "number"
+                      },
+                      "friction": {
+                        "type": "number"
+                      },
+                      "ownCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "interactWithCollisionGroups": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/$defs/CollisionGroup"
+                            }
+                          },
+                          {
+                            "type": "string",
+                            "const": "all"
+                          }
+                        ]
+                      },
+                      "ccd": {
+                        "type": "boolean"
+                      },
+                      "canSleep": {
+                        "type": "boolean",
+                        "description": "Whether the physics engine may put this body to sleep once it comes to rest. Default `true`. A sleeping body is skipped by the solver until something wakes it up (a collision with an awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its collision groups being changed under it. Only meaningful for a dynamic body: static bodies never move and kinematic ones never sleep anyway.",
+                        "default": true
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Physics body options, merged over sensible defaults"
+                  },
+                  "linearVelocity": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Initial linear velocity, applied once right after the body is created - see the 3D loader's `Primitive3DSettings.linearVelocity` doc, same caveats."
+                  },
+                  "angularVelocity": {
+                    "type": "number",
+                    "description": "Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats."
+                  }
+                },
+                "required": [
+                  "children"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Primitive"
+              },
+              "shape": {
+                "type": "string",
+                "const": "COMPOUND",
+                "description": "Which primitive shape to construct"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        }
+      ]
+    },
+    "Point2": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "DisplayObject2dOpts": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "number",
+          "description": "Fill color of an untextured shape; with a `texture`, a tint multiplied over it instead."
+        },
+        "texture": {},
+        "stroke": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "color",
+            "width"
+          ],
+          "additionalProperties": false,
+          "description": "An outline around an untextured shape. Ignored for a textured one."
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Opacity from `0` (invisible) to `1` (opaque, the default), see `IDisplayObject2dComponent.opacity`."
+        }
+      },
+      "additionalProperties": false
+    },
+    "BodyType": {
+      "type": "string",
+      "enum": [
+        "dynamic",
+        "static",
+        "kinematic_pos",
+        "kinematic_vel"
+      ]
+    },
+    "CollisionGroup": {
+      "type": "number"
+    },
+    "EntityEventBinding": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "What an `EntityJson.events` entry runs. Either:\n- a plain `string` - first tried as a key into the level's top-level `blueprints` map (a named, possibly multi-node graph); if not found there, tried as a blueprint node type alias registered via `registerBlueprintNode` (e.g. the built-in `\"RemoveEntity\"`) instead, with no settings - shorthand for the single-node form below with `settings` omitted.\n- `{ type, settings? }` - a single built-in/registered blueprint node used directly as the handler, with inline `settings`, no `blueprints` entry needed at all - e.g. `{ \"type\": \"RemoveEntity\", \"settings\": { \"dispose\": true } }`. Only node types registered with a default input pin (every built-in one is - see `registerBlueprintNode`) support this form; others require a full graph declared in `blueprints` instead, addressing the desired input pin explicitly via `inputs`."
+    },
+    "CompoundChild2DJson": {
+      "description": "One child of a `COMPOUND` shape.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "BOX",
+            "CIRCLE",
+            "CAPSULE",
+            "CONVEX_HULL",
+            "POLYGON",
+            "COMPOUND"
+          ]
+        }
+      },
+      "required": [
+        "shape"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "BOX"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "dimensions": {
+                "$ref": "#/$defs/Point2",
+                "description": "Dimensions of the primitive (for Box)"
+              },
+              "shape": {
+                "type": "string",
+                "const": "BOX"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "dimensions",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CIRCLE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "radius": {
+                "type": "number",
+                "description": "Radius of the primitive (for Circle/Capsule)"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CIRCLE"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "radius",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CAPSULE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "radius": {
+                "type": "number",
+                "description": "Radius of the primitive (for Circle/Capsule)"
+              },
+              "centersDistance": {
+                "type": "number",
+                "description": "Distance between the two hemisphere centers (for Capsule)"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CAPSULE"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "centersDistance",
+              "radius",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CONVEX_HULL"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "vertices": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Point2"
+                },
+                "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+              },
+              "shape": {
+                "type": "string",
+                "const": "CONVEX_HULL"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "shape",
+              "vertices"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "POLYGON"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "vertices": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Point2"
+                },
+                "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+              },
+              "shape": {
+                "type": "string",
+                "const": "POLYGON"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "shape",
+              "vertices"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "COMPOUND"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "children": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/CompoundChild2DJson"
+                },
+                "description": "Child shapes making up a Compound primitive, each with its own local `position`/`rotation` offset. A child's `shape` may itself be `\"COMPOUND\"`, nesting arbitrarily deep."
+              },
+              "shape": {
+                "type": "string",
+                "const": "COMPOUND"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the child shape, relative to the compound's own origin"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the child shape in radians, relative to the compound's own rotation"
+              }
+            },
+            "required": [
+              "children",
+              "shape"
+            ]
+          }
+        }
+      ]
+    },
+    "Trigger2DEntityJson": {
+      "description": "A `\"Trigger\"` entity; `shape` defaults to `\"BOX\"`.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "BOX",
+            "CIRCLE",
+            "CAPSULE",
+            "CONVEX_HULL",
+            "POLYGON",
+            "COMPOUND"
+          ],
+          "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`.",
+          "default": "BOX"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "BOX"
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "shape": {
+                "type": "string",
+                "const": "BOX",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`.",
+                "default": "BOX"
+              },
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dimensions": {
+                    "$ref": "#/$defs/Point2",
+                    "description": "Dimensions of the primitive (for Box)"
+                  }
+                },
+                "required": [
+                  "dimensions"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CIRCLE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "radius": {
+                    "type": "number",
+                    "description": "Radius of the primitive (for Circle/Capsule)"
+                  }
+                },
+                "required": [
+                  "radius"
+                ]
+              },
+              "shape": {
+                "type": "string",
+                "const": "CIRCLE",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`."
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CAPSULE"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "radius": {
+                    "type": "number",
+                    "description": "Radius of the primitive (for Circle/Capsule)"
+                  },
+                  "centersDistance": {
+                    "type": "number",
+                    "description": "Distance between the two hemisphere centers (for Capsule)"
+                  }
+                },
+                "required": [
+                  "centersDistance",
+                  "radius"
+                ]
+              },
+              "shape": {
+                "type": "string",
+                "const": "CAPSULE",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`."
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "CONVEX_HULL"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Point2"
+                    },
+                    "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+                  }
+                },
+                "required": [
+                  "vertices"
+                ]
+              },
+              "shape": {
+                "type": "string",
+                "const": "CONVEX_HULL",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`."
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "POLYGON"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Point2"
+                    },
+                    "description": "Vertices of the primitive (for ConvexHull/Polygon)"
+                  }
+                },
+                "required": [
+                  "vertices"
+                ]
+              },
+              "shape": {
+                "type": "string",
+                "const": "POLYGON",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`."
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "COMPOUND"
+              }
+            },
+            "required": [
+              "shape"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "children": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/CompoundChild2DJson"
+                    },
+                    "description": "Child shapes making up a Compound primitive, each with its own local `position`/`rotation` offset. A child's `shape` may itself be `\"COMPOUND\"`, nesting arbitrarily deep."
+                  }
+                },
+                "required": [
+                  "children"
+                ]
+              },
+              "shape": {
+                "type": "string",
+                "const": "COMPOUND",
+                "description": "Which trigger volume shape to construct. Defaults to `\"BOX\"`."
+              },
+              "class": {
+                "type": "string",
+                "const": "Trigger"
+              },
+              "position": {
+                "$ref": "#/$defs/Point2",
+                "description": "Position of the entity"
+              },
+              "rotation": {
+                "type": "number",
+                "description": "Rotation of the entity in radians"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+              },
+              "events": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/EntityEventBinding"
+                },
+                "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+              }
+            },
+            "required": [
+              "class",
+              "config",
+              "shape"
+            ]
+          }
+        }
+      ]
+    },
+    "ParallaxLayer2DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "ParallaxLayer"
+        },
+        "config": {
+          "$ref": "#/$defs/ParallaxLayer2DSettings"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class",
+        "config"
+      ],
+      "description": "A `\"ParallaxLayer\"` entity."
+    },
+    "ParallaxLayer2DSettings": {
+      "type": "object",
+      "properties": {
+        "texture": {
+          "type": "string",
+          "description": "URL of the layer's image, loaded with `factory.loadTexture`."
+        },
+        "parallax": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Point2"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "zIndex": {
+          "type": "number"
+        },
+        "repeat": {
+          "$ref": "#/$defs/ParallaxLayer2dRepeat"
+        },
+        "offset": {
+          "$ref": "#/$defs/Point2"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Point2"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "texture"
+      ],
+      "additionalProperties": false,
+      "description": "Settings for the built-in 2D `\"ParallaxLayer\"` class - `ParallaxLayer2dOpts`, with the texture given as an image URL. Creates a `ParallaxLayer2dEntity`; a no-op without a visual scene."
+    },
+    "ParallaxLayer2dRepeat": {
+      "type": "string",
+      "enum": [
+        "x",
+        "y",
+        "both",
+        "none"
+      ],
+      "description": "Which axes a parallax layer's texture repeats along."
+    },
+    "Environment2DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "Environment"
+        },
+        "config": {
+          "$ref": "#/$defs/Environment2DSettings"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "description": "An `\"Environment\"` entity."
+    },
+    "Environment2DSettings": {
+      "type": "object",
+      "properties": {
+        "background": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "image": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "image"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Settings for the built-in 2D `\"Environment\"` class (see `IVisualScene2dComponent.setEnvironment`): `background` is a `0xRRGGBB` color, `{ \"image\": \"url\" }`, or `null`. Applied while the level is loaded and restored when it is unloaded (see `Environment2dEntity`). A no-op without a visual scene."
+    },
+    "Player2DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "Player"
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "offset": {
+              "type": "number",
+              "description": "A small gap to preserve between the character and its surroundings, to keep the underlying sweep test numerically stable. Should not be zero, but also shouldn't be so large that it causes visible floating. Default ~0.01."
+            },
+            "maxStepHeight": {
+              "type": "number",
+              "description": "The maximum height of a ledge the character can automatically step onto. Default 0.3.",
+              "default": 0.3
+            },
+            "minStepWidth": {
+              "type": "number",
+              "description": "The minimum width of free space required on top of a ledge for the character to be allowed to step onto it. Default 0.2. Not every backend can honor this exactly (see the adapter's own docs); treat it as a best-effort hint.",
+              "default": 0.2
+            },
+            "maxSlopeClimbAngleRad": {
+              "type": "number",
+              "description": "The maximum angle (radians) between the ground's normal and `up` that the character can walk up without sliding back down. Default ~50° (`(50 * Math.PI) / 180`)."
+            },
+            "snapToGroundDistance": {
+              "type": "number",
+              "description": "The maximum distance below the capsule's feet the character will snap down to stay glued to the ground (e.g. walking down stairs/slopes without falling/bouncing). `0` disables snapping. Default 0.3.",
+              "default": 0.3
+            },
+            "up": {
+              "$ref": "#/$defs/Point2",
+              "description": "World \"up\" direction, used to tell the floor from walls/ceilings. Default `{x:0,y:-1}` - the `-Y` screen-up convention every 2D adapter in this engine uses (positive `y` gravity is \"down\", see `Gg2dWorld`'s own `gravity` console command doc).",
+              "default": {
+                "x": 0,
+                "y": -1
+              }
+            },
+            "ownCollisionGroups": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/CollisionGroup"
+                  }
+                },
+                {
+                  "type": "string",
+                  "const": "all"
+                }
+              ],
+              "description": "Collision groups this character belongs to. Default: the physics world's main group."
+            },
+            "interactWithCollisionGroups": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/CollisionGroup"
+                  }
+                },
+                {
+                  "type": "string",
+                  "const": "all"
+                }
+              ],
+              "description": "Collision groups this character collides against. Default: `'all'`.",
+              "default": "all"
+            },
+            "pushMass": {
+              "type": "number",
+              "description": "Effective mass (kg-equivalent), used only to size the push this character imparts to a dynamic body it walks into - the character's own motion always stays fully kinematic (never affected by this value, or by anything it pushes). On contact, a body's velocity along the push direction is driven towards `pushSpeed * pushMass / (pushMass + bodyMass)` - i.e. a body much lighter than this mass gets shoved at close to the character's own speed, one much heavier barely moves, mirroring the momentum a real body of this mass moving at that speed would transfer. `0` disables pushing - a dynamic body is then just swept-and-slid past like static geometry. Default 80 (roughly human mass). Not every backend implements pushing (see the adapter's own docs); where unimplemented, this option is ignored.",
+              "default": 80
+            },
+            "walkSpeed": {
+              "type": "number",
+              "description": "Walking speed, in world units/s. Default 4.",
+              "default": 4
+            },
+            "runSpeedMultiplier": {
+              "type": "number",
+              "description": "Multiplier applied to `walkSpeed` while `isRunning`. Default 1.8.",
+              "default": 1.8
+            },
+            "crouchSpeedMultiplier": {
+              "type": "number",
+              "description": "Multiplier applied to `walkSpeed` while `isCrouching`. Default 0.5.",
+              "default": 0.5
+            },
+            "crouchCentersDistance": {
+              "type": "number",
+              "description": "Capsule `centersDistance` used while `isCrouching`. Must be smaller than `centersDistance`."
+            },
+            "crouchMode": {
+              "type": "string",
+              "enum": [
+                "hold",
+                "toggle"
+              ],
+              "description": "Not consumed by this class - carried here purely so an input driver (e.g. `PlayerCharacterController2d`) can read the crouch key behavior from the same options object used to configure the character itself. `'hold'`: crouch while the key is held, stand up on release (subject to the headroom check above). `'toggle'`: each press flips `isCrouching`. Default `'hold'`.",
+              "default": "hold"
+            },
+            "jumpSpeed": {
+              "type": "number",
+              "description": "Takeoff vertical speed applied by `jump()`, opposing gravity along `up`. Default 5.",
+              "default": 5
+            },
+            "gravity": {
+              "type": "number",
+              "description": "Downward acceleration integrated while airborne, along `up`, **overriding** the world's own `physicsWorld.gravity` for this character. Leave `undefined` (the default) to instead track `physicsWorld.gravity` live every tick, full vector - direction and magnitude - exactly like it would affect a dynamic rigid body. See `CharacterController3dEntityOptions.gravity`'s doc for the full rationale (identical here, just in 2D)."
+            },
+            "airControlFactor": {
+              "type": "number",
+              "description": "How fast horizontal movement can be *steered* while airborne, as a fraction of the current walk/run speed applied per second of acceleration (0..1) - see `CharacterController3dEntityOptions.airControlFactor`'s doc. Default 0.3.",
+              "default": 0.3
+            },
+            "radius": {
+              "type": "number",
+              "description": "Capsule radius. Default 0.4.",
+              "default": 0.4
+            },
+            "centersDistance": {
+              "type": "number",
+              "description": "Standing capsule centersDistance. Default 1.0.",
+              "default": 1
+            },
+            "display": {
+              "$ref": "#/$defs/DisplayObject2dOpts",
+              "description": "Material options for the auto-generated capsule mesh; omit for a plain default-material capsule."
+            },
+            "state": {
+              "$ref": "#/$defs/CharacterState2d",
+              "description": "Runtime movement state applied once right after the character is built (see `CharacterState2d`) - what `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another peer) continues mid-jump/mid-crouch."
+            }
+          },
+          "additionalProperties": false
+        },
+        "position": {
+          "$ref": "#/$defs/Point2",
+          "description": "Position of the entity"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation of the entity in radians"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "description": "A `\"Player\"` entity."
+    },
+    "CharacterState2d": {
+      "type": "object",
+      "properties": {
+        "isCrouching": {
+          "type": "boolean"
+        },
+        "isRunning": {
+          "type": "boolean"
+        },
+        "moveDirection": {
+          "type": "number"
+        },
+        "fallVelocity": {
+          "$ref": "#/$defs/Point2"
+        },
+        "airHorizontalVelocity": {
+          "$ref": "#/$defs/Point2"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Runtime state of a `CharacterController2dEntity` a spawn-time `config` can't reflect - emitted as the 2D `\"Player\"` class's `config.state` by `serializeSettings` and applied back by the loader."
+    },
+    "Sound2DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "Sound"
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "loop": {
+              "type": "boolean"
+            },
+            "volume": {
+              "type": "number"
+            },
+            "playbackRate": {
+              "type": "number"
+            },
+            "spatial": {
+              "type": "boolean"
+            },
+            "bus": {
+              "type": "string"
+            },
+            "autoplay": {
+              "type": "boolean"
+            },
+            "priority": {
+              "type": "number"
+            },
+            "refDistance": {
+              "type": "number"
+            },
+            "maxDistance": {
+              "type": "number"
+            },
+            "rolloffFactor": {
+              "type": "number"
+            },
+            "distanceModel": {
+              "$ref": "#/$defs/AudioDistanceModel"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "position": {
+          "$ref": "#/$defs/Point2",
+          "description": "Position of the entity"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation of the entity in radians"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class",
+        "config"
+      ],
+      "description": "A `\"Sound\"` entity."
+    },
+    "AudioDistanceModel": {
+      "type": "string",
+      "enum": [
+        "linear",
+        "inverse",
+        "exponential"
+      ],
+      "description": "How a positional audio source's gain falls off with distance from the listener - the same three curves the Web Audio `PannerNode` itself offers, so `packages/audio` (and any future adapter built on the same primitive) can map this straight through. `'inverse'`'s slope is steepest close to `refDistance`, which is the main amplifier of otherwise-inaudible per-tick position jitter into an audible volume swing for a source sitting close to the listener (e.g. a chase-cammed vehicle's own engine), which is why `IAudioSource3dComponent`/ `IAudioSource2dComponent` default to `'linear'` instead."
+    },
+    "BlueprintJson": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlueprintNodeJson"
+          },
+          "description": "Node instances in this graph"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlueprintLinkJson"
+          },
+          "description": "Wires wiring one node's output pin to another node's input pin"
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/BlueprintPinRef"
+          },
+          "description": "Named entry points into this graph, each aliasing one node's input pin - e.g. `{ \"in\": { \"node\": \"n1\", \"pin\": \"entity\" } }` lets external code trigger `\"n1\"`'s `\"entity\"` pin by calling `blueprint.trigger(\"in\", value)` without knowing the internal node id. A blueprint bound to a level JSON entity event is always triggered through the entry named `\"in\"` - see `gg-engine-level-json`."
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/BlueprintPinRef"
+          },
+          "description": "Named exit points out of this graph, each aliasing one node's output pin - for a future blueprint nested inside a larger graph to bubble one of its own nodes' outputs back out."
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "additionalProperties": false,
+      "description": "A blueprint graph, serializable as a single JSON document - the engine's analogue of an Unreal Blueprint event graph. `nodes` are node instances (see `BlueprintNodeJson`), `links` wire one node's output pin to another's input pin, and `inputs`/`outputs` expose named entry/exit points at the graph's own boundary - each aliasing one node's pin - so embedding code (or, in the future, another blueprint nesting this one) doesn't need to know internal node ids. A level JSON references a `BlueprintJson` by name via its top-level `blueprints` map and an entity's `events` mapping - see `gg-engine-level-json`."
+    },
+    "BlueprintNodeJson": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifier for this node instance, unique within the same graph - referenced by `BlueprintLinkJson`/`BlueprintJson.inputs`/`BlueprintJson.outputs`."
+        },
+        "type": {
+          "type": "string",
+          "description": "Node type alias, matching a type registered via `LevelLoader.registerBlueprintNode` (e.g. the built-in `\"RemoveEntity\"`)."
+        },
+        "settings": {
+          "type": "object",
+          "description": "Static settings baked into the node (e.g. `RemoveEntity`'s `dispose` flag) - not wired at runtime, unlike a pin."
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "JSON description of a single node instance within a `BlueprintJson` graph."
+    },
+    "BlueprintLinkJson": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/BlueprintPinRef"
+        },
+        "to": {
+          "$ref": "#/$defs/BlueprintPinRef"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "description": "JSON description of one wire connecting one node's output pin to another node's input pin within the same `BlueprintJson` graph. Whenever `from` fires, `to` is triggered with whatever value (if any) `from` fired with."
+    },
+    "BlueprintPinRef": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "`id` of the node within the same `BlueprintJson.nodes` array"
+        },
+        "pin": {
+          "type": "string",
+          "description": "Pin name on that node, per its `BlueprintNode.inputs`/`outputs`"
+        }
+      },
+      "required": [
+        "node",
+        "pin"
+      ],
+      "additionalProperties": false,
+      "description": "A reference to one named pin on one node within a `BlueprintJson` graph - either end of a `BlueprintLinkJson`, or what a graph's own `inputs`/`outputs` entry aliases."
+    },
+    "EntityJson": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "Class alias for the entity, matching a class registered via `registerClass`. Built-in primitive shapes (box/sphere/square/circle/...) all share the single `\"Primitive\"` alias and are distinguished by `shape` instead of by a per-shape class - e.g. `{ class: \"Primitive\", shape: \"BOX\" }` rather than `{ class: \"BOX\" }`. Apps register their own aliases (e.g. `\"ShapeSpawner\"`) the same way the dimensionality-specific `LevelLoader` subclasses register their built-ins, via `registerClass`."
+        },
+        "shape": {
+          "type": "string",
+          "description": "Shape identifier for the built-in `\"Primitive\"` entity class (e.g. `\"Box\"`, `\"Circle\"`) - see the dimensionality-specific `LevelLoader` subclass (`Gg2dLevelLoader`/`Gg3dLevelLoader`) for the supported values. Ignored for any other `class`."
+        },
+        "position": {
+          "description": "Position of the entity"
+        },
+        "rotation": {
+          "description": "Rotation of the entity"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "config": {
+          "description": "Configuration for the entity, passed to its generator alongside position/rotation/name"
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "additionalProperties": false,
+      "description": "JSON description of a single entity in a level. `position`/`rotation` are left untyped here since their shape depends on the dimensionality (`Point2`/`number` for 2D, `Point3`/`Point4` for 3D) of whichever `LevelLoader` subclass parses this JSON."
+    },
+    "LevelEntityJson": {
+      "description": "One entity of the level. A built-in `class` must match that class's own schema; any other `class` is an app-registered one (see `LevelLoader.registerClass`), checked only against `EntityJson`, with `config` left open.",
+      "type": "object",
+      "required": [
+        "class"
+      ],
+      "if": {
+        "properties": {
+          "class": {
+            "enum": [
+              "Environment",
+              "ParallaxLayer",
+              "Player",
+              "Primitive",
+              "Sound",
+              "Trigger"
+            ]
+          }
+        }
+      },
+      "then": {
+        "$ref": "#/$defs/BuiltIn2DEntityJson"
+      },
+      "else": {
+        "$ref": "#/$defs/EntityJson"
+      }
+    }
+  }
+}

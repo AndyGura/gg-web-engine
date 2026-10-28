@@ -63,6 +63,7 @@ jobs:
         run: |
           npm run check:agents-md
           npm install
+          npm run check:level-schema
           npm run build
           npm run test
 

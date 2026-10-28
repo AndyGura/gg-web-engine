@@ -4,6 +4,11 @@
   "description": "Library-agnostic 2D/3D game engine core for the browser: worlds, entities, clocks, input, level loader and networking contracts. Pair it with one rendering and one physics adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "schema",
+    "AGENTS.md"
+  ],
   "sideEffects": [
     "./dist/index.js"
   ],
@@ -54,10 +59,12 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "@types/stats.js": "^0.17.4",
+    "ajv": "8.20.0",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
     "prettier": "^3.9.6",
     "ts-jest": "^29.4.12",
+    "ts-json-schema-generator": "2.9.0",
     "typescript": "~6.0.3"
   },
   "jest": {
