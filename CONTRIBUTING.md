@@ -55,7 +55,7 @@ best-effort.
 | `templates/` | Starter projects (`3d-character`, `2d-platformer`, `multiplayer-cars`) a user copies with `npx degit AndyGura/gg-web-engine/templates/<name> my-game`. Each is a standalone Vite + TypeScript project on one physics backend, pinned to the current engine version (the release script bumps it) and without a lockfile. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
-| `etc/` | Scripts: the release pipeline (`publish_new_version.sh`), the bundle-size table (`bundle_sizes.mjs`), the AGENTS.md/llms.txt generator, the examples lint and the example-linking helpers. |
+| `etc/` | Scripts: the release pipeline (`publish_new_version.sh`), the bundle-size table (`bundle_sizes.mjs`), the agent pick-and-succeed eval (`agent_eval.mjs`, results in `agent-eval/results.md`, run by hand), the AGENTS.md/llms.txt generator, the examples lint and the example-linking helpers. |
 | `documentation/` | **Generated** API docs (docs-ts + mkdocs), rebuilt by the release job. Never edit the output by hand; the inputs `generate.sh`, `mkdocs.yml` and `landing.md` (the site's home page) are hand-maintained. `generate.sh` also writes the site's `llms.txt`/`llms-full.txt` via `etc/generate_agent_docs.mjs --llms`, from the app-development skill, `landing.md` and the `player-character` examples. |
 | `.github/workflows/` | CI definitions (see [Continuous integration](#continuous-integration)). |
 | `.claude/skills/` | Per-task guides for AI coding agents. Also the most detailed written record of how each package works internally. |

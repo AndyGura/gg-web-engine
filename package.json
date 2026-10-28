@@ -15,6 +15,7 @@
     "agents-md": "node etc/generate_agent_docs.mjs",
     "check:agents-md": "node etc/generate_agent_docs.mjs --check",
     "bundle-sizes": "node etc/bundle_sizes.mjs",
+    "agent-eval": "node etc/agent_eval.mjs",
     "prettier-format": "npm run prettier-format --workspaces --if-present",
     "prettier-format:examples": "bash examples/prettier.sh"
   },
