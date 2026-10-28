@@ -88,6 +88,9 @@ npm install          # one-time: installs and links the packages/* workspace
 npm run build        # full build of every package, core first (includes non-TS asset copies)
 npm test             # jest suites of every package
 npm run lint:examples  # examples and templates use @gg-web-engine/* APIs and packages only; examples on every physics backend
+npm run validate:levels  # every level in examples/ and templates/ (JSON files, LevelJson constants) matches the level JSON schema
+npm run level-schema     # regenerate packages/core/schema/level-{3d,2d}.schema.json from the level loader types
+npm run check:level-schema  # fail if the committed level schemas differ from the types
 npm run build:watch  # tsc -b --watch at the root — rebuilds core + adapters on every save
 ```
 
@@ -183,6 +186,10 @@ A change that alters behavior without updating them is incomplete.
   `.claude/skills/gg-engine-app-development/SKILL.md` and shipped in the core npm package for
   coding agents. If you edit that skill, run `npm run agents-md` and commit the result; CI
   (`npm run check:agents-md`) fails when they differ. Never edit `AGENTS.md` by hand.
+- **`packages/core/schema/level-{3d,2d}.schema.json`** — generated from the level loader's settings
+  types. If you change a level settings type or add a built-in level class, run
+  `npm run level-schema` and commit the result; CI (`npm run check:level-schema`) fails when they
+  differ. Never edit the schemas by hand.
 - **Never** `documentation/`'s generated output. It's regenerated at release time. Its home page is
   `documentation/landing.md`: keep its pitch and install lines in step with the README.
 
@@ -214,7 +221,7 @@ Conventions the review will check for:
 
 | Workflow | Runs when | Does |
 |---|---|---|
-| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run bundle-sizes` (gzipped package and template sizes, printed to the job summary), then `npm run lint:examples`, a build of every starter template linked against the local packages, and `npm run check:agents-md`. |
+| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run bundle-sizes` (gzipped package and template sizes, printed to the job summary), then `npm run lint:examples`, `npm run validate:levels`, a build of every starter template linked against the local packages, `npm run check:agents-md` and `npm run check:level-schema`. |
 | `blender_export_e2e.yml` | PRs touching `blender-addon/`, `e2e/blender-export/`, `packages/core/src/3d/`, `packages/three/`, `packages/rapier3d/`; or manually | Installs Blender and runs the export round-trip test. |
 | `build_ammo.yml` | PRs touching `packages/ammo/build_gg_ammo/`; or manually | Rebuilds the vendored ammo.js binary from source and runs ammo's tests against it. On manual dispatch, commits the refreshed binary back to the branch. |
 | `release_action.yml` | every push to `main` | No-op unless the commit subject matches `[pre-release] [X.Y.Z]`; otherwise runs the full release described below. |
@@ -248,8 +255,9 @@ the add-on actually changed.
      compare link into `[X.Y.Z]: .../compare/<prev>...X.Y.Z` and added a new
      `[Unreleased]: .../compare/X.Y.Z...HEAD` above it. This is the first step after the version
      is parsed, so a malformed changelog fails the job before anything is built or published;
-   - checked `packages/core/AGENTS.md` matches the app-development skill, then built and tested
-     everything from a workspace install as a preflight;
+   - checked `packages/core/AGENTS.md` matches the app-development skill, then, from a workspace
+     install, checked the level JSON schemas match the level loader types and built and tested
+     everything as a preflight;
    - bumped `packages/core`, published it, and waited for npm to serve the new version;
    - bumped every adapter's own version and its `@gg-web-engine/core` dependency, built each one
      against the *published* core (not the workspace symlink), and published them;

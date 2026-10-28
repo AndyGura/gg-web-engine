@@ -39,6 +39,11 @@ jobs:
       - name: Check examples use engine APIs only
         run: npm run lint:examples
 
+      # Every level document in examples/ and templates/ (JSON files and `LevelJson` constants)
+      # must match the level JSON schema of its dimension. See gg-engine-level-json.
+      - name: Validate example and template levels against the level JSON schema
+        run: npm run validate:levels
+
       # Starter templates pin the last published engine version; build each one against this PR's
       # packages instead, so a change that breaks a template fails here, not after a release.
       - name: Build starter templates against the local packages
@@ -52,3 +57,8 @@ jobs:
       # gg-engine-app-development skill; a skill edit without a regenerated AGENTS.md fails here.
       - name: Check AGENTS.md matches the app-development skill
         run: npm run check:agents-md
+
+      # packages/core/schema/level-{3d,2d}.schema.json ship in the core tarball and are generated
+      # from the level loader's settings types; a type change without regenerated schemas fails here.
+      - name: Check the level JSON schemas match the level loader types
+        run: npm run check:level-schema

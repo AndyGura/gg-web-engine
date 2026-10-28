@@ -34,6 +34,9 @@ where one exists.
   focused, and `KeyboardInput.focusUsesKey(code, element?)`, whether the focused element uses a key
   itself. By default buttons (`<button>`, `<input>` of type button, submit, reset, image and
   checkbox) use Enter, NumpadEnter and Space.
+- core: JSON Schemas for level JSON, `@gg-web-engine/core/schema/level-3d.schema.json` and
+  `@gg-web-engine/core/schema/level-2d.schema.json` (draft 2020-12), generated from the level
+  loader's settings types, to validate a level or drive an editor before `loadLevel`.
 
 ### Fixed
 - core: a focused button no longer swallows every key down: `KeyboardInput` skips only the keys it

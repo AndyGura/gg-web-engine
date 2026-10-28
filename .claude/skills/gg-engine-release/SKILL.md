@@ -64,8 +64,11 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
    the section above — this is where a malformed changelog aborts the job), runs
    `npm run check:agents-md` (fails when `packages/core/AGENTS.md`, which ships in the core tarball,
    differs from the `gg-engine-app-development` skill it is generated from — regenerate it with
-   `npm run agents-md` and commit), and then does a plain workspace
-   `npm install && npm run build && npm run test` at the repo root (the same commands
+   `npm run agents-md` and commit), and then does a plain workspace `npm install`,
+   `npm run check:level-schema` (fails when `packages/core/schema/level-{3d,2d}.schema.json`, which
+   also ship in the core tarball, differ from the level loader types they are generated from -
+   regenerate them with `npm run level-schema` and commit; it runs after the install because the
+   generator is a devDependency), `npm run build` and `npm run test` at the repo root (the same commands
    `pull_request_build.yml` runs on every PR) and fails the job right there if any of it errors —
    so an outright broken commit never gets as far as publishing `core`. This is a different install
    mode than the rest of the pipeline (workspace-hoisted, not each package's own standalone

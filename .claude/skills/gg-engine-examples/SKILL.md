@@ -520,6 +520,14 @@ doesn't list every physics adapter of its dimension. When a demo
 needs something core can't express yet, add the option to core and every relevant adapter (see
 `gg-engine-core-development` and the adapter skills) and use it from the example. A line that
 deliberately demonstrates native interop can opt out with a trailing `// gg-allow-native` comment.
+
+**Every level must match the level JSON schema.** `npm run validate:levels`
+(`etc/validate_levels.mjs`, also run by the PR workflow) validates each `.json` file with an
+`entities` array and each top-level `const x: LevelJson = ...` in `examples/**` and
+`templates/*/src` against `packages/core/schema/level-{3d,2d}.schema.json`, picking the dimension
+from the visual adapter in the nearest `package.json`. Declare a TypeScript level that way (a
+top-level, `LevelJson`-annotated `const`) so it is checked; see `gg-engine-level-json` ("Validating
+a level") for what the schema enforces.
 Adapter-package exports that aren't native objects (`ThreeSceneComponent`, `PixiCameraComponent`,
 `ThreeDisplayObject3dOpts`, world type aliases) are fine.
 
@@ -658,7 +666,7 @@ AndyGura/gg-web-engine/templates/<name> my-game` (`3d-character`, `2d-platformer
   which Rollup drops from the production bundle.
 - **An `AGENTS.md` per template** pointing coding agents at the engine guide (the core package's
   `AGENTS.md`, `llms-full.txt`, and the `gg-engine-app-development` skill on GitHub).
-- Same API rules as examples: `npm run lint:examples` scans `templates/` too.
+- Same API rules as examples: `npm run lint:examples` and `npm run validate:levels` scan `templates/` too.
 - **PR CI builds every template against the PR's own packages** (`switch_example_to_local_gg.sh
   templates/<name>/`, then `npm run build`), since the published version a template pins can't
   show a break the PR introduces. Run the same two commands locally after changing a template or an
