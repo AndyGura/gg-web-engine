@@ -548,7 +548,12 @@ following; a path fixed in space is written in global coordinates and mapped wit
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
-  see the dedicated `gg-engine-level-json` skill for full authoring details.
+  see the dedicated `gg-engine-level-json` skill for full authoring details. A level can be
+  validated before loading against the JSON Schema core ships,
+  `@gg-web-engine/core/schema/level-3d.schema.json` / `level-2d.schema.json` (draft 2020-12). Classes
+  the app registers pass it with any `config`; to check theirs too, write an app schema that
+  `$ref`s the engine one and adds one `if`/`then` per class (`gg-engine-level-json`, "Validating a
+  level").
 - **Lights, sky and fog (3D)**: `world.addLight(descriptor, position?, target?)` creates an
   `AMBIENT`/`HEMISPHERE`/`DIRECTIONAL`/`POINT`/`SPOT` light (see `Light3dDescriptor` in
   `packages/core/src/3d/models/lights.ts` - color, intensity, `castShadow` and `shadow: { mapSize,

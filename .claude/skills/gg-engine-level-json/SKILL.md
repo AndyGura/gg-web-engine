@@ -107,6 +107,61 @@ An editor validates and autocompletes a JSON level file that names its schema in
 `$schema` key (`"$schema": "./node_modules/@gg-web-engine/core/schema/level-3d.schema.json"`); the
 schema allows that key and `loadLevel` ignores it.
 
+### Checking app-registered classes too
+
+An app never has to touch the engine's schemas: its own classes already validate as plain
+`EntityJson`. To also check their `config`, write a small schema of the app's own that references
+the engine one and adds one `if`/`then` per app class. Keep it next to the app's levels; the
+engine's schema stays as shipped:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "gg-level-3d",
+  "type": "object",
+  "properties": {
+    "entities": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "if": { "type": "object", "properties": { "class": { "const": "Coin" } }, "required": ["class"] },
+            "then": {
+              "type": "object",
+              "required": ["config"],
+              "properties": {
+                "config": {
+                  "type": "object",
+                  "properties": { "value": { "type": "number", "description": "Points the coin gives" } },
+                  "required": ["value"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+```ts
+import Ajv2020 from 'ajv/dist/2020';
+import engineSchema from '@gg-web-engine/core/schema/level-3d.schema.json';
+import appSchema from './level.schema.json';
+
+const ajv = new Ajv2020({ allErrors: true });
+ajv.addSchema(engineSchema, 'gg-level-3d'); // the id appSchema's "$ref" names
+const validate = ajv.compile(appSchema);
+```
+
+Built-in classes, the level's top level and `name`/`events` on every entity are still checked by
+the engine schema; the app schema only adds rules. For an editor or `ajv-cli`, point the `"$ref"`
+at the file instead (`"./node_modules/@gg-web-engine/core/schema/level-3d.schema.json"`). One
+`allOf` entry per class keeps each class's errors separate. Keep the app schema in step with the
+settings type the class's generator takes; nothing generates it.
+
 The schema is a check in addition to `loadLevel`, not part of it: `loadLevel` does not validate
 against it, and still throws on what it can't build. The schemas are generated from the level
 loader's TypeScript settings types and are never edited by hand - see `gg-engine-core-development`
