@@ -178,10 +178,34 @@ It does **not** need registering anywhere for local dev linking: `packages/*` is
 so a new package directory is picked up by the next `npm install` automatically (see
 `gg-engine-core-development`).
 
+## Releasing end to end
+
+When asked to release, pushing the trigger commit is only the start. Without asking again:
+
+1. Watch the `Release new version` run (`gh run list --workflow release_action.yml`, then
+   `gh run view <id>`) until it finishes. If it fails, stop and report; don't go on to the steps
+   below.
+2. `git pull` on `main`, expecting exactly one new commit, the pipeline's `X.Y.Z release`. If
+   anything else comes in, stop and report.
+3. Build the examples gallery: `bash examples/build_examples.sh`. It builds every example in
+   `examples/examples.json` in parallel, each with a fresh `npm i` against the just-published
+   packages, and must exit 0 with a `dist/` in every example's directory. Call it through `bash`:
+   the script isn't committed as executable, so `./build_examples.sh` fails with `permission
+   denied` (exit 126). It deletes and regenerates each example's `package-lock.json`, and against
+   the release commit's lockfiles the tree comes out clean.
+   - An `E404` on a `@gg-web-engine/*-X.Y.Z.tgz` right after the release does not mean a package
+     is missing. `npm view` already reports the new version (the pipeline waited for that), but
+     the tarball itself can 404 for several minutes after publishing. Check with
+     `curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/@gg-web-engine/<pkg>/-/<pkg>-X.Y.Z.tgz`,
+     and rerun the build once it returns 200.
+4. Only after the build succeeds, deploy it: `bash examples/deploy.sh`. It syncs the gallery page,
+   `examples.json`, the shared assets and every example's `dist/` to the `gg-web-engine-demos` S3
+   bucket under the `andygura` AWS profile, then invalidates the CloudFront distribution.
+
 ## Manual follow-ups (the script prints these — don't skip them)
 
 1. Double-check the code sample in the root `README.md` quickstart still matches the current API.
-2. Redeploy any separately-hosted example demos.
+2. Rebuild and redeploy the examples gallery (steps 3–4 above).
 3. Spot-check the StackBlitz links for all examples still open correctly at the new tag.
 
 ## Things not to do
