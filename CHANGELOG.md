@@ -69,6 +69,17 @@ where one exists.
   `position`/`rotation` globally; received state stays global until it is applied, through the
   world's frame as it is then. Peers whose worlds have different frames share entities at the same
   global pose.
+- core, three: a shader-drawn sky, `ProceduralSky3dOpts` (`{ type: 'PROCEDURAL', timeOfDay, haze,
+  clouds: { coverage, density, scale, wind }, stars, moon, ... }`), accepted by
+  `setEnvironment({ background, environmentMap })` and the `"Environment"` level class. Every
+  setting can change at any time; `clouds.coverage: 1` gives a full overcast, and an optional
+  `cirrus: { coverage, density, scale, wind }` layer adds high streaks above the clouds. `mode: 'DYNAMIC'`
+  (default) draws it every frame with drifting clouds, `'BAKED'` draws it into a cube texture only
+  when a setting changes. As `environmentMap` it lights `'standart'` and PBR materials.
+  `proceduralSkyBodies(sky)` returns the sun and moon directions and the sunlight's color and
+  intensity, to drive a directional light. Its settings are global: after a frame switch with a
+  yaw the sky stays in place. New example `3d/sky` with sliders for every setting
+  and a free camera.
 - core: `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` hold a direction the
   way its key does, for an on-screen button or anything else that is either pushed or not: it is
   part of `output$`, and `oppositeKeys` decides it together with the keys. Analog contributions

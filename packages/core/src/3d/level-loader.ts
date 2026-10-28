@@ -25,6 +25,7 @@ import { Light3dEntity } from './entities/light-3d.entity';
 import { Environment3dEntity } from './entities/environment-3d.entity';
 import { Light3dDescriptor } from './models/lights';
 import { CubeTextureFaces, Environment3dOpts, Fog3dOpts, LoadTextureOptions } from './models/environment';
+import { isProceduralSky, ProceduralSky3dOpts } from './models/procedural-sky';
 import { AudioSource3dEntity } from './entities/audio-source-3d.entity';
 import { AudioPanningModel } from './components/audio/i-audio-source-3d.component';
 import {
@@ -370,10 +371,13 @@ export type EnvironmentTexture3DSettings = { cube: CubeTextureFaces } | { equire
  * no-op without a visual scene.
  */
 export interface Environment3DSettings {
-  /** A `0xRRGGBB` color, a sky texture, or `null` to show the renderer's clear color. */
-  background?: number | EnvironmentTexture3DSettings | null;
-  /** Texture lit materials reflect, or `null` for none. */
-  environmentMap?: EnvironmentTexture3DSettings | null;
+  /**
+   * A `0xRRGGBB` color, a sky texture, a shader-drawn sky (`ProceduralSky3dOpts`, e.g.
+   * `{ "type": "PROCEDURAL", "timeOfDay": 18 }`), or `null` to show the renderer's clear color.
+   */
+  background?: number | EnvironmentTexture3DSettings | ProceduralSky3dOpts | null;
+  /** Texture or shader-drawn sky lit materials reflect, or `null` for none. */
+  environmentMap?: EnvironmentTexture3DSettings | ProceduralSky3dOpts | null;
   /** Fog, or `null` for none. */
   fog?: Fog3dOpts | null;
 }
@@ -1084,8 +1088,12 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!scene) {
       return undefined;
     }
-    const loadTexture = async (texture: EnvironmentTexture3DSettings): Promise<TypeDoc['vTypeDoc']['texture']> => {
-      if ('cube' in texture) {
+    const loadTexture = async (
+      texture: EnvironmentTexture3DSettings | ProceduralSky3dOpts,
+    ): Promise<TypeDoc['vTypeDoc']['texture'] | ProceduralSky3dOpts> => {
+      if (isProceduralSky(texture)) {
+        return texture;
+      } else if ('cube' in texture) {
         return this.loadCubeTexture(texture.cube, load);
       } else if ('equirectangular' in texture) {
         return this.loadTexture(texture.equirectangular, { mapping: 'equirectangular', ...load });

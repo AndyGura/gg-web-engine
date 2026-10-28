@@ -205,6 +205,20 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   texture and the environment map about `+Z` by `delta.yaw`, on top of their Z-up orientation, and
   keeps that turn for textures set later; `environment` reads back unchanged. Without it, a switch
   with a yaw leaves the sky turned against the camera.
+  `background` and `environmentMap` can also be a `ProceduralSky3dOpts` (`isProceduralSky` tells it
+  from a color or texture; a native texture class may well have a numeric `type` field of its own):
+  a sky the adapter draws itself from those settings, with `resolveProceduralSky` filling in
+  defaults and `proceduralSkyBodies` giving the sun, moon and star-field positions so every adapter
+  puts them in the same place. It has a main cloud layer (`clouds`) and an optional cirrus layer
+  (`cirrus`, streaks along its own `wind`, `null` when off). `mode: 'DYNAMIC'` draws it every frame,
+  behind everything (each layer advanced by its `wind` per second); `mode: 'BAKED'` draws it into a
+  cube texture and shows that, redrawing only when a setting other than `mode` or a wind's speed
+  changes (a cirrus wind's direction turns its streaks, so it counts); as `environmentMap` it is baked and
+  prefiltered for image-based lighting. A setting change through `setEnvironment` must update the
+  existing sky rather than rebuild it, since apps call it every tick to animate `timeOfDay`. A
+  renderer-less `setEnvironment` call can't bake, so baking happens just before the next render.
+  Its settings are global, so after a frame switch with a yaw the adapter turns the directions it
+  draws the sky in back by the summed yaw, the same way it turns a sky texture.
 - **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
   `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
   `zoom` 1, `origin` `'center'`) on the 2D one. A 2D camera's `position` is the world point drawn

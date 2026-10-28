@@ -32,6 +32,13 @@
       "physics": ["ammo", "rapier3d"]
     },
     {
+      "dir": "3d/sky",
+      "title": "Procedural sky",
+      "description": "The engine's shader-drawn sky with sliders for time of day, haze, clouds (up to full overcast), stars and moon, drawn every frame or baked, and lighting the scene; fly around with a free camera.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
       "dir": "3d/raycast-vehicle",
       "title": "Raycast vehicle",
       "description": "A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API, leaving tyre smoke particles when braking.",

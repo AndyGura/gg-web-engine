@@ -560,7 +560,26 @@ following; a path fixed in space is written in global coordinates and mapped wit
   `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz }, { filter })` (faces named by world
   direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
   `-Y`; `filter: 'nearest'` for a pixel-art sky, as in `loadTexture`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
-  matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
+  matching `"Light"`/`"Environment"` classes.
+  For a sky without image files, pass a `ProceduralSky3dOpts` as `background` (and the same object
+  as `environmentMap` to light `'standart'`/PBR materials with it): `{ type: 'PROCEDURAL', timeOfDay:
+  17.5, haze: 0.3, clouds: { coverage: 0.6, density: 0.8, scale: 1, wind: { x: 0.006, y: 0 } },
+  stars: 1, moon: 1 }`, every field optional (`PROCEDURAL_SKY_DEFAULTS`). `timeOfDay` runs `0..24`
+  (sunrise `6`, noon `12`, sunset `18`), the sun's path is set by `sunAzimuth`/`sunPeakElevation`,
+  `clouds: { coverage: 1, density: 1 }` is a full overcast and `clouds: null` a cloudless sky.
+  `cirrus: { coverage, density, scale, wind }` (off unless given; `{}` for its defaults) adds a
+  layer of high, thin streaks drawn along its `wind`, above the main clouds. Call
+  `setEnvironment` again any time, e.g. every tick to animate the time of day; a sky object
+  replaces the previous one as a whole, so pass all of it with the change (`{ ...sky, timeOfDay }`),
+  to `environmentMap` too if it is set there. Clouds drift on the world clock, so they stop while
+  the world is paused and follow its `timeScale`.
+  `mode: 'DYNAMIC'` (default) draws it every frame with drifting clouds and twinkling stars;
+  `mode: 'BAKED'` draws it into a cube texture (`bakeResolution` per side) only when a setting
+  changes - nearly free per frame, clouds stand still. As `environmentMap` it is always baked, and
+  re-baked (and prefiltered) on each change, so animating a lighting sky every frame costs a bake per
+  frame. The sky doesn't light anything directly: point a `DIRECTIONAL` light at it with
+  `proceduralSkyBodies(sky)`, which returns `sunDirection`, `moonDirection` and `sunLight: { color,
+  intensity }` (`intensity` `0..1`, dimmed at dusk and under overcast). Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
   billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,

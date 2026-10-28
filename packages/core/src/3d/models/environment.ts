@@ -1,4 +1,5 @@
 import { Point2, TextureOptions } from '../../base';
+import { ProceduralSky3dOpts } from './procedural-sky';
 
 /**
  * Fog fading distant objects into `color`. `LINEAR` fog starts at `near` and is opaque at `far`;
@@ -14,18 +15,19 @@ export type Fog3dOpts =
  */
 export type Environment3dOpts<Tex> = {
   /**
-   * What is drawn behind everything: a `0xRRGGBB` color, or a sky texture (a cube texture from
+   * What is drawn behind everything: a `0xRRGGBB` color, a sky texture (a cube texture from
    * `IDisplayObject3dComponentLoader.loadCubeTexture`, or an equirectangular panorama from
-   * `loadTexture(url, { mapping: 'equirectangular' })`). `null` shows the renderer's own clear
-   * color (`RendererOptions.background`).
+   * `loadTexture(url, { mapping: 'equirectangular' })`), or a sky drawn by a shader
+   * (`ProceduralSky3dOpts`). `null` shows the renderer's own clear color
+   * (`RendererOptions.background`).
    */
-  background: number | Tex | null;
+  background: number | Tex | ProceduralSky3dOpts | null;
   /**
-   * Texture lit materials reflect and are lit by (image-based lighting) - same kinds of texture
-   * as `background`. Affects `'standart'`-shaded primitives and PBR materials of loaded models.
-   * `null` disables it.
+   * What lit materials reflect and are lit by (image-based lighting) - same kinds of texture as
+   * `background`, or a `ProceduralSky3dOpts` (usually the same one as `background`). Affects
+   * `'standart'`-shaded primitives and PBR materials of loaded models. `null` disables it.
    */
-  environmentMap: Tex | null;
+  environmentMap: Tex | ProceduralSky3dOpts | null;
   /** Fog settings, `null` for no fog. */
   fog: Fog3dOpts | null;
 };

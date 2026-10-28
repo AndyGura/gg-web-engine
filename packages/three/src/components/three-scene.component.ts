@@ -1,10 +1,12 @@
 import {
   Environment3dOpts,
   Frame3d,
+  isProceduralSky,
   IVisualScene3dComponent,
   MAIN_RENDER_LAYER,
   notInitializedError,
   RenderLayer,
+  resolveProceduralSky,
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
@@ -15,6 +17,7 @@ import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 import { ThreeComposerRendererComponent } from './three-composer-renderer.component';
+import { ThreeProceduralSky } from './three-procedural-sky';
 
 /**
  * The three.js visual scene of a `Gg3dWorld`: pass a new one as `visualScene`. Its `factory`
@@ -85,6 +88,12 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   private _environment: Environment3dOpts<Texture> = { background: null, environmentMap: null, fog: null };
+  /** The procedural sky of `environment.background`, when it is one. */
+  private backgroundSky: ThreeProceduralSky | null = null;
+  /** The procedural sky of `environment.environmentMap`, when it is one. */
+  private environmentSky: ThreeProceduralSky | null = null;
+  /** Pixels per cube side of a procedural sky baked for image-based lighting. */
+  private static readonly ENVIRONMENT_SKY_RESOLUTION = 128;
   public get environment(): Readonly<Environment3dOpts<Texture>> {
     return this._environment;
   }
@@ -128,14 +137,13 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
       return;
     }
     const { background, environmentMap } = this._environment;
-    const sky = typeof background === 'number' ? null : background;
+    // a procedural sky turns itself (`ThreeProceduralSky.setFrameYaw`), its baked cube is in local space
+    const sky = typeof background === 'number' || isProceduralSky(background) ? null : background;
+    const map = isProceduralSky(environmentMap) ? null : environmentMap;
     scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(sky), 0, sky ? this.frameYaw : 0, 'ZYX');
-    scene.environmentRotation.set(
-      ThreeSceneComponent.zUpRotationX(environmentMap),
-      0,
-      environmentMap ? this.frameYaw : 0,
-      'ZYX',
-    );
+    scene.environmentRotation.set(ThreeSceneComponent.zUpRotationX(map), 0, map ? this.frameYaw : 0, 'ZYX');
+    this.backgroundSky?.setFrameYaw(this.frameYaw);
+    this.environmentSky?.setFrameYaw(this.frameYaw);
   }
 
   private applyEnvironment(): void {
@@ -144,8 +152,32 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
       return;
     }
     const { background, environmentMap, fog } = this._environment;
-    scene.background = typeof background === 'number' ? new Color(background) : background;
-    scene.environment = environmentMap;
+    if (isProceduralSky(background)) {
+      const options = resolveProceduralSky(background);
+      this.backgroundSky ??= new ThreeProceduralSky();
+      this.backgroundSky.setOptions(options);
+      // a baked sky is set as the background by `prepareFrame`, once there is a renderer to draw it
+      if (options.mode === 'BAKED') {
+        this.backgroundSky.mesh.removeFromParent();
+      } else {
+        scene.background = null;
+        if (this.backgroundSky.mesh.parent !== scene) {
+          scene.add(this.backgroundSky.mesh);
+        }
+      }
+    } else {
+      this.backgroundSky?.dispose();
+      this.backgroundSky = null;
+      scene.background = typeof background === 'number' ? new Color(background) : background;
+    }
+    if (isProceduralSky(environmentMap)) {
+      this.environmentSky ??= new ThreeProceduralSky();
+      this.environmentSky.setOptions(resolveProceduralSky(environmentMap));
+    } else {
+      this.environmentSky?.dispose();
+      this.environmentSky = null;
+      scene.environment = environmentMap;
+    }
     this.applyEnvironmentRotation();
     if (!fog) {
       scene.fog = null;
@@ -154,6 +186,42 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
     } else {
       scene.fog = new FogExp2(fog.color, fog.density);
     }
+  }
+
+  /**
+   * Called by a renderer of this scene before each render: advances the clouds of a `'DYNAMIC'`
+   * procedural sky to `time` (the world clock's elapsed time in milliseconds; wall-clock time when
+   * the renderer isn't in a world), and draws a baked procedural sky (background or environment
+   * map) into that renderer's cube texture when its settings changed since its last bake. Each
+   * renderer keeps a bake of its own, so a replaced renderer or a restored WebGL context gets a
+   * fresh one (see `releaseRenderer`).
+   */
+  prepareFrame(renderer: WebGLRenderer, time: number = performance.now()): void {
+    const scene = this._nativeScene;
+    if (!scene) {
+      return;
+    }
+    const backgroundOptions = this.backgroundSky?.options;
+    if (this.backgroundSky && backgroundOptions) {
+      if (backgroundOptions.mode === 'BAKED') {
+        // a cube render target is sampled in the scene's own space: `applyEnvironmentRotation` leaves it unturned
+        scene.background = this.backgroundSky.bake(renderer, backgroundOptions.bakeResolution);
+      } else {
+        this.backgroundSky.advance(time);
+      }
+    }
+    if (this.environmentSky) {
+      scene.environment = this.environmentSky.bakeEnvironment(renderer, ThreeSceneComponent.ENVIRONMENT_SKY_RESOLUTION);
+    }
+  }
+
+  /**
+   * Frees what procedural skies baked with `renderer`. Called by a renderer of this scene when it
+   * leaves the world or is disposed.
+   */
+  releaseRenderer(renderer: WebGLRenderer): void {
+    this.backgroundSky?.releaseRenderer(renderer);
+    this.environmentSky?.releaseRenderer(renderer);
   }
 
   // Mirrors `AmmoWorldComponent.lockedCollisionGroups`/`registerCollisionGroup` exactly - see that
@@ -197,6 +265,10 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   dispose(): void {
     this.beforeRenderHooks.clear();
+    this.backgroundSky?.dispose();
+    this.backgroundSky = null;
+    this.environmentSky?.dispose();
+    this.environmentSky = null;
     this._nativeScene = this.createNativeScene();
     this._environment = { background: null, environmentMap: null, fog: null };
     this.frameYaw = 0;

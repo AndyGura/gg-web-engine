@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>GG example</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font:
+          12px/1.3 system-ui,
+          sans-serif;
+      }
+      #panel {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 290px;
+        max-height: calc(100vh - 16px);
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        background: rgba(20, 22, 28, 0.78);
+        color: #e8e8ea;
+        border-radius: 6px;
+      }
+      #panel h3 {
+        margin: 10px 0 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9aa3b5;
+      }
+      #panel .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 3px 0;
+      }
+      #panel .row span {
+        flex: 0 0 auto;
+      }
+      #panel .row input[type='range'] {
+        flex: 1 1 auto;
+        min-width: 60px;
+      }
+      #panel .row output {
+        flex: 0 0 40px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #panel .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      #panel button {
+        font: inherit;
+        padding: 3px 7px;
+        border: 1px solid #556;
+        border-radius: 4px;
+        background: #2b2f3a;
+        color: inherit;
+        cursor: pointer;
+      }
+      #hint {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        padding: 4px 8px;
+        background: rgba(20, 22, 28, 0.6);
+        color: #e8e8ea;
+        border-radius: 4px;
+      }
+    </style>
+    <canvas id="gg"></canvas>
+    <div id="panel"></div>
+    <div id="hint">Click the view to look around · WASD to fly · E/Q up/down · Shift faster · Esc for the panel</div>
+  </body>
+</html>
