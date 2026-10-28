@@ -883,9 +883,14 @@ class GameScreen extends Screen {
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
-- **Focus**: key presses are ignored while an `<input>`, `<textarea>`, `<select>` or `<button>` has
-  focus (`KeyboardInput.externalFocusBlacklist`), so a clicked HTML button over the game swallows
-  WASD until focus moves. Call `button.blur()` in its click handler.
+- **Focus**: key presses the focused HTML element uses itself don't reach the bindings: every key
+  while a text `<input>`, `<textarea>` or `<select>` has focus (`KeyboardInput.externalFocusBlacklist`),
+  only Enter and Space while a `<button>` (or an `<input>` button or checkbox) has
+  (`KeyboardInput.externalFocusOwnKeys`) - the browser clicks it on those, every other key (Escape,
+  WASD) passes. So a DOM pause menu focusing its Resume button still closes on a bound Escape, but
+  Space bound to jump clicks a button left focused by a mouse click instead: call `button.blur()` in
+  its click handler. `KeyboardInput.focusUsesKey(code)` tells the same for a listener of your own;
+  `skipKeyDownsOnExternalFocus = false` on an input turns the skipping off.
 - **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
   the game's layer and sits below any screen pushed on top. An on-screen pause button opening the
   pause screen is `new MobileControls({ container: this.layer, pauseButton: { onPress: () =>

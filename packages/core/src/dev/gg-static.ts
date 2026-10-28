@@ -241,19 +241,7 @@ export class GgStatic {
         fromEvent(window, 'keydown')
           .pipe(
             takeUntil(unbindKey$.pipe(filter(x => x === keyCode))),
-            filter(e => {
-              if ((e as KeyboardEvent).code !== keyCode) {
-                return false;
-              }
-              if (document.activeElement) {
-                for (const k of KeyboardInput.externalFocusBlacklist) {
-                  if (document.activeElement instanceof k) {
-                    return false;
-                  }
-                }
-              }
-              return true;
-            }),
+            filter(e => (e as KeyboardEvent).code === keyCode && !KeyboardInput.focusUsesKey(keyCode)),
           )
           .subscribe(() => {
             this.runConsoleCommand(command, args);

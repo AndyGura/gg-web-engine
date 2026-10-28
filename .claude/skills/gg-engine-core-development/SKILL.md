@@ -1628,6 +1628,14 @@ What it holds to:
 - `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
   the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
   per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.
+- `KeyboardInput` skips a key down the focused HTML element uses itself (`focusUsesKey`, while
+  `skipKeyDownsOnExternalFocus`), before the `preventDefault` of bound keys, so a focused button's
+  Enter/Space click and typing in a text field go on untouched. `externalFocusOwnKeys` (CSS
+  selector + codes, first match decides) is checked before `externalFocusBlacklist` (classes that
+  use every key): an `<input type="button">` is an `HTMLInputElement` but uses only Enter and
+  Space. Buttons were in the blacklist up to 0.0.89, which swallowed Escape for a DOM menu whose
+  button had focus. Key ups always pass. A new kind of focusable control goes into one of the two
+  lists; GgStatic's `bind_key` reads the same `focusUsesKey`.
 - `KeyboardInput` remembers the codes held through `emulateKeyDown` (until `emulateKeyUp` or
   `resetAllKeys`) and ignores a real `keyup` of such a code. Without this, a gamepad button holding
   `Space` plus a tap on the physical `Space` would emit `false` on the keyup and `true` again on

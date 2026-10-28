@@ -208,7 +208,7 @@ describe('KeyboardInput', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it('still drops a keydown while a blacklisted element (e.g. a focused button) has focus, even for a bound key', () => {
+  it('still drops a Space keydown while a button has focus, even for a bound key', () => {
     keyboard.start();
     const values: boolean[] = [];
     keyboard.bind('Space').subscribe(v => values.push(v));
@@ -223,6 +223,131 @@ describe('KeyboardInput', () => {
     } finally {
       document.body.removeChild(button);
     }
+  });
+
+  describe('while an HTML element has focus', () => {
+    let focused: HTMLElement | null = null;
+    const focus = (tag: string, type?: string): HTMLElement => {
+      const element = document.createElement(tag);
+      if (type) {
+        element.setAttribute('type', type);
+      }
+      document.body.appendChild(element);
+      element.focus();
+      expect(document.activeElement).toBe(element);
+      focused = element;
+      return element;
+    };
+    const press = (code: string) => {
+      const values: boolean[] = [];
+      const sub = keyboard.bind(code).subscribe(v => values.push(v));
+      const down = dispatch('keydown', code);
+      const up = dispatch('keyup', code);
+      sub.unsubscribe();
+      return { values, down, up };
+    };
+
+    beforeEach(() => keyboard.start());
+    afterEach(() => {
+      focused?.remove();
+      focused = null;
+    });
+
+    it('passes the keys a focused button does not use (Escape closing a menu whose button has focus)', () => {
+      focus('button');
+      for (const code of ['Escape', 'KeyW', 'ArrowDown', 'Tab']) {
+        const { values, down } = press(code);
+        expect(values).toEqual([false, true, false]);
+        // a bound key is claimed as usual (Tab never is)
+        expect(down.defaultPrevented).toBe(code !== 'Tab');
+      }
+    });
+
+    it("skips Enter, NumpadEnter and Space on a focused button, never preventDefault()ing the button's click", () => {
+      focus('button');
+      for (const code of ['Enter', 'NumpadEnter', 'Space']) {
+        const { values, down } = press(code);
+        expect(values).toEqual([false]);
+        expect(down.defaultPrevented).toBe(false);
+      }
+    });
+
+    it('treats an <input> of a button type (and a checkbox) as a button', () => {
+      for (const type of ['button', 'submit', 'reset', 'image', 'checkbox']) {
+        focus('input', type);
+        expect(press('Escape').values).toEqual([false, true, false]);
+        expect(press('Space').values).toEqual([false]);
+        expect(press('Enter').values).toEqual([false]);
+        focused!.remove();
+      }
+    });
+
+    it('skips every key down while a text field, a select or another kind of <input> has focus', () => {
+      for (const [tag, type] of [
+        ['input', undefined],
+        ['input', 'text'],
+        ['input', 'range'],
+        ['input', 'radio'],
+        ['textarea', undefined],
+        ['select', undefined],
+      ] as [string, string | undefined][]) {
+        focus(tag, type);
+        for (const code of ['Escape', 'KeyW', 'Space']) {
+          const { values, down } = press(code);
+          expect(values).toEqual([false]);
+          expect(down.defaultPrevented).toBe(false);
+        }
+        focused!.remove();
+      }
+    });
+
+    it('still passes the key up of a key pressed before the focus arrived', () => {
+      const values: boolean[] = [];
+      keyboard.bind('Space').subscribe(v => values.push(v));
+      dispatch('keydown', 'Space');
+      focus('input');
+      dispatch('keyup', 'Space');
+      expect(values).toEqual([false, true, false]);
+    });
+
+    it('passes every key with skipKeyDownsOnExternalFocus off', () => {
+      keyboard.skipKeyDownsOnExternalFocus = false;
+      for (const tag of ['button', 'input', 'textarea']) {
+        focus(tag);
+        for (const code of ['Escape', 'Enter', 'Space', 'KeyW']) {
+          expect(press(code).values).toEqual([false, true, false]);
+        }
+        focused!.remove();
+      }
+    });
+
+    it('follows changes to externalFocusOwnKeys and externalFocusBlacklist', () => {
+      const ownKeys = KeyboardInput.externalFocusOwnKeys;
+      const blacklist = KeyboardInput.externalFocusBlacklist;
+      try {
+        KeyboardInput.externalFocusOwnKeys = [{ selector: 'input[type=range]', codes: ['ArrowLeft', 'ArrowRight'] }];
+        KeyboardInput.externalFocusBlacklist = [...blacklist, HTMLButtonElement];
+        focus('input', 'range');
+        expect(press('ArrowLeft').values).toEqual([false]);
+        expect(press('Escape').values).toEqual([false, true, false]);
+        focused!.remove();
+        focus('button');
+        expect(press('Escape').values).toEqual([false]);
+      } finally {
+        KeyboardInput.externalFocusOwnKeys = ownKeys;
+        KeyboardInput.externalFocusBlacklist = blacklist;
+      }
+    });
+
+    it('tells through focusUsesKey which keys the focused element uses', () => {
+      expect(KeyboardInput.focusUsesKey('Escape', null)).toBe(false);
+      const button = focus('button');
+      expect(KeyboardInput.focusUsesKey('Space')).toBe(true);
+      expect(KeyboardInput.focusUsesKey('Escape')).toBe(false);
+      expect(KeyboardInput.focusUsesKey('Escape', document.createElement('textarea'))).toBe(true);
+      expect(KeyboardInput.focusUsesKey('Escape', document.createElement('div'))).toBe(false);
+      expect(KeyboardInput.focusUsesKey('Enter', button)).toBe(true);
+    });
   });
 
   describe('key names and bindability', () => {

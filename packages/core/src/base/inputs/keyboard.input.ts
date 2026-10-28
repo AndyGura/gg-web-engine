@@ -112,19 +112,62 @@ export class KeyboardInput extends IInput {
   private physicalHeld: Set<string> = new Set<string>();
 
   /**
-   * Flag which disables handling key downs, when document has some "typeable" element focused
+   * Whether key downs the focused HTML element uses itself are skipped (`KeyboardInput.focusUsesKey`):
+   * every key while a text field has focus, Enter and Space while a button has, the rest pass.
+   * Key ups always pass, so a key held when the focus arrives is still released.
    */
   public skipKeyDownsOnExternalFocus: boolean = true;
 
   /**
-   * Which element types should filter key downs when focused
+   * Element types that use every key while focused (typing, a select's type-ahead): with
+   * `skipKeyDownsOnExternalFocus`, no key down reaches the bindings while one of them has focus.
+   * `externalFocusOwnKeys` is checked first, so an `<input>` acting as a button skips only its own keys.
    */
   public static externalFocusBlacklist: { new (): HTMLElement }[] = [
     HTMLInputElement,
     HTMLTextAreaElement,
     HTMLSelectElement,
-    HTMLButtonElement,
   ];
+
+  /**
+   * Elements that use only some keys while focused, as a CSS selector and the `KeyboardEvent.code`s
+   * they use: with `skipKeyDownsOnExternalFocus`, only those key downs are skipped while a matching
+   * element has focus, every other key (Escape, letters, arrows) passes as if nothing were focused.
+   * Checked before `externalFocusBlacklist`; the first matching entry decides. By default the
+   * buttons (`<button>`, and `<input>` of type button, submit, reset, image and checkbox), which a
+   * press of Enter or Space clicks (or toggles).
+   */
+  public static externalFocusOwnKeys: { selector: string; codes: string[] }[] = [
+    {
+      selector:
+        'button, input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=checkbox]',
+      codes: ['Enter', 'NumpadEnter', 'Space'],
+    },
+  ];
+
+  /**
+   * Whether a focused element uses a key itself (`externalFocusOwnKeys`, then
+   * `externalFocusBlacklist`), so the key down is the element's and not the game's: `true` for any
+   * key while a text field has focus, for Enter and Space while a button has.
+   * @param code A `KeyboardEvent.code` value
+   * @param element The focused element, `document.activeElement` by default
+   */
+  public static focusUsesKey(code: string, element: Element | null = document.activeElement): boolean {
+    if (!element) {
+      return false;
+    }
+    for (const { selector, codes } of KeyboardInput.externalFocusOwnKeys) {
+      if (element.matches(selector)) {
+        return codes.includes(code);
+      }
+    }
+    for (const k of KeyboardInput.externalFocusBlacklist) {
+      if (element instanceof k) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /**
    * A short name of a key for a menu or an on-screen hint: `'W'`, `'Left'`, `'Space'`, `'Num 8'`,
@@ -352,12 +395,10 @@ export class KeyboardInput extends IInput {
       return;
     }
     const pressed = e.type == 'keydown';
-    if (pressed && this.skipKeyDownsOnExternalFocus && document.activeElement) {
-      for (const k of KeyboardInput.externalFocusBlacklist) {
-        if (document.activeElement instanceof k) {
-          return;
-        }
-      }
+    // skipped before the preventDefault below: the focused element's own action (a button's
+    // click on Enter/Space, typing) must go on
+    if (pressed && this.skipKeyDownsOnExternalFocus && KeyboardInput.focusUsesKey(e.code)) {
+      return;
     }
     // the auto-repeat of a held key keeps it held; a keyup of a key pressed before this input
     // started (or while it skipped key downs) was never held here, and deletes nothing

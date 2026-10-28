@@ -29,6 +29,20 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- core: `KeyboardInput.externalFocusOwnKeys`, elements (CSS selectors) that use only some keys while
+  focused, and `KeyboardInput.focusUsesKey(code, element?)`, whether the focused element uses a key
+  itself. By default buttons (`<button>`, `<input>` of type button, submit, reset, image and
+  checkbox) use Enter, NumpadEnter and Space.
+
+### Fixed
+- core: a focused button no longer swallows every key down: `KeyboardInput` skips only the keys it
+  clicks on (Enter, NumpadEnter, Space), so a DOM menu whose button has focus (a pause menu focusing
+  Resume) still gets Escape and every other bound key. Text fields and selects still skip every key.
+  `HTMLButtonElement` left `KeyboardInput.externalFocusBlacklist` for `externalFocusOwnKeys`; put it
+  back in the list to skip every key on buttons again. The dev console's `bind_key` follows the same
+  rule.
+
 ## [0.0.89] - 2026-10-28
 
 ### Added
