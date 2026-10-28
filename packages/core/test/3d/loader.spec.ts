@@ -1,4 +1,4 @@
-import { Entity3d, Gg3dLoader, Gg3dWorld, GroupEntity, IEntity, LevelJson, TickOrder } from '../../src';
+import { Entity3d, Gg3dLoader, Gg3dWorld, GroupEntity, IEntity, LevelJson, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../src';
 import { LoadResourcesResult, LoadResultWithProps } from '../../src/3d/loader';
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
@@ -205,6 +205,76 @@ describe('Gg3dLoader', () => {
       ]);
       expect(result.entities[2].name).toMatch(/^Entity3d_\d+$/);
       expect(result.props![0].entities.map(e => e.name).slice(0, 2)).toEqual(['Suzanne_prop', 'Floor_prop']);
+    });
+  });
+
+  describe('loadGgGlb placement', () => {
+    const tilt = Qtrn.fromAngle(Pnt3.X, Math.PI / 6); // the object's own rotation in its file
+    const dummyRotation = Qtrn.fromAngle(Pnt3.Z, Math.PI / 2); // where the scene puts the prop
+    const dummyPosition = { x: 3, y: 0, z: 0 };
+    const objectPosition = { x: 1, y: 0, z: 0 };
+    // a root rotation that is neither identity nor a pure yaw: 90 degrees about Y, then 30 about Z
+    const rootRotation = Qtrn.mult(Qtrn.fromAngle(Pnt3.Z, Math.PI / 6), Qtrn.fromAngle(Pnt3.Y, Math.PI / 2));
+    const rootPosition = { x: 10, y: 20, z: 30 };
+
+    beforeEach(() => {
+      jest.spyOn(loader, 'loadGgGlbResources').mockImplementation(async (path: string) => {
+        const object3D = mock3DObject();
+        object3D.position = objectPosition;
+        object3D.rotation = tilt;
+        return {
+          resources: [{ object3D, body: null }],
+          meta: {
+            dummies:
+              path === 'assets/scene'
+                ? [{ name: 'Spot', is_prop: true, prop_id: 'prop', position: dummyPosition, rotation: dummyRotation }]
+                : [],
+          } as any,
+        };
+      });
+    });
+
+    // compared through what each rotation does to the axes, applied one transform at a time with
+    // Pnt3.rot, so the expectation doesn't rely on Qtrn.mult's own operand order
+    const expectSameRotation = (actual: Point4, ...outerFirst: Point4[]) => {
+      for (const axis of [Pnt3.X, Pnt3.Y, Pnt3.Z]) {
+        const expected = outerFirst.reduceRight((v, q) => Pnt3.rot(v, q), axis);
+        const got = Pnt3.rot(axis, actual);
+        expect(got.x).toBeCloseTo(expected.x, 9);
+        expect(got.y).toBeCloseTo(expected.y, 9);
+        expect(got.z).toBeCloseTo(expected.z, 9);
+      }
+    };
+    const expectSamePoint = (actual: Point3, expected: Point3) => {
+      expect(actual.x).toBeCloseTo(expected.x, 9);
+      expect(actual.y).toBeCloseTo(expected.y, 9);
+      expect(actual.z).toBeCloseTo(expected.z, 9);
+    };
+
+    it('applies the root rotation in front of the own rotation of each loaded object', async () => {
+      const result = await loader.loadGgGlb('assets/scene', { position: rootPosition, rotation: rootRotation });
+      const [entity] = result.entities;
+      expectSameRotation(entity.rotation, rootRotation, tilt);
+      expectSamePoint(entity.position, Pnt3.add(Pnt3.rot(objectPosition, rootRotation), rootPosition));
+    });
+
+    it('places the objects of a nested prop through root, then dummy, then their own pose', async () => {
+      const result = await loader.loadGgGlb('assets/scene', { position: rootPosition, rotation: rootRotation });
+      const [propEntity] = result.props![0].entities;
+      expectSameRotation(propEntity.rotation, rootRotation, dummyRotation, tilt);
+      expectSamePoint(
+        propEntity.position,
+        Pnt3.add(
+          Pnt3.rot(Pnt3.add(Pnt3.rot(objectPosition, dummyRotation), dummyPosition), rootRotation),
+          rootPosition,
+        ),
+      );
+    });
+
+    it('places a nested prop correctly under an identity root rotation too', async () => {
+      const result = await loader.loadGgGlb('assets/scene');
+      const [propEntity] = result.props![0].entities;
+      expectSameRotation(propEntity.rotation, dummyRotation, tilt);
     });
   });
 

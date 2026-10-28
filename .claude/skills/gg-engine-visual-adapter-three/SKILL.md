@@ -34,6 +34,13 @@ with faces that carry a marker on their top and left edges (solid-colored faces 
 but not a rotated or mirrored image), and, for the environment map, the reflection on a
 mirror-like sphere.
 
+A frame switch's yaw (`onFrameSwitch`) is accumulated in `frameYaw` and goes into the same two
+Eulers as `Rz(frameYaw) * Rx(PI/2)`: Euler order `'ZYX'`, since three.js multiplies an Euler's
+matrices in the order its order string lists them (`'XYZ'` would turn the sky about its own Y-up
+axis instead). three.js samples at `rotation^T * viewDirection` (plus a constant X mirror for cube
+maps), so the sky turns with the world's axes and stays put globally;
+`three-light.component.spec.ts` checks that with the transposed matrix.
+
 ## Procedural sky
 
 `ThreeProceduralSky` (`components/three-procedural-sky.ts`) is one `ShaderMaterial` on a unit
@@ -51,10 +58,14 @@ procedural `environmentMap`, and updates their uniforms on every `setEnvironment
   is skipped while the settings key (everything but `mode` and `clouds.wind`) is unchanged. The
   cube target lives in the WebGL context of the renderer that drew it: two renderers with separate
   contexts sharing one scene would need a bake each, which isn't done.
-- **A cube render target is sampled in world space**: `CubeCamera` renders the Z-up world as it is,
-  and three.js doesn't X-flip a render-target cube the way it does a `CubeTexture` from images, so
-  a baked background or environment gets `backgroundRotation`/`environmentRotation` `0`, not the
-  quarter turn image skies need.
+- **A cube render target is sampled in the scene's own space**: `CubeCamera` renders the Z-up
+  scene as it is, and three.js doesn't X-flip a render-target cube the way it does a `CubeTexture`
+  from images, so a baked background or environment gets `backgroundRotation`/
+  `environmentRotation` `0`, not the quarter turn image skies need, and no frame yaw either.
+- **Frame switches**: the sky's settings (sun path, winds) are global, so `setFrameYaw(frameYaw)`
+  (from `applyEnvironmentRotation`) sets `uFrameRotation = Rz(-frameYaw)`, which the fragment
+  shader applies to the view direction before anything else; the yaw is part of the bake key, so
+  a baked sky is redrawn after a switch that turns the world.
 - **The environment map is prefiltered with the component's own `PMREMGenerator.fromCubemap`**
   into a target it owns and disposes. Handing the raw cube render target to `scene.environment`
   makes the renderer prefilter it itself (keyed by `pmremVersion`), but that path never registers a

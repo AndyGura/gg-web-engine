@@ -2,6 +2,7 @@ import {
   buildWheelContact,
   CollisionGroup,
   defaultMaxSuspensionForce,
+  Frame3d,
   IRaycastVehicleComponent,
   Point3,
   Point4,
@@ -12,6 +13,7 @@ import {
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoBodyComponent } from './ammo-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -316,6 +318,29 @@ export class AmmoRaycastVehicleComponent
       position: { x: origin.x(), y: origin.y(), z: origin.z() },
       rotation: { x: quaternion.x(), y: quaternion.y(), z: quaternion.z(), w: quaternion.w() },
     };
+  }
+
+  /**
+   * `IRigidBody3dComponent.onFrameSwitch`: the chassis as any rigid body, then the wheels. Bullet
+   * recomputes every world-space wheel quantity from the chassis at the start of each step, so only
+   * what is read between the switch and the next step needs moving: each wheel's transform
+   * (recomputed from the moved chassis, as `getWheelTransform` does) and the last step's contact
+   * point and normal (`getWheelContact`), moved by `delta`. Suspension length, wheel spin, steering,
+   * engine and brake forces are local and stay; so does `m_groundObject`, since the ground moved
+   * along.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    super.onFrameSwitch(delta);
+    for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
+      const raycastInfo = this.nativeVehicle.getWheelInfo(i).get_m_raycastInfo();
+      const p = raycastInfo.get_m_contactPointWS();
+      const point = delta.toGlobalPoint({ x: p.x(), y: p.y(), z: p.z() });
+      raycastInfo.set_m_contactPointWS(AmmoBodyComponent.scratchVector(point.x, point.y, point.z));
+      const n = raycastInfo.get_m_contactNormalWS();
+      const normal = delta.toGlobalDirection({ x: n.x(), y: n.y(), z: n.z() });
+      raycastInfo.set_m_contactNormalWS(AmmoBodyComponent.scratchVector(normal.x, normal.y, normal.z));
+      this.getWheelTransform(i);
+    }
   }
 
   /**

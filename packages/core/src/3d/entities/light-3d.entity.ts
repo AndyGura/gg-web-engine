@@ -1,6 +1,8 @@
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorldTypeDocVPatch, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { IFrameSwitchable, switchPoseFrame } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * A positioned entity wrapping a light component (`VTypeDoc['light']`, see `ILight3dComponent`),
@@ -12,7 +14,7 @@ import { Gg3dWorldTypeDocVPatch, VisualTypeDocRepo3D } from '../gg-3d-world';
  */
 export class Light3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
   extends IEntity<Point3, Point4, Gg3dWorldTypeDocVPatch<VTypeDoc>>
-  implements IPositionable3d
+  implements IPositionable3d, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'Light3dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -35,6 +37,13 @@ export class Light3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocR
   set rotation(value: Point4) {
     this.light.rotation = value;
     this._rotation = value;
+  }
+
+  /** `IFrameSwitchable`: moves the light by `delta`: its position, and its rotation - the direction a directional or spot light shines in, i.e. where it aims. */
+  public onFrameSwitch(delta: Frame3d): void {
+    switchPoseFrame(this.light, delta);
+    this._position = delta.toGlobalPoint(this._position);
+    this._rotation = delta.toGlobalRotation(this._rotation);
   }
 
   constructor(public readonly light: VTypeDoc['light']) {

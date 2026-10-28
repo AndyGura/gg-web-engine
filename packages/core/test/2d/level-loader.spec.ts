@@ -2,6 +2,7 @@ import {
   AudioSource2dEntity,
   CharacterController2dEntity,
   Entity2d,
+  EntityJson,
   Gg2dLevelLoader,
   Gg2dWorld,
   IEntity,
@@ -376,6 +377,41 @@ describe('Gg2dLevelLoader', () => {
       expect(trigger.rotation).toBe(0.5);
     });
 
+    it('should build a COMPOUND trigger through the same shape fields as "Primitive"', async () => {
+      await levelLoader.loadLevel(
+        {
+          entities: [
+            { class: 'Trigger', shape: 'CIRCLE', config: { radius: 3 } },
+            {
+              class: 'Trigger',
+              shape: 'COMPOUND',
+              config: {
+                children: [
+                  { shape: 'BOX', position: { x: 0, y: -2.5 }, dimensions: { x: 10, y: 5 } },
+                  { shape: 'BOX', position: { x: -2.5, y: 2.5 }, rotation: 0.5, dimensions: { x: 5, y: 5 } },
+                ],
+              },
+            },
+          ],
+        },
+        'TestLevel',
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        { shape: 'CIRCLE', radius: 3 },
+        expect.anything(),
+      );
+      expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
+        {
+          shape: 'COMPOUND',
+          children: [
+            { position: { x: 0, y: -2.5 }, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 10, y: 5 } } },
+            { position: { x: -2.5, y: 2.5 }, rotation: 0.5, shape: { shape: 'BOX', dimensions: { x: 5, y: 5 } } },
+          ],
+        },
+        expect.anything(),
+      );
+    });
+
     it('should load a level with sounds, wrapped ready-to-use in an AudioSource2dEntity parented under the level', async () => {
       const levelJson: LevelJson = {
         entities: [
@@ -604,6 +640,26 @@ describe('Gg2dLevelLoader', () => {
       });
     });
 
+    it('serializes a COMPOUND Primitive, children and their offsets included', () => {
+      const body = mock2DBody({
+        shape: 'COMPOUND',
+        children: [
+          { position: { x: 1, y: 0 }, shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } } },
+          { rotation: 0.5, shape: { shape: 'CIRCLE', radius: 0.5 } },
+        ],
+      });
+      const entity = new Entity2d({ objectBody: body });
+      entity.name = 'CompoundPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.class).toBe('Primitive');
+      expect(json.shape).toBe('COMPOUND');
+      expect(json.config.children).toEqual([
+        { position: { x: 1, y: 0 }, shape: 'BOX', dimensions: { x: 1, y: 1 } },
+        { rotation: 0.5, shape: 'CIRCLE', radius: 0.5 },
+      ]);
+    });
+
     it('recovers material from object2D when it implements IMaterialReadable2dComponent', () => {
       const body = mock2DBody({ shape: 'BOX', dimensions: { x: 1, y: 1 } });
       const object2D = { ...mock2DObject(), materialOptions: { color: 8947848 } };
@@ -636,6 +692,29 @@ describe('Gg2dLevelLoader', () => {
         rotation: 0.3,
         config: { dimensions: { x: 4, y: 5 } },
       });
+    });
+
+    it('round-trips a COMPOUND trigger through serializeEntity and createEntity', async () => {
+      (world.physicsWorld!.factory.createTrigger as jest.Mock).mockImplementation((shape: any) => mock2DBody(shape));
+      const json: EntityJson = {
+        class: 'Trigger',
+        shape: 'COMPOUND',
+        name: 'LZone',
+        position: { x: 1, y: 2 },
+        rotation: 0.3,
+        config: {
+          children: [
+            { position: { x: 0, y: -2.5 }, shape: 'BOX', dimensions: { x: 10, y: 5 } },
+            { position: { x: -2.5, y: 2.5 }, rotation: 0.5, shape: 'CIRCLE', radius: 1 },
+          ],
+        },
+      };
+      const trigger = (await levelLoader.createEntity(json)) as Trigger2dEntity;
+      const serialized = levelLoader.serializeEntity(trigger)!;
+      expect(serialized).toEqual(json);
+
+      const rebuilt = (await levelLoader.createEntity(serialized)) as Trigger2dEntity;
+      expect(rebuilt.objectBody.debugBodySettings.shape).toEqual(trigger.objectBody.debugBodySettings.shape);
     });
 
     it('serializes a Player built via createEntity with class "Player" (self-serialized, with a runtime state block)', async () => {
@@ -691,6 +770,23 @@ describe('Gg2dLevelLoader', () => {
       expect(copy.moveDirection).toEqual(1);
       expect(copy.fallVelocity).toEqual({ x: 0, y: -2 });
       expect(copy.airHorizontalVelocity).toEqual({ x: 1.5, y: 0 });
+    });
+
+    it('serializes an app class that builds a plain Entity2d or Trigger2dEntity as that class, not a built-in one', async () => {
+      levelLoader.registerClass(
+        'Rock',
+        () => new Entity2d({ objectBody: mock2DBody({ shape: 'CONVEX_HULL', vertices: [{ x: 0, y: 0 }] }) }),
+      );
+      levelLoader.registerClass(
+        'KillZone',
+        () => new Trigger2dEntity(mock2DBody({ shape: 'CIRCLE', radius: 3 }) as any),
+      );
+
+      const rock = await levelLoader.createEntity({ class: 'Rock', name: 'RockOne', config: { model: 'rock.png' } });
+      const zone = await levelLoader.createEntity({ class: 'KillZone', name: 'ZoneOne', config: { damage: 5 } });
+
+      expect(levelLoader.serializeEntity(rock!)).toMatchObject({ class: 'Rock', config: { model: 'rock.png' } });
+      expect(levelLoader.serializeEntity(zone!)).toMatchObject({ class: 'KillZone', config: { damage: 5 } });
     });
 
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {

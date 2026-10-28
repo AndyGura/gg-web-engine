@@ -41,12 +41,14 @@ export * from './entities/controllers/input/orbit-camera.controller';
 export * from './entities/controllers/input/player-character.controller';
 export * from './entities/surface-following.entity';
 
+export * from './interfaces/i-frame-switchable';
 export * from './interfaces/i-positionable-3d';
 
 export * from './models/body-options';
 export * from './models/character-controller-options';
 export * from './models/environment';
 export * from './models/procedural-sky';
+export * from './models/frame-3d';
 export * from './models/gg-meta';
 export * from './models/lights';
 export * from './models/shapes';

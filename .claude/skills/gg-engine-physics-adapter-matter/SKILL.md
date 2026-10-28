@@ -296,21 +296,30 @@ having `handleCollisionStart`/`handleCollisionEnd` add/delete `comp` from `curre
 (narrowed via `comp instanceof MatterRigidBodyComponent`, since `world.children.find(...)` returns the
 wider `MatterWorldChild` union) right alongside firing `onEnter$`/`onLeft$`.
 
-Separately, the reverse direction had no mechanism at all: `Composite.remove` (what a rigid body's own
-`removeFromWorld` calls) never fires a native `collisionEnd` for the body being removed - matter-js just
-stops considering that body's pairs on the *next* step, it doesn't retroactively report whatever was
-active at the moment of removal. So a rigid body removed from the world while still overlapping a trigger
-left that trigger's `currentOverlaps` (and, for a character, `currentCharacterOverlaps`) permanently
-stale, and `onEntityLeft` never fired for it - this is a distinct gap from the sensor-pair skip in
-`MatterWorldComponent`'s own `handleCollisionStart`/`handleCollisionEnd` (which back
-`onCollisionStart`/`onCollisionEnd`, not a trigger's `onEntityEntered`/`onEntityLeft`, and were never in
-play here). Fixed by having `MatterTriggerComponent.addToWorld` subscribe to
-`world.physicsWorld.removed$` (already `.next()`'d by every component's own `removeFromWorld`, for any
-component - rigid body, trigger, or character controller) and, on each removal, drop the removed
-component from whichever overlap set actually contains it and fire `onLeft$` - skipping the case where
-the removed component is the trigger itself (its own `removeFromWorld` already handles that directly).
-The subscription is torn down in `removeFromWorld` alongside the existing `collisionStart`/`collisionEnd`
-listener cleanup.
+Separately, removal needs its own mechanism: `Composite.remove` (what a rigid body's own
+`removeFromWorld` calls) reports nothing at the moment of removal. The removed body's pairs stay in
+`engine.pairs` (`table` + `list`) and only end, with a native `collisionEnd`, on the next
+`Engine.update` (`Pairs.update` ends every pair not refreshed by the detector that step); a character
+controller's phantom body has no native pairs at all. `MatterTriggerComponent.addToWorld` subscribes to
+`world.physicsWorld.removed$` (`.next()`'d by every component's own `removeFromWorld` - rigid body,
+trigger, or character controller) and, on each removal, drops the removed component from whichever
+overlap set contains it and fires `onLeft$` - skipping the case where the removed component is the
+trigger itself (its own `removeFromWorld` handles that directly). The subscription is torn down in
+`removeFromWorld` alongside the `collisionStart`/`collisionEnd` listener cleanup.
+
+**The reaction also purges the removed body's pairs with this trigger from `engine.pairs`
+(`purgeNativePairs`), and the trigger's own `removeFromWorld` purges all of its pairs.** Without that, a
+body removed and re-added before the next update (or a trigger removed and re-added) finds its old pair
+still in `pairs.table`: `Collision.collides` reuses it, `Pairs.update` sees it as already active, and no
+`collisionStart` ever reports the body entering again. A purged pair is rebuilt from scratch, with a
+fresh `collisionStart`, by the next update that detects the overlap. Only sensor pairs are purged, which
+the resolver never acts on. The reaction purges only for a body the trigger holds in `nativePairCounts`:
+every active pair was counted on its `collisionStart`, and an inactive pair left in the table reports a
+fresh `collisionStart` when it activates again, so any other removal would scan the whole pair list for
+nothing (per trigger, per removed body - quadratic when a level unloads). The purge compacts
+`pairs.list` in place, like matter's own `Pairs.update`; spreading a large list into `push` can exceed
+the engine's argument limit. Regressions: the removed-and-re-added cases in
+`matter-trigger.component.spec.ts`'s `COMPOUND shapes` block.
 
 **That reaction drops the stale entry synchronously but emits `onLeft$` via `queueMicrotask`, never
 inline.** `removed$` fires from inside whatever call stack performed the removal, and that stack can be
@@ -327,6 +336,26 @@ no `simulate()`/`checkOverlaps()` in between). Any test that removes an overlapp
 `onEntityLeft` fired needs that one microtask hop before the assertion. The trigger's *own*
 `removeFromWorld` still emits `onLeft$` inline for everything it was overlapping - that's the trigger
 leaving at a controlled point in its own lifecycle, not a reaction to someone else's removal.
+
+## `MatterTriggerComponent` counts native pairs per body, because matter-js pairs parts
+
+`Detector.collisions` walks parts `1..n` of a multi-part (`COMPOUND`) body (part 0 is the parent itself),
+so every `pair.bodyA`/`pair.bodyB` reported by `collisionStart`/`collisionEnd` is a **part**, never the
+compound parent; a single-part body is its own part (`body.parts[0] === body`, `body.parent === body`).
+Both trigger handlers resolve each side through `.parent` before comparing against the trigger's
+`nativeBody` and before looking the other side up in `world.handleIdEntityMap` (keyed by the parent's
+`Body.id`). One body-vs-trigger overlap can be several part pairs at once (a compound body with two parts
+inside, a body straddling the seam between two parts of a compound trigger), each starting and ending
+independently, so `nativePairCounts` counts the active part pairs per component: `onEnter$` fires on
+0 -> 1, `onLeft$` on 1 -> 0, and a `collisionEnd` for a body with no count (pairs purged on removal) is
+ignored.
+
+`Query.collides(body, bodies)` iterates the parts of each of `bodies` but tests them against the first
+argument as a whole. For a compound body that is the parent's vertices, which `Body.setParts` sets to
+the convex hull of all parts - an L-shaped trigger would report a body sitting in its notch. The
+trigger's polls (`overlaps()` for kinematic/sleeping bodies, the character poll in `checkOverlaps()`)
+therefore go through `queryCollides`, which calls `Query.collides` once per trigger part; the returned
+collisions' `parentA`/`parentB` still resolve to the trigger's own body.
 
 ## `MatterTriggerComponent`'s sensor body is static
 

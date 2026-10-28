@@ -14,6 +14,11 @@ import {
   isNetStateCoasting,
   LevelJson,
   LevelLoader,
+  NetworkFrame,
+  Point4,
+  Qtrn,
+  quantizeNetPosition,
+  quantizeNetRotation,
   TickOrder,
   warnOnce,
 } from '@gg-web-engine/core';
@@ -35,7 +40,11 @@ import { NetDebugPanel } from './net-debug-panel';
 /** What the network layer reports about one connected peer. */
 export interface PeerInfo {
   peerId: string;
-  /** last position the peer reported (`null` = spectating), `undefined` until its first heartbeat */
+  /**
+   * last position the peer reported (`null` = spectating), `undefined` until its first heartbeat. In
+   * global coordinates, rounded to 1 mm, as its heartbeat carries it: in a 3D world with a non-identity
+   * `frame`, `world.toLocalPoint(position)` places it in this world (e.g. a peer marker).
+   */
   position: unknown | null | undefined;
   /** lowest round-trip time among the latest clock-sync samples, ms */
   rttMs: number;
@@ -283,7 +292,18 @@ interface PendingJoin {
   resolve: () => void;
 }
 
+const isVec = (v: unknown): boolean =>
+  !!v && typeof (v as { x?: unknown }).x === 'number' && typeof (v as { y?: unknown }).y === 'number';
+const isRot = (r: unknown): boolean =>
+  typeof r === 'number' || (isVec(r) && typeof (r as { w?: unknown }).w === 'number');
+
 /** `lv` of a `RigidBodyNetState`-shaped payload (any syncable whose state carries one), else null */
+/** floor of the unit-scaled default deadzone: twice the worst-case 3D wire rounding error (~0.87 mm) */
+const MIN_DEFAULT_DEADZONE = 2e-3;
+
+/** a quaternion's identity; frames (and so the descriptor conversions that use it) exist in 3D only */
+const IDENTITY_ROTATION: Point4 = { x: 0, y: 0, z: 0, w: 1 };
+
 function velocityOfState(s: unknown): any | null {
   const lv = (s as any)?.lv;
   return lv && typeof lv.x === 'number' ? lv : null;
@@ -331,7 +351,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /**
    * Where the local player "is", for distance arbitration and zoning: return `null` while spectating
    * or dead (the peer then never claims nor holds Free entities). Defaults to the position of the
-   * first locally possessed entity that has one.
+   * first locally possessed entity that has one. In this world's local coordinates, like every entity
+   * position: the heartbeat sends it global (through the 3D world's `frame`), and that global position
+   * is what the transport's zoning gets.
    */
   public localPosition: () => D | null = () => {
     for (const rec of this.records.values()) {
@@ -452,7 +474,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.keepaliveRate = options.keepaliveRate ?? 2;
     this.tuning = {
       ...DEFAULT_CORRECTION_TUNING,
-      deadzone: DEFAULT_CORRECTION_TUNING.deadzone * unit,
+      // never inside the wire's 1 mm position rounding, or a resting replica would never settle
+      deadzone: Math.max(DEFAULT_CORRECTION_TUNING.deadzone * unit, MIN_DEFAULT_DEADZONE),
       snapDistance: DEFAULT_CORRECTION_TUNING.snapDistance * unit,
       ...(options.tuning ?? {}),
     };
@@ -1012,6 +1035,74 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.unregisterNameMiddleware = null;
   }
 
+  /**
+   * The world's frame - the mapping between its local coordinates and the global ones everything on
+   * the wire is in - or `null` when local is global (2D worlds, an identity frame). Read on every
+   * use, never cached, so a frame change applies to the next conversion. Overridden by
+   * `Network3dController`.
+   */
+  protected worldFrame(): NetworkFrame<D, R> | null {
+    return null;
+  }
+
+  /** a local position as it goes on the wire: global, quantised */
+  private toWirePosition(p: D | null): D | null {
+    if (!p) {
+      return p;
+    }
+    const frame = this.worldFrame();
+    return quantizeNetPosition((frame ? frame.toGlobalPoint(p) : p) as any) as D;
+  }
+
+  /** a global position from the wire (a peer's heartbeat) in this world's local coordinates */
+  private fromWirePosition(p: unknown): D | null {
+    if (!p) {
+      return null;
+    }
+    const frame = this.worldFrame();
+    return (frame ? frame.toLocalPoint(p as D) : p) as D;
+  }
+
+  /**
+   * a spawn descriptor as it goes on the wire: its top-level `position`/`rotation` global and
+   * quantised. Class-specific values inside `config` are not converted: whatever a replica needs in
+   * global terms is in the entity's network state, applied with `snap` right after the spawn is built.
+   */
+  private toWireDescriptor(d: EntityJson): EntityJson {
+    const frame = this.worldFrame();
+    const out = { ...d };
+    if (isVec(d.position)) {
+      out.position = quantizeNetPosition(frame ? frame.toGlobalPoint(d.position as D) : d.position);
+    }
+    if (isRot(d.rotation)) {
+      out.rotation = quantizeNetRotation(frame ? frame.toGlobalRotation(d.rotation as R) : d.rotation);
+    } else if (frame && isVec(d.position) && d.rotation === undefined) {
+      // placed without a rotation: built at this world's local identity, i.e. turned by the frame's yaw
+      out.rotation = quantizeNetRotation(
+        frame.toGlobalRotation(IDENTITY_ROTATION as unknown as R) as unknown as Point4,
+      );
+    }
+    return out;
+  }
+
+  /** a spawn descriptor from the wire, its `position`/`rotation` converted to local coordinates */
+  private fromWireDescriptor(d: EntityJson): EntityJson {
+    const frame = this.worldFrame();
+    const out = { ...d };
+    if (frame && isVec(d.position)) {
+      out.position = frame.toLocalPoint(d.position as D);
+    }
+    if (isRot(d.rotation) && typeof d.rotation !== 'number') {
+      // rounded on the wire: back to unit length before anything is built with it
+      const r = Qtrn.normalize(d.rotation as Point4);
+      out.rotation = frame ? frame.toLocalRotation(r as unknown as R) : r;
+    } else if (frame && isVec(d.position) && d.rotation === undefined) {
+      // placed without a rotation means the global identity (a sender with a yawed frame sends one)
+      out.rotation = frame.toLocalRotation(IDENTITY_ROTATION as unknown as R);
+    }
+    return out;
+  }
+
   /** Build the level loader used when none was passed - overridden by the 2D/3D controllers. */
   protected createDefaultLevelLoader(_world: GgWorld<D, R>): LevelLoader<any, any, any> | null {
     return null;
@@ -1538,7 +1629,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return {
       t: 'spawn',
       entityId: rec.id,
-      descriptor,
+      descriptor: this.toWireDescriptor(descriptor),
       owner: rec.owner,
       epoch: rec.epoch,
       possessor: rec.possessor,
@@ -1587,7 +1678,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (withDescriptor && !rec.shared) {
       const descriptor = this.levelLoader?.serializeEntity(rec.entity);
       if (descriptor) {
-        item.descriptor = descriptor;
+        item.descriptor = this.toWireDescriptor(descriptor);
       }
     }
     if (rec.expiresAt !== null) {
@@ -1698,7 +1789,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     map.set(this.localPeerId, this.sessionState === 'away' ? null : this.localPosition());
     for (const peer of this.peers.values()) {
       if (!peer.away && peer.position !== undefined) {
-        map.set(peer.id, peer.position as D | null);
+        // reported globally: compared with this world's entities in its local coordinates
+        map.set(peer.id, this.fromWirePosition(peer.position));
       }
     }
     return map;
@@ -1887,7 +1979,14 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     // the bodies' velocities right now are already post-impact (the solver ran) - the hit body
     // may well be the faster one; compare the speeds of the latest snapshots instead
     const ZERO = { x: 0, y: 0, z: 0 };
-    const velocity = (r: NetRecord) => r.snapshotVelocity ?? this.bodyOf(r.entity)?.linearVelocity ?? ZERO;
+    // a snapshot's velocity is global, a body's local: compare them in local coordinates
+    const frame = this.worldFrame();
+    const velocity = (r: NetRecord) =>
+      r.snapshotVelocity
+        ? frame
+          ? frame.toLocalDirection(r.snapshotVelocity)
+          : r.snapshotVelocity
+        : (this.bodyOf(r.entity)?.linearVelocity ?? ZERO);
     const vLocal = velocity(localRec);
     const vForeign = velocity(foreign);
     // some adapters report no impulse for a contact's first step (the solver hasn't run on it yet);
@@ -2000,7 +2099,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   private heartbeatMessage(): WireMessage {
     const away = this.sessionState === 'away';
-    return { t: 'heartbeat', pos: away ? null : this.localPosition(), ...(away ? { away: true } : {}) };
+    // global, so every peer's zoning and distance arbitration compare like with like
+    return {
+      t: 'heartbeat',
+      pos: away ? null : this.toWirePosition(this.localPosition()),
+      ...(away ? { away: true } : {}),
+    };
   }
 
   /**
@@ -2525,7 +2629,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     let entity: IEntity | undefined;
     try {
       entity = await this.requireLoader().createEntity(
-        { ...item.descriptor, name: item.entityId },
+        { ...this.fromWireDescriptor(item.descriptor), name: item.entityId },
         undefined,
         this.blueprints,
       );
@@ -2836,7 +2940,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     const gonePos = this.peers.get(goneId)?.position ?? this.lastPositions.get(goneId) ?? null;
     const candidates: { id: string; d: number }[] = [
-      { id: this.localPeerId, d: this.distanceOrInf(gonePos, this.localPosition()) },
+      // every peer ranks the same global positions, so they all elect the same taker
+      { id: this.localPeerId, d: this.distanceOrInf(gonePos, this.toWirePosition(this.localPosition())) },
     ];
     for (const peer of this.peers.values()) {
       if (peer.id !== goneId && !peer.away) {

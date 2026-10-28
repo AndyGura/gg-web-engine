@@ -18,6 +18,8 @@ import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { IFrameSwitchable, isFrameSwitchable } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 export type MapGraphNodeType = {
   path: string;
@@ -112,9 +114,10 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
   maxNodesLoadingPerTick: 1,
 };
 
-export class MapGraph3dEntity<
-  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
-> extends IRenderable3dEntity<TypeDoc> {
+export class MapGraph3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IRenderable3dEntity<TypeDoc>
+  implements IFrameSwitchable
+{
   static readonly entityTypeName: string = 'MapGraph3dEntity';
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
@@ -137,6 +140,13 @@ export class MapGraph3dEntity<
    * engine's own `chunkLoaded$` plumbing awaits or catches an async subscriber's own rejection.
    */
   private readonly loadingNodes: Set<MapGraphNodeType> = new Set();
+  /**
+   * The frame switches that happened while a node was loading (composed), applied to its entities
+   * once they arrive: they were placed from the node's position as it was when the load started.
+   */
+  private readonly loadingSwitches: Map<MapGraphNodeType, Frame3d> = new Map();
+  /** The entities of a chunk being prepared (`prepareChunk`): a frame switch moves them at once. */
+  private readonly preparingEntities: Map<MapGraphNodeType, IEntity[]> = new Map();
   /** Cancels the chunk loads in flight when the entity leaves the world; one per spawn. */
   private chunkLoads: AbortController | null = null;
 
@@ -335,6 +345,49 @@ export class MapGraph3dEntity<
       });
   }
 
+  /**
+   * `IFrameSwitchable`: moves every node of the graph (`position` and `rotation`, written into the
+   * node objects in place, so `loaded`, `attachToChunk` and `chunkLoaded$` keep working with the same
+   * nodes) and the loader cursor by `delta`. The loaded chunks' entities are children, which the
+   * world moves itself; a chunk still loading is moved once its entities arrive. Which chunks are
+   * loaded doesn't change: distances between the cursor and the nodes are the same as before.
+   *
+   * The graph's nodes are the `MapGraph` this entity was built from: after a switch they hold
+   * positions in the new frame. An app keeping its own copies of node positions maps them through
+   * `Gg3dWorld.frameSwitched$`.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    for (const graphNode of this.mapGraphNodes) {
+      const node = graphNode.data;
+      node.position = delta.toGlobalPoint(node.position);
+      node.rotation = delta.toGlobalRotation(node.rotation ?? Qtrn.O);
+    }
+    for (const node of this.loadingNodes) {
+      const preparing = this.preparingEntities.get(node);
+      if (preparing) {
+        preparing.forEach(entity => isFrameSwitchable(entity) && entity.onFrameSwitch(delta));
+      } else {
+        const earlier = this.loadingSwitches.get(node);
+        this.loadingSwitches.set(node, earlier ? delta.compose(earlier) : delta);
+      }
+    }
+    this.loaderCursor$.next(delta.toGlobalPoint(this.loaderCursor$.getValue()));
+  }
+
+  /** Moves entities that arrived for `node` by the switches made while they were loading. */
+  private catchUpWithSwitches(node: MapGraphNodeType, entities: IEntity[]): void {
+    const pending = this.loadingSwitches.get(node);
+    if (!pending) {
+      return;
+    }
+    this.loadingSwitches.delete(node);
+    for (const entity of entities) {
+      if (isFrameSwitchable(entity)) {
+        entity.onFrameSwitch(pending);
+      }
+    }
+  }
+
   onRemoved() {
     super.onRemoved();
     this.chunkLoads?.abort();
@@ -389,7 +442,11 @@ export class MapGraph3dEntity<
       ];
       // removed from the world while a load that ignored the signal was finishing
       throwIfAborted(signal);
+      // placed where the node was when the load started; prepareChunk sees them in the current frame
+      this.catchUpWithSwitches(node, entities);
+      this.preparingEntities.set(node, entities);
       extras = await this.prepareChunk(node, loaded, entities, signal);
+      this.preparingEntities.delete(node);
       // removed from the world while the chunk was being prepared
       throwIfAborted(signal);
       const chunkEntities: (IEntity & IPositionable3d)[] = [...entities, ...extras];
@@ -409,6 +466,8 @@ export class MapGraph3dEntity<
       throw e;
     } finally {
       this.loadingNodes.delete(node);
+      this.loadingSwitches.delete(node);
+      this.preparingEntities.delete(node);
     }
   }
 
@@ -418,7 +477,11 @@ export class MapGraph3dEntity<
    * that belongs to the chunk (props, signs, decals). Awaited while the node is still loading, so
    * the chunk can't be unloaded or loaded a second time in the meantime; a chunk that left the
    * load window while it was being prepared is added and then unloaded on the next tick, like any
-   * load that finished late. Override this rather than {@link loadChunk} - see its doc for the race
+   * load that finished late.
+   *
+   * A frame switch (`Gg3dWorld.switchFrame`) during the hook moves `node` and `entities` at once;
+   * entities the hook is building itself are its own to place - from `node.position` or the loaded
+   * entities after its last `await`, or by mapping them through `Gg3dWorld.frameSwitched$`. Override this rather than {@link loadChunk} - see its doc for the race
    * an override awaiting after `super.loadChunk` runs into.
    *
    * The returned entities are added as children together with the chunk's own, are part of

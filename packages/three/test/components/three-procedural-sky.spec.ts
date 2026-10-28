@@ -1,4 +1,5 @@
-import { Mesh, ShaderMaterial, Texture, WebGLRenderer } from 'three';
+import { Mesh, ShaderMaterial, Texture, Vector3, WebGLRenderer } from 'three';
+import { Frame3d } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from '../../src';
 
 const skyMesh = (scene: ThreeSceneComponent) => scene.nativeScene!.getObjectByName('gg-procedural-sky') as Mesh | undefined;
@@ -75,5 +76,29 @@ describe('procedural sky', () => {
     scene.setEnvironment({ environmentMap: null });
     expect((scene as any).environmentSky).toBeNull();
     expect(scene.nativeScene!.environment).toBeNull();
+  });
+
+  it('keeps a procedural sky globally in place across a frame switch', async () => {
+    const scene = new ThreeSceneComponent();
+    await scene.init();
+    scene.setEnvironment({ background: { type: 'PROCEDURAL' }, environmentMap: { type: 'PROCEDURAL' } });
+    const u = (skyMesh(scene)!.material as ShaderMaterial).uniforms;
+    const delta = new Frame3d({ x: 100, y: -20, z: 0 }, 1.1);
+    scene.onFrameSwitch(delta);
+    // the shader turns a view direction of the scene into the global one the sky's settings use
+    const global = new Vector3(0.3, -0.8, 0.52).normalize();
+    const d = delta.toGlobalDirection(global);
+    const local = new Vector3(d.x, d.y, d.z);
+    expect(local.clone().applyMatrix3(u.uFrameRotation.value).distanceTo(global)).toBeLessThan(1e-9);
+    const envU = (scene as any).environmentSky.material.uniforms;
+    expect(local.clone().applyMatrix3(envU.uFrameRotation.value).distanceTo(global)).toBeLessThan(1e-9);
+    // the baked cube is drawn in the scene's own space, so three.js must not turn it again
+    expect(scene.nativeScene!.backgroundRotation.z).toBe(0);
+    expect(scene.nativeScene!.environmentRotation.z).toBe(0);
+    // a sky set after the switch is turned the same way
+    scene.setEnvironment({ background: 0x112233 });
+    scene.setEnvironment({ background: { type: 'PROCEDURAL' } });
+    const fresh = (skyMesh(scene)!.material as ShaderMaterial).uniforms;
+    expect(local.clone().applyMatrix3(fresh.uFrameRotation.value).distanceTo(global)).toBeLessThan(1e-9);
   });
 });

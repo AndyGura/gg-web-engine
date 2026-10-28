@@ -1,10 +1,18 @@
-import { Gg3dWorld, GgWorld, LevelLoader, Point3, Point4 } from '@gg-web-engine/core';
+import { Gg3dWorld, GgWorld, LevelLoader, NetworkFrame, Point3, Point4 } from '@gg-web-engine/core';
 import { NetworkController, NetworkControllerOptions } from './network-controller';
 
 /**
  * `NetworkController` for a 3D world: positions are `Point3`, rotations quaternions, and the level
  * loader defaults to the world's own `loader` (a `Gg3dLevelLoader` - register the game's entity
  * classes on it).
+ *
+ * Everything on the wire is in global coordinates: two peers whose worlds have different
+ * `Gg3dWorld.frame`s (sections of one open world, each simulated near its own origin) share
+ * entities at the same global pose. The built-in entities convert their own network state through
+ * their world's frame; this controller converts what it sends itself - heartbeat positions (and so
+ * zoning cells) and the `position`/`rotation` of spawn descriptors. Received state stays global in
+ * its buffers and is converted only when applied, through the frame as it is at that moment. With
+ * the default identity frame, global is local.
  *
  * @example
  * ```ts
@@ -29,6 +37,11 @@ export class Network3dController extends NetworkController<Point3, Point4> {
 
   constructor(options: NetworkControllerOptions<Point3>) {
     super(options);
+  }
+
+  protected worldFrame(): NetworkFrame<Point3, Point4> | null {
+    const frame = (this.world as Gg3dWorld | null)?.frame;
+    return frame && !frame.isIdentity ? frame : null;
   }
 
   protected createDefaultLevelLoader(world: GgWorld<Point3, Point4>): LevelLoader<any, any, any> {

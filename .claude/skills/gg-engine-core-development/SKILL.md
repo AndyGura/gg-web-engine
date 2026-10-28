@@ -109,6 +109,66 @@ whatever the loader currently expects), bump `GG_META_FORMAT_VERSION` in
 `blender-addon/gg_web_engine_exporter/exporter.py` and update `blender-addon/README.md`'s
 object-convention table to match — the two sides aren't type-checked against each other.
 
+## World frame switch: `Gg3dWorld.switchFrame` and `IFrameSwitchable`
+
+`switchFrame(newFrame)` computes `delta = newFrame.inverse().compose(frame)` and moves the world's
+content by it, then sets `frame` and emits `frameSwitched$` (`FrameSwitch`: `delta`,
+`previousFrame`, `frame`). Called from inside a tick before the physics step (`GgWorld`'s protected
+`isBeforePhysicsStep`), it is parked in `pendingFrame` and applied from `onPhysicsStepped()` - the
+protected no-op hook `GgWorld.tick` calls right after the physics block (also in a world without
+physics), before the post-physics listeners and rendering. Otherwise it applies at once. A second
+switch before the pending one applies replaces it. A call made while a switch is being applied (an
+`onFrameSwitch` hook, a collision or trigger callback fired by the physics world's own hook, a
+`frameSwitched$` subscriber) is parked the same way and applied right after that switch completes,
+so `frame` and `frameSwitched$` always describe every move. `GgWorld`'s tick clears
+`isBeforePhysicsStep` in a `finally`: a throwing physics step would otherwise hold every later switch
+back.
+
+What gets moved, in order:
+- Every entity in `world.children` (the flat list, nested ones included), deepest first, through its
+  `onFrameSwitch(delta)` (`IFrameSwitchable`, `3d/interfaces/i-frame-switchable.ts`). Each hook moves
+  only what it owns; children get their own call. Positions go through `delta.toGlobalPoint`
+  (rotated about `+Z`, then translated), orientations through `toGlobalRotation` (yaw multiplied in
+  front), velocities, offsets and normals through `toGlobalDirection` (rotated only).
+- Then `physicsWorld.onFrameSwitch?.(delta)` - for world-level native state (contact manifolds, the
+  broad phase), after every body moved.
+- Then `visualScene.onFrameSwitch?.(delta)` (`IVisualScene3dComponent`): turns the directional
+  environment (a sky texture `background`, the `environmentMap`) by `delta.yaw`, so the sky keeps its
+  global orientation. `Environment3dEntity` only sets those fields and needs no hook of its own.
+
+Only entities in `world.children` at the time move: one removed and added back later (pooling)
+keeps its old local pose, for the app to map.
+
+Helpers in the same file: `switchBodyFrame(component, delta)` hands a physics component to its own
+optional `onFrameSwitch` (on `IRigidBody3dComponent`, `ITrigger3dComponent`,
+`ICharacterController3dComponent`) and otherwise falls back to the pose/velocity/`up` setters, which
+may wake a sleeping body; `switchPoseFrame(target, delta)` does the same for anything with
+`position`/`rotation` (display objects, cameras, lights, audio sources). Both go through
+`claimFrameSwitch(target, delta)`, a WeakMap of the last `delta` instance each object moved by: one
+switch hands every hook the same `Frame3d`, so an object reached from two entities (the camera of a
+`Camera3dEntity` and of a `Renderer3dEntity`) moves once. A hook moving shared state itself calls
+it too.
+
+State that is easy to miss when writing a hook: velocities cached for the next tick
+(`RaycastVehicle3dEntity`'s pre-step velocities, `Grabbable3dEntity`'s last commanded velocity,
+the character's fall/air/actual velocity and `externalDisplacement`), smoothing targets (camera
+controllers rotate `theta` by the yaw and move their target, reset their motion and re-emit the
+pending target), forces applied since the last step (the adapters' rigid-body hooks rotate them),
+functions returning world-space values (`SurfaceFollowingEntity.followFunc` is wrapped by the composed frame; assigning a new one
+resets it; the animators `Entity3dPositioningAnimator`/`Camera3dAnimator` are the exception: their
+function is re-evaluated every tick and typically reads live entity positions - a follow camera -
+so they have no hook and their function answers in the current frame; a path fixed in space is
+written in global coordinates and mapped through `world.toLocalPoint`), and asynchronous loads (`MapGraph3dEntity` composes the switches made while a chunk's
+GLB loads and applies them when it lands; entities still being prepared are moved at once).
+
+An entity with `position` and `rotation` but no hook is left in place, and - only when
+`window.ggstatic` exists, the existing dev-only signal - `console.warn` names its `entityTypeName`
+once per world. Engine code never imports `GgStatic` for it.
+
+Tests: `test/3d/gg-3d-world-switch-frame.spec.ts` (timing, every built-in hook, dedupe, the warning);
+the adapters run the shared physics suite `test/contract/frame-switch.contract.ts` (see
+`gg-engine-physics-adapter`).
+
 ## Networking contracts: core knows how to be corrected, not who corrects it
 
 Core carries only what `@gg-web-engine/multiplayer` drives; it never mentions peers, owners,
@@ -138,6 +198,12 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   both character entities (`externalDisplacement` folded into the next `move()` then cleared,
   `jumpCount` incremented only by a jump that happened, `actualVelocity` = last tick's real
   displacement / dt).
+- Network state is global: `NetworkFrame<D, R>` (`toGlobal*`/`toLocal*` for points, directions,
+  rotations; `Frame3d` implements it) is an optional argument of both helpers' `capture` and
+  `correct`, and their `toGlobal`/`toLocal` convert a state alone. The 3D built-ins pass their
+  world's frame (`3d/network-frame.ts`, internal). Capture output is quantised (`net-quantize.ts`,
+  exported: `quantizeNetPosition`/`Velocity`/`AngularVelocity`/`Rotation`), and `correct`
+  normalizes the target quaternion. See `gg-engine-multiplayer` for the full split.
 - `TickOrder.NETWORK_IN` (100): after input controllers, before the movers/vehicles at
   `PHYSICS_SIMULATION - 5`, so remote input and corrections land in the same tick they're applied.
 - `GgWorld.eventAuthority` (consulted by `BlueprintBindingEntity` before each run) and
@@ -1994,6 +2060,17 @@ story intact for adapters. Both `Pnt2` and `Pnt3` expose named axis constants �
 each namespace's own `O` origin) — use those instead of spelling out a unit-vector literal when the
 value represents a world axis or up-vector, not an arbitrary position.
 
+`Qtrn.mult(a, b)` is the Hamilton product: rotating by it applies `b` first, then `a`
+(`Pnt3.rot(v, Qtrn.mult(a, b))` equals `Pnt3.rot(Pnt3.rot(v, b), a)`), and `combineRotations(q1, q2,
+...)` multiplies left to right, so its last argument is applied first. Placing a pose given in a
+parent's frame into the world is therefore `Qtrn.mult(parentRotation, localRotation)`, with the
+position going through `Pnt3.add(Pnt3.rot(localPosition, parentRotation), parentPosition)` -
+`Gg3dLoader.loadGgGlb` does exactly this for every loaded object and prop dummy. The reverse order
+gives the same result only while the two rotations commute (both about one axis, or one of them
+identity), so a spec checking an ordering needs a tilted rotation under a rotation about another
+axis; compare by rotating the axes with `Pnt3.rot` one step at a time (see
+`test/3d/loader.spec.ts`'s "loadGgGlb placement") rather than with `Qtrn.mult` itself.
+
 `Pnt3.angle`/`Pnt2.angle` return `0` when either vector has zero length (a caller for which a
 zero-length vector means "no direction at all" checks the length itself - see
 `CharacterController3dEntity.isWalkableGround`). To orient something along a direction, use
@@ -2004,6 +2081,34 @@ comes from an `up` vector and flips when the direction passes near it.
 full statement; `Pnt3.Z` is "up" everywhere in this engine's 3D code (core, every adapter, every
 example), with no per-world way to change it. Any new 3D interface/entity/math helper you add
 should assume this rather than taking an axis convention as a parameter.
+
+## World frame: `Gg3dWorld.frame` and `Frame3d` (3D only)
+
+A large open world can be split into sections, each simulated in its own `Gg3dWorld` near the
+origin, where float precision is best. `Gg3dWorld.frame` (a `Frame3d`, `src/3d/models/frame-3d.ts`)
+says where that world's local origin sits globally: `global = rotZ(yaw) * local + position`.
+Everything inside the world - physics, rendering, every entity's `position`/`rotation` - is local;
+the frame only maps it. Defaults to `Frame3d.IDENTITY`, so a world that never sets it has
+local = global and nothing about it changes.
+
+- **Yaw only, by design.** Pitch/roll would tilt the local `+Z` away from the global one, i.e. tilt
+  gravity; a frame never does that.
+- `Frame3d` is an immutable, frozen value (`yaw` wrapped to (-PI, PI], `toJSON()` gives
+  `{ position, yaw }`). Conversions: `toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+  `toLocalDirection` (rotation only: velocities, angular velocity vectors, offsets, normals) and
+  `toGlobalRotation`/`toLocalRotation` (quaternions: `yawQuat * q` and its inverse). The world has
+  the same six methods, delegating to its current frame.
+- Frames compose like functions: `a.compose(b)` = `a ∘ b` (apply `b` first). The transform moving
+  content from one frame's local space into another's, keeping its global pose, is
+  `newFrame.inverse().compose(oldFrame)`. `equals(other, posEps, yawEps)` compares yaw on the circle.
+- Setting `world.frame` (accepts any `Frame3dLike`) only changes the mapping - no entity moves - and
+  emits on `frame$` only when the value actually differs. It is meant for world creation (or the
+  `frame` constructor option).
+- 2D worlds have no frame.
+- `Frame3d` implements `NetworkFrame<Point3, Point4>`; the network helpers and the 3D built-in
+  entities convert their state through it (see "Networking contracts" above).
+- Anything that must compare across sections (a network layer's wire format, saved global
+  positions) goes through these helpers; never apply a frame to state the physics adapter reads.
 
 ## Build & test
 

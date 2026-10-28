@@ -2,6 +2,7 @@ import {
   BitMask,
   CollisionEvent,
   CollisionGroup,
+  Frame3d,
   IPhysicsWorld3dComponent,
   Pnt3,
   Point3,
@@ -314,6 +315,70 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   }
 
   /**
+   * Frame switch (`Gg3dWorld.switchFrame`), called after every body's own `onFrameSwitch`: brings
+   * the broad phase up to the moved colliders, so a raycast, a character sweep or a vehicle's wheel
+   * cast right after the switch finds them where they are.
+   *
+   * Rapier refreshes its broad phase (the BVH every query walks) only inside `World.step()`, and
+   * skips a step of length 0 altogether: `propagateModifiedBodyPositionsToColliders` moves the
+   * colliders but leaves their BVH leaves where they were, and a query at the new place finds
+   * nothing. So the switch runs one {@link FRAME_SWITCH_STEP}-long step: every `kinematic_pos` body
+   * targets its current pose for it (its pending target restored afterwards), and every body that
+   * slept before it is put back to sleep after it - Rapier wakes any body whose pose was written,
+   * whatever `wakeUp` said. Its collision events are delivered as usual; a switch moves everything
+   * together, so there are none. Vehicles are not updated for it.
+   *
+   * It is a full step, only short: gravity, applied forces and the contact solver run for 1 µs too.
+   * Gravity and forces move a body by a negligible amount in that time, but the solver's
+   * penetration correction does not scale with the step's length and can still nudge resting
+   * contacts apart by a fraction of their penetration: a sub-millimetre settle per switch. Rapier
+   * has no narrower call that refreshes the broad phase alone.
+   */
+  onFrameSwitch(_delta: Frame3d): void {
+    const world = this._nativeWorld;
+    if (!world) {
+      return;
+    }
+    const kinematic: { body: RigidBody; to: Point3; toRot: Point4 }[] = [];
+    for (const component of this.kinematicPosBodies) {
+      const body = component.nativeBody;
+      if (body) {
+        kinematic.push({ body, to: Pnt3.clone(body.nextTranslation()), toRot: Qtrn.clone(body.nextRotation()) });
+        body.setNextKinematicTranslation(body.translation());
+        body.setNextKinematicRotation(body.rotation());
+      }
+    }
+    const sleeping: RigidBody[] = [];
+    world.forEachRigidBody(body => {
+      if (body.isSleeping()) {
+        sleeping.push(body);
+      }
+    });
+    const timestep = world.timestep;
+    world.timestep = Rapier3dWorldComponent.FRAME_SWITCH_STEP;
+    try {
+      world.step(this.eventQueue);
+    } finally {
+      world.timestep = timestep;
+    }
+    const pendingEvents: (() => void)[] = [];
+    this.collectCollisionEvents(pendingEvents);
+    for (const body of sleeping) {
+      body.sleep();
+    }
+    for (const move of kinematic) {
+      move.body.setNextKinematicTranslation(move.to);
+      move.body.setNextKinematicRotation(move.toRot);
+    }
+    for (const notify of pendingEvents) {
+      notify();
+    }
+  }
+
+  /** Length (seconds) of the step a frame switch runs to refresh the broad phase - see `onFrameSwitch`. */
+  public static readonly FRAME_SWITCH_STEP = 1e-6;
+
+  /**
    * Drains `eventQueue` and routes each entry to whichever component(s) care, as a notification
    * pushed to `out` - `simulate()` calls it after every step (the queue is created with
    * `autoDrain`, so Rapier clears it before the next step) and runs the notifications once all
@@ -326,8 +391,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    *
    * `EventQueue.drainCollisionEvents` reports *collider* handles, not rigid-body handles -
    * `handleIdEntityMap` is keyed by rigid-body handle (see `addToWorld`), so each handle is resolved
-   * via `World.getCollider(handle)` (returns `null` for a since-removed collider, not a throw - safe
-   * to just skip) then `Collider.parent()` to reach the owning `RigidBody` before the map lookup.
+   * via `World.getCollider(handle)` then `Collider.parent()` to reach the owning `RigidBody` before
+   * the map lookup. A removed collider's stop arrives at the next step under its old handle, and
+   * `getCollider` looks a handle up by its arena index alone, ignoring the generation: once a new
+   * collider has taken the freed slot, the old handle resolves to *that* collider (of whichever
+   * body created it - possibly the same body re-added). Such an event is skipped unless the
+   * resolved collider's own `handle` equals the reported one; an unoccupied slot gives `null`.
    *
    * `handleIdEntityMap` also holds `Rapier3dCharacterControllerComponent`s (see its own doc), so
    * `comp1`/`comp2` below can each be a character controller as well as a rigid body/trigger - the
@@ -343,7 +412,8 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     this.eventQueue.drainCollisionEvents((h1, h2, started) => {
       const collider1 = nativeWorld.getCollider(h1);
       const collider2 = nativeWorld.getCollider(h2);
-      if (!collider1 || !collider2) {
+      // a stale handle of a removed collider resolves to whichever collider took its slot since
+      if (!collider1 || !collider2 || collider1.handle !== h1 || collider2.handle !== h2) {
         return;
       }
       const body1 = collider1.parent();
@@ -358,7 +428,15 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       }
 
       if (collider1.isSensor() || collider2.isSensor()) {
+        const handle1 = body1.handle;
+        const handle2 = body2.handle;
         out.push(() => {
+          // an earlier notification's subscriber may have removed either side (a pickup removing the
+          // body it caught) or removed and re-added it under a new native body - this event is then
+          // about a body no longer in the world, and its stop has already been accounted for
+          if (comp1.nativeBody?.handle !== handle1 || comp2.nativeBody?.handle !== handle2) {
+            return;
+          }
           if (comp1 instanceof Rapier3dTriggerComponent) {
             comp1.notifyOverlap(comp2, started);
           }

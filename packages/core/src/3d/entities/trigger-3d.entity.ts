@@ -4,10 +4,12 @@ import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { map } from 'rxjs/operators';
 import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
+import { IFrameSwitchable, switchBodyFrame } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 export class Trigger3dEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
   extends IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PTypeDoc>>
-  implements IPositionable3d
+  implements IPositionable3d, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'Trigger3dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -61,6 +63,16 @@ export class Trigger3dEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsType
   set rotation(value: Point4) {
     this.objectBody.rotation = value;
     this._rotation = value;
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the trigger by `delta` (see `ITrigger3dComponent.onFrameSwitch`). What
+   * is inside moves along, so the switch reports no leave or enter.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    switchBodyFrame(this.objectBody, delta);
+    this._position = delta.toGlobalPoint(this._position);
+    this._rotation = delta.toGlobalRotation(this._rotation);
   }
 
   constructor(public readonly objectBody: ITrigger3dComponent) {

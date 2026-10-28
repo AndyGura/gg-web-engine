@@ -13,6 +13,16 @@ export type Camera3dAnimationArgs = {
 const defaultUp = Pnt3.Z;
 const defaultFov = 65;
 
+/**
+ * Drives a renderer's camera from an animation function returning its position, look-at target, up
+ * vector and field of view.
+ *
+ * The animation function answers in the world's current local coordinates, and is called again on
+ * every tick: one that reads live entity positions (a camera following a car) keeps following them
+ * through a frame switch (`Gg3dWorld.switchFrame`). A path fixed in space is best written in global
+ * coordinates and mapped each tick with `world.toLocalPoint`/`world.toLocalRotation`, so it stays in
+ * place when the world's frame changes.
+ */
 export class Camera3dAnimator<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> extends AnimationMixer<
   Camera3dAnimationArgs,
   Point3,

@@ -37,6 +37,26 @@ describe('Rapier3dFactory', () => {
       body.addToWorld({ physicsWorld: world } as any);
       world.simulate(16);
     });
+
+    it("turns a nested COMPOUND child's offset with its parent's rotation", () => {
+      const yaw90 = { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 };
+      const [collider] = factory.createColliderDescr({
+        shape: 'COMPOUND',
+        children: [
+          {
+            position: { x: 0, y: 0, z: 1 },
+            rotation: yaw90,
+            shape: {
+              shape: 'COMPOUND',
+              children: [{ position: { x: 2, y: 0, z: 0 }, shape: { shape: 'SPHERE', radius: 0.5 } }],
+            },
+          },
+        ],
+      });
+      expect(collider.translation.x).toBeCloseTo(0);
+      expect(collider.translation.y).toBeCloseTo(2);
+      expect(collider.translation.z).toBeCloseTo(1);
+    });
   });
 
   describe('createCharacterController', () => {

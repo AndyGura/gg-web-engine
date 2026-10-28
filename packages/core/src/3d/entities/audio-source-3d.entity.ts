@@ -2,6 +2,8 @@ import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { AudioSource3dDescriptor } from '../components/audio/i-audio-source-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
+import { IFrameSwitchable, switchPoseFrame } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * Wraps one `IAudioSource3dComponent` as a world entity - the audio analogue of `Entity3d`. Three
@@ -17,7 +19,7 @@ import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
  */
 export class AudioSource3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IEntity<Point3, Point4, TypeDoc>
-  implements IPositionable3d
+  implements IPositionable3d, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'AudioSource3dEntity';
   // A touch above OBJECTS_BINDING (400), not equal to it: an attached source must read its
@@ -64,6 +66,13 @@ export class AudioSource3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorl
       this._position = this.source.position;
       this._rotation = this.source.rotation;
     }
+  }
+
+  /** `IFrameSwitchable`: moves the source by `delta`. A static source stays where it was globally; an attached one also follows its target again on its next tick. */
+  public onFrameSwitch(delta: Frame3d): void {
+    switchPoseFrame(this.source, delta);
+    this._position = delta.toGlobalPoint(this._position);
+    this._rotation = delta.toGlobalRotation(this._rotation);
   }
 
   public play(): void {

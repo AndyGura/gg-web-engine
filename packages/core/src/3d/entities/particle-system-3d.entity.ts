@@ -13,6 +13,8 @@ import {
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { Gg3dWorldTypeDocVPatch, VisualTypeDocRepo3D } from '../gg-3d-world';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { IFrameSwitchable } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * Settings of a `ParticleSystem3dEntity`: the simulation (see `ParticleSimulationOptions` - every
@@ -58,7 +60,7 @@ export type ParticleSystem3dOptions<T = any> = ParticleSimulationOptions<Point3,
  */
 export class ParticleSystem3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D, T = any>
   extends IRenderable3dEntity<Gg3dWorldTypeDocVPatch<VTypeDoc>>
-  implements IPositionable3d
+  implements IPositionable3d, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'ParticleSystem3dEntity';
   // after every controller, animator and physics sync of the frame, so an attached emitter reads its
@@ -174,6 +176,31 @@ export class ParticleSystem3dEntity<VTypeDoc extends VisualTypeDocRepo3D = Visua
   /** Calls `callback` for every live particle, oldest first. */
   public forEachParticle(callback: (particle: Particle<Point3, T>) => void): void {
     this.simulation.forEachParticle(callback);
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the emitter by `delta` (an attached one follows its target, which the
+   * world moves itself) and, in world space, every live particle: position (also the one before the
+   * last step, which interpolation draws from) rotated and translated, velocity and own
+   * acceleration rotated. A local-space system's particles move with the emitter. The options'
+   * `gravity` is not touched: it is meant along `+Z`, which a frame switch never turns.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    this._position = delta.toGlobalPoint(this._position);
+    this._rotation = delta.toGlobalRotation(this._rotation);
+    if (!this.isLocalSpace) {
+      this.simulation.forEachParticle(p => {
+        p.position = delta.toGlobalPoint(p.position);
+        const prev = delta.toGlobalPoint(p.prevPosition);
+        p.prevPosition.x = prev.x;
+        p.prevPosition.y = prev.y;
+        p.prevPosition.z = prev.z;
+        p.velocity = delta.toGlobalDirection(p.velocity);
+        p.acceleration = delta.toGlobalDirection(p.acceleration);
+      });
+    }
+    this.applyLocalSpaceTransform();
+    this.particleSystem.setParticles(this.simulation.writeRenderBuffers());
   }
 
   /** Kills every particle. */

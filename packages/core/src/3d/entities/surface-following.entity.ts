@@ -2,6 +2,8 @@ import { takeUntil } from 'rxjs';
 import { BodyOptions, CollisionGroup, IEntity, Pnt2, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld, Gg3dWorldTypeDocPPatch, PhysicsTypeDocRepo3D } from '../gg-3d-world';
 import { Shape3DDescriptor } from '../models/shapes';
+import { Frame3d } from '../models/frame-3d';
+import { IFrameSwitchable, switchBodyFrame } from '../interfaces/i-frame-switchable';
 
 /**
  * Represents a function that calculates the surface position and normal
@@ -24,11 +26,10 @@ export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point
  *
  * @template PTypeDoc - The physics type document repository.
  */
-export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> extends IEntity<
-  Point3,
-  Point4,
-  Gg3dWorldTypeDocPPatch<PTypeDoc>
-> {
+export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PTypeDoc>>
+  implements IFrameSwitchable
+{
   static readonly entityTypeName: string = 'SurfaceFollowingEntity';
   /**
    * Determines the execution order for physics simulation.
@@ -40,15 +41,60 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
    */
   readonly debugBodySettings: SurfaceFollowingEntityDebugSettings = new SurfaceFollowingEntityDebugSettings();
 
+  private _followFunc: SurfaceFollowFunc;
+  /** Maps the coordinates `_followFunc` works in to the world's current local ones (frame switches). */
+  private followFuncFrame: Frame3d = Frame3d.IDENTITY;
+  private followFuncInFrame: SurfaceFollowFunc;
+
+  /**
+   * Function that determines surface position and normal, in the world's current local coordinates.
+   * After a frame switch (`Gg3dWorld.switchFrame`) it reads back as the function given, wrapped to
+   * take and return coordinates of the new frame; assigning a function means it works in the
+   * current frame's coordinates.
+   */
+  public get followFunc(): SurfaceFollowFunc {
+    return this.followFuncInFrame;
+  }
+
+  public set followFunc(value: SurfaceFollowFunc) {
+    this._followFunc = value;
+    this.followFuncFrame = Frame3d.IDENTITY;
+    this.followFuncInFrame = value;
+  }
+
+  /**
+   * `IFrameSwitchable`: makes `followFunc` answer in the new frame (the surface stays where it is
+   * globally) and moves every collider's plane by `delta`. The colliders are other entities' bodies,
+   * which the world moves itself.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    const frame = delta.compose(this.followFuncFrame);
+    const inverse = frame.inverse();
+    const raw = this._followFunc;
+    this.followFuncFrame = frame;
+    this.followFuncInFrame = p => {
+      const result = raw(inverse.toGlobalPoint(p));
+      return { position: frame.toGlobalPoint(result.position), normal: frame.toGlobalDirection(result.normal) };
+    };
+    for (const item of this.colliders.values()) {
+      if (item) {
+        switchBodyFrame(item[1], delta);
+        // the debug mesh is rebuilt from the surface function
+        item[2] = {};
+      }
+    }
+  }
+
   constructor(
-    /** Function that determines surface position and normal. */
-    public followFunc: SurfaceFollowFunc,
+    followFunc: SurfaceFollowFunc,
     /** Optional body configuration. */
     protected bodyOptions: Partial<
       Omit<BodyOptions, 'bodyType' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
     > = {},
   ) {
     super();
+    this._followFunc = followFunc;
+    this.followFuncInFrame = followFunc;
   }
 
   /**

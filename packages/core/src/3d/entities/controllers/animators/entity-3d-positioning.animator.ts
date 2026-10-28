@@ -8,6 +8,15 @@ type Positioning3d = {
   rotation: Point4;
 };
 
+/**
+ * Drives an entity's position and rotation from an animation function.
+ *
+ * The animation function answers in the world's current local coordinates, and is called again on
+ * every tick: one that reads live entity positions (a camera following a car) keeps following them
+ * through a frame switch (`Gg3dWorld.switchFrame`). A path fixed in space is best written in global
+ * coordinates and mapped each tick with `world.toLocalPoint`/`world.toLocalRotation`, so it stays in
+ * place when the world's frame changes.
+ */
 export class Entity3dPositioningAnimator<T extends IPositionable3d = IPositionable3d> extends AnimationMixer<
   Positioning3d,
   Point3,

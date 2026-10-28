@@ -11,14 +11,18 @@ import {
   Point3,
   Point4,
   Qtrn,
+  quantizeNetRotation,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
   TickOrder,
 } from '../../base';
 import { isMaterialReadable3d } from '../components/rendering/i-material-readable-3d.component';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { networkFrameOf } from '../network-frame';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { CharacterController3dOptions } from '../models/character-controller-options';
+import { IFrameSwitchable, switchBodyFrame } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * Options for a `CharacterController3dEntity`: the capsule shape/mover tuning from
@@ -167,7 +171,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     IPositionable3d,
     INetworkSyncable<MoverNetState<Point3, Point4>>,
     INetworkInputDriven<CharacterInput3d>,
-    ISerializableEntity
+    ISerializableEntity,
+    IFrameSwitchable
 {
   static readonly entityTypeName: string = 'CharacterController3dEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -404,6 +409,26 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       this.object3D.visible = this.worldVisible;
     }
     super.updateVisibility();
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the capsule by `delta` (pose, `up` and ground normal - see
+   * `ICharacterController3dComponent.onFrameSwitch`) and the mesh with it, and rotates the
+   * momentum (`fallVelocity`, `airHorizontalVelocity`), `actualVelocity` and a pending
+   * `externalDisplacement`. Grounded, crouching, jump and input state carry on.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    switchBodyFrame(this.characterController, delta);
+    this._position = this.characterController.position;
+    this._rotation = this.characterController.rotation;
+    if (this.object3D) {
+      this.object3D.position = this._position;
+      this.object3D.rotation = this._rotation;
+    }
+    this._fallVelocity = delta.toGlobalDirection(this._fallVelocity);
+    this._airHorizontalVelocity = delta.toGlobalDirection(this._airHorizontalVelocity);
+    this._actualVelocity = delta.toGlobalDirection(this._actualVelocity);
+    this.externalDisplacement = delta.toGlobalDirection(this.externalDisplacement);
   }
 
   constructor(
@@ -783,21 +808,32 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     }
   }
 
-  /** `INetworkSyncable`: owner-side snapshot - see `MoverCorrection`. */
+  /**
+   * `INetworkSyncable`: owner-side snapshot - see `MoverCorrection`. In global coordinates:
+   * converted through the world's `frame`.
+   */
   public captureNetworkState(): MoverNetState<Point3, Point4> {
-    return MoverCorrection.capture(this);
+    return MoverCorrection.capture(this, networkFrameOf(this.world));
   }
 
-  /** `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`. */
+  /**
+   * `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see
+   * `MoverCorrection`. `target` is global, converted through the world's `frame` as it is now.
+   */
   public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome {
-    return MoverCorrection.correct(this, target, ctx);
+    return MoverCorrection.correct(this, target, ctx, undefined, networkFrameOf(this.world));
   }
 
-  /** `INetworkInputDriven`: what the local input driver set on this character. */
+  /**
+   * `INetworkInputDriven`: what the local input driver set on this character. `rotation` is global
+   * (converted through the world's `frame`); `moveDirection` is relative to the character, so it
+   * needs no conversion.
+   */
   public captureLocalInput(): CharacterInput3d {
+    const frame = networkFrameOf(this.world);
     return {
       moveDirection: { x: this.moveDirection.x, y: this.moveDirection.y, z: this.moveDirection.z },
-      rotation: { x: this._rotation.x, y: this._rotation.y, z: this._rotation.z, w: this._rotation.w },
+      rotation: quantizeNetRotation(frame ? frame.toGlobalRotation(this._rotation) : this._rotation),
       isRunning: this.isRunning,
       isCrouching: this._isCrouching,
       jumpSeq: this._jumpCount,
@@ -807,7 +843,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
   /**
    * `INetworkInputDriven`: drive this replica with the possessor's input; `null` is neutral (no
    * movement, not running). A jump fires once per observed `jumpSeq` increment; the first sample
-   * only records the baseline, so a replica created mid-session never replays old jumps.
+   * only records the baseline, so a replica created mid-session never replays old jumps. The global
+   * `rotation` is converted through the world's `frame` as it is now.
    */
   public applyRemoteInput(input: CharacterInput3d | null): void {
     if (input === null) {
@@ -821,7 +858,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     if (input.isCrouching !== this._isCrouching) {
       this.isCrouching = input.isCrouching;
     }
-    this.rotation = input.rotation;
+    const frame = networkFrameOf(this.world);
+    this.rotation = Qtrn.normalize(frame ? frame.toLocalRotation(input.rotation) : input.rotation);
     if (this._remoteJumpSeq !== null && input.jumpSeq > this._remoteJumpSeq) {
       this.jump();
     }

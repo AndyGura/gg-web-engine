@@ -18,6 +18,8 @@ import {
 import { BehaviorSubject, filter, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
+import { IFrameSwitchable } from '../../../interfaces/i-frame-switchable';
+import { Frame3d } from '../../../models/frame-3d';
 
 export type OrbitCameraControllerOptions = {
   /**
@@ -74,7 +76,7 @@ const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
  * world.addEntity(orbit);
  * ```
  */
-export class OrbitCameraController extends IEntity {
+export class OrbitCameraController extends IEntity implements IFrameSwitchable {
   static readonly entityTypeName: string = 'OrbitCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
@@ -109,6 +111,27 @@ export class OrbitCameraController extends IEntity {
 
   protected resetMotion$: Subject<void> = new Subject<void>();
 
+  /** The look target mouse/gamepad input drives the elastic rotation towards; `null` without elasticity. */
+  protected sphericalTarget$: BehaviorSubject<Spherical> | null = null;
+
+  /**
+   * `IFrameSwitchable`: turns the look direction (and the elastic rotation still under way) by
+   * `delta`'s yaw and moves the orbit `target` by it. The camera itself is the renderer entity's, which the world moves.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    const target$ = this.sphericalTarget$;
+    // read first: the target may be the very object `_spherical` is
+    const pending = target$ ? { ...target$.getValue() } : null;
+    this._spherical.theta += delta.yaw;
+    this.target = delta.toGlobalPoint(this.target);
+    if (target$ && pending) {
+      // restarts the elastic motion from the turned look direction...
+      this.resetMotion$.next();
+      // ...towards the turned target
+      target$.next({ ...pending, theta: pending.theta + delta.yaw });
+    }
+  }
+
   constructor(
     protected readonly camera: Renderer3dEntity,
     options: Partial<OrbitCameraControllerOptions> = {},
@@ -135,6 +158,7 @@ export class OrbitCameraController extends IEntity {
       );
       if (this.options.orbitingElasticity > 0) {
         const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this._spherical);
+        this.sphericalTarget$ = s$;
         mouseDelta$.subscribe(delta => {
           const s = s$.getValue();
           s$.next({

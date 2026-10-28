@@ -437,6 +437,32 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   frame - as if at the origin, unrotated, at scale 1 - so a car model's footprint along its own
   forward axis, whatever way it faces. Nested children hidden with `visible = false` are left out;
   multiply by `scale` for the size as drawn.
+- **World frame (3D) for open worlds made of sections**: `Gg3dWorld.frame` (a `Frame3d`: `position`
+  plus `yaw` about +Z, no pitch/roll) says where the world's local origin sits in a larger global
+  space, so each section can be simulated near its own origin. Identity by default; set it with the
+  `frame` constructor option or `world.frame = { position, yaw }` before placing content - setting it
+  moves nothing, it only changes the mapping (`frame$` emits changes). Convert with
+  `world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/`toLocalDirection` (vectors: velocities,
+  offsets) and `toGlobalRotation`/`toLocalRotation` (quaternions). `Frame3d` composes
+  (`a.compose(b)` applies `b` first) and inverts; `newFrame.inverse().compose(oldFrame)` maps content
+  from one frame's local space into another's. 2D worlds have no frame.
+- **Switching a running world to another frame**: `world.switchFrame(newFrame)` moves everything the
+  world holds by `newFrame.inverse().compose(oldFrame)`, so nothing changes globally - the player
+  crossing into the next section keeps driving, nothing pops. Bodies keep their velocities, sleep
+  state and contacts, cars their wheels and suspension, cameras and their controllers their
+  smoothing, triggers their overlaps. Called from inside a tick (a tick listener, an entity's
+  `tick$`), it waits until after that tick's physics step and applies before rendering
+  (`world.pendingFrame` shows it meanwhile). `world.frameSwitched$` emits `{ delta, previousFrame,
+  frame }` afterwards: anything of the app's own holding world-space coordinates outside entities (a
+  cached target point, a path) moves through `delta.toGlobalPoint`/`toGlobalDirection`/
+  `toGlobalRotation`. Only entities in the world at the time move: one removed and re-added later (a
+pool) is mapped by the app. Animator functions (`Camera3dAnimator`, `Entity3dPositioningAnimator`)
+answer in the current frame each tick, so a follow camera reading the car's position just keeps
+following; a path fixed in space is written in global coordinates and mapped with
+`world.toLocalPoint`/`toLocalRotation`. An app entity class holding such state implements `IFrameSwitchable`
+  (`onFrameSwitch(delta)`; `Entity3d` subclasses call `super.onFrameSwitch(delta)` first); with the
+  dev console loaded, a switch warns once per positioned entity class without the hook. Keep the
+  content near the new origin: a far frame (km away) costs single-precision physics its accuracy.
 - **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
   not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
   it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.
@@ -1014,7 +1040,14 @@ Rules of thumb:
   before declaring ready - links open seconds after `connect()`. On `lobby.closed$` `'lost'` (the
   connection to the backend dropped) the player is out of the room.
 - Custom entity classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a
-  player drives them) - see `gg-engine-multiplayer`.
+  player drives them) - see `gg-engine-multiplayer`. Their payloads must be in **global
+  coordinates**: convert local → global when capturing and global → local when applying, through
+  the world's frame helpers (`world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+  `toLocalDirection` for velocities, `toGlobalRotation`/`toLocalRotation`), reading the frame when
+  you apply - or pass `world.frame` to `RigidBodyCorrection`/`MoverCorrection`'s `capture`/`correct`.
+  Quantise what you send (`quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`).
+  With the default identity frame (and in 2D) local is global, so this costs nothing until a frame
+  is set.
 - In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
 
 ## Framework integration

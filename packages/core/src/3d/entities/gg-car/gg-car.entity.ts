@@ -1,6 +1,7 @@
 import { RaycastVehicle3dEntity, RVEntityProperties, WheelDisplayOptions } from '../raycast-vehicle-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../gg-3d-world';
 import { IRenderable3dEntity } from '../i-renderable-3d.entity';
+import { networkFrameOf } from '../../network-frame';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import {
   AxisDirection3,
@@ -20,6 +21,8 @@ import {
 import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
 import { DisplayObject3dOpts } from '../../factories';
 import { isMaterialReadable3d } from '../../components/rendering/i-material-readable-3d.component';
+import { IFrameSwitchable } from '../../interfaces/i-frame-switchable';
+import { Frame3d } from '../../models/frame-3d';
 
 export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
@@ -210,7 +213,12 @@ export class GgCarEntity<
   RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
 >
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d, ISerializableEntity, INetworkSyncable<GgCarNetState>, INetworkInputDriven<GgCarInput>
+  implements
+    IPositionable3d,
+    ISerializableEntity,
+    INetworkSyncable<GgCarNetState>,
+    INetworkInputDriven<GgCarInput>,
+    IFrameSwitchable
 {
   static readonly entityTypeName: string = 'GgCarEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -218,6 +226,13 @@ export class GgCarEntity<
   get position(): Point3 {
     return this.raycastVehicle.position;
   }
+
+  /**
+   * `IFrameSwitchable`: nothing of its own to move - the pose and velocities live in
+   * `raycastVehicle`, a child entity the world switches itself. Engine rpm, gear, shifting and the
+   * driver's inputs carry on unchanged.
+   */
+  public onFrameSwitch(_delta: Frame3d): void {}
 
   set position(value: Point3) {
     this.raycastVehicle.position = value;
@@ -799,10 +814,13 @@ export class GgCarEntity<
     return !!this.raycastVehicle.objectBody;
   }
 
-  /** `INetworkSyncable`: chassis snapshot plus driving state - see `GgCarNetState`. */
+  /**
+   * `INetworkSyncable`: chassis snapshot plus driving state - see `GgCarNetState`. The chassis pose
+   * and velocities are global: converted through the world's `frame`.
+   */
   public captureNetworkState(): GgCarNetState {
     return {
-      ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent),
+      ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent, networkFrameOf(this.world)),
       gear: this.gear,
       shiftMs: this._shiftRemainingMs,
       steering: this.steeringFactor,
@@ -818,10 +836,17 @@ export class GgCarEntity<
    * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
    * spring from the old pose. The gear change in progress is adopted as the owner has it
    * (`shiftMs`), not restarted by the replica's own `gear` setter, so the replica's engine
-   * reconnects when the owner's does.
+   * reconnects when the owner's does. The chassis part of `target` is global, converted through the
+   * world's `frame` as it is now.
    */
   public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome {
-    const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
+    const outcome = RigidBodyCorrection.correct(
+      this.raycastVehicle.vehicleComponent,
+      target,
+      ctx,
+      undefined,
+      networkFrameOf(this.world),
+    );
     if (outcome === 'snap') {
       this.raycastVehicle.vehicleComponent.resetSuspension();
     }

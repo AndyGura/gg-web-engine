@@ -9,6 +9,8 @@ import {
   Point3,
   Point4,
   Qtrn,
+  quantizeNetPosition,
+  quantizeNetRotation,
   RigidBodyCorrection,
   RigidBodyNetState,
   TickOrder,
@@ -17,11 +19,14 @@ import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.com
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { networkFrameOf } from '../network-frame';
 import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
+import { Frame3d } from '../models/frame-3d';
+import { IFrameSwitchable, switchBodyFrame, switchPoseFrame } from '../interfaces/i-frame-switchable';
 
 export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d, INetworkSyncable<RigidBodyNetState<Point3, Point4>>
+  implements IPositionable3d, INetworkSyncable<RigidBodyNetState<Point3, Point4>>, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'Entity3d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -159,6 +164,25 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
   }
 
   /**
+   * `IFrameSwitchable`: moves the body by `delta` (pose and velocities, through the component's own
+   * `onFrameSwitch` when the physics adapter has one - see `IRigidBody3dComponent.onFrameSwitch`)
+   * and binds the display object to it; without a body, moves the display object.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    if (this.objectBody) {
+      switchBodyFrame(this.objectBody, delta);
+      this.runTransformBinding(this.objectBody, this.object3D);
+    } else if (this.object3D) {
+      switchPoseFrame(this.object3D, delta);
+      this._position = this.object3D.position;
+      this._rotation = this.object3D.rotation;
+    } else {
+      this._position = delta.toGlobalPoint(this._position);
+      this._rotation = delta.toGlobalRotation(this._rotation);
+    }
+  }
+
+  /**
    * `INetworkSyncable`: only an entity with a non-static rigid body takes part in networking - a
    * purely visual entity, or a static body that never moves, has nothing to synchronize.
    */
@@ -166,16 +190,27 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
     return !!this.objectBody && this.objectBody.bodyOptions.bodyType !== 'static';
   }
 
-  /** `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. */
+  /**
+   * `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. In global
+   * coordinates: converted through the world's `frame`.
+   */
   public captureNetworkState(): RigidBodyNetState<Point3, Point4> {
+    const frame = networkFrameOf(this.world);
     if (!this.objectBody) {
-      return { p: this.position, r: this.rotation, lv: Pnt3.O, av: Pnt3.O, s: true };
+      const p = frame ? frame.toGlobalPoint(this.position) : this.position;
+      const r = frame ? frame.toGlobalRotation(this.rotation) : this.rotation;
+      return { p: quantizeNetPosition(p), r: quantizeNetRotation(r), lv: Pnt3.O, av: Pnt3.O, s: true };
     }
-    return RigidBodyCorrection.capture(this.objectBody);
+    return RigidBodyCorrection.capture(this.objectBody, frame);
   }
 
-  /** `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body. */
+  /**
+   * `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. `target` is
+   * global, converted through the world's `frame` as it is now. No-op without a body.
+   */
   public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome {
-    return this.objectBody ? RigidBodyCorrection.correct(this.objectBody, target, ctx) : 'none';
+    return this.objectBody
+      ? RigidBodyCorrection.correct(this.objectBody, target, ctx, undefined, networkFrameOf(this.world))
+      : 'none';
   }
 }

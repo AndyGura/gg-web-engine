@@ -7,6 +7,7 @@ import {
   CollisionEvent,
   DebugBody3DSettings,
   Entity3d,
+  Frame3d,
   IRigidBody3dComponent,
   Point3,
   Point4,
@@ -63,6 +64,52 @@ export class AmmoRigidBodyComponent
     } else {
       super.applyWorldTransform(transform);
     }
+  }
+
+  /**
+   * `IRigidBody3dComponent.onFrameSwitch`: moves the body by `delta` - pose, velocities, and every
+   * other copy of the pose Bullet keeps (see `applyWorldTransform`), without `activate()`, so a
+   * sleeping body stays asleep:
+   * - velocities first, then `setCenterOfMassTransform`: it copies them into the interpolation
+   *   velocities, and sets the interpolation transform, which Bullet sweeps from (CCD, the dynamic
+   *   bodies' AABB while continuous collision is on) - left behind, the next step sees the body
+   *   streak from the old pose to the new one;
+   * - a kinematic body's interpolation transform is set from its current world transform instead,
+   *   which is already the new one here, so `saveKinematicState` derives no velocity from the switch;
+   * - the motion state, which kinematic bodies are pulled from and wheels are placed from;
+   * - the broadphase AABB (`updateSingleAabb`), which Bullet only refreshes for active, non-static
+   *   objects in the next step: a static body or a sleeping one would otherwise stay findable only
+   *   where it was.
+   * Contact manifolds are kept (`AmmoWorldComponent.onFrameSwitch` moves their world-space points).
+   * A force or torque applied since the last step (`applyForce`/`applyTorque`) is rotated too; one
+   * applied at a point is already split into a force and a torque about the centre of mass.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    if (this.bodyType === 'dynamic') {
+      const f = this.nativeBody.getTotalForce();
+      const t = this.nativeBody.getTotalTorque();
+      const force = delta.toGlobalDirection({ x: f.x(), y: f.y(), z: f.z() });
+      const torque = delta.toGlobalDirection({ x: t.x(), y: t.y(), z: t.z() });
+      if (force.x || force.y || force.z || torque.x || torque.y || torque.z) {
+        this.nativeBody.clearForces();
+        const atCentre = new Ammo.btVector3(0, 0, 0);
+        this.nativeBody.applyForce(AmmoBodyComponent.scratchVector(force.x, force.y, force.z), atCentre);
+        Ammo.destroy(atCentre);
+        this.nativeBody.applyTorque(AmmoBodyComponent.scratchVector(torque.x, torque.y, torque.z));
+      }
+    }
+    const v = this.nativeBody.getLinearVelocity();
+    const w = this.nativeBody.getAngularVelocity();
+    const lv = delta.toGlobalDirection({ x: v.x(), y: v.y(), z: v.z() });
+    const av = delta.toGlobalDirection({ x: w.x(), y: w.y(), z: w.z() });
+    this.nativeBody.setLinearVelocity(AmmoBodyComponent.scratchVector(lv.x, lv.y, lv.z));
+    this.nativeBody.setAngularVelocity(AmmoBodyComponent.scratchVector(av.x, av.y, av.z));
+    // the body's own world transform, modified in place
+    const transform = this.nativeBody.getWorldTransform();
+    this.moveTransformByFrame(transform, delta);
+    this.nativeBody.setCenterOfMassTransform(transform);
+    this.nativeBody.getMotionState()?.setWorldTransform(transform);
+    this.updateAabbInWorld();
   }
 
   /**

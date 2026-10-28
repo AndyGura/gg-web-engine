@@ -10,10 +10,12 @@ import {
   Point4,
   Qtrn,
   Shape3DDescriptor,
+  warnIfMeshTrigger,
+  warnOnce,
 } from '@gg-web-engine/core';
 import Ammo from './ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './components/ammo-rigid-body.component';
-import { AmmoTriggerComponent } from './components/ammo-trigger.component';
+import { AmmoTriggerComponent, shapeHasConcave } from './components/ammo-trigger.component';
 import { AmmoWorldComponent } from './components/ammo-world.component';
 import { AmmoPhysicsTypeDocRepo } from './types';
 import { AmmoRaycastVehicleComponent } from './components/ammo-raycast-vehicle.component';
@@ -64,6 +66,15 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       rotation?: Point4;
     },
   ): AmmoTriggerComponent {
+    warnIfMeshTrigger(descriptor);
+    if (shapeHasConcave(descriptor)) {
+      // see AmmoTriggerComponent.checkOverlaps(), case 2
+      warnOnce(
+        'Ammo: Bullet has no collision test between two concave shapes, so a trigger whose shape ' +
+          'contains a MESH or PLANE reports a MESH or PLANE body (level geometry, terrain, a ground ' +
+          'plane) whenever their bounding boxes overlap, not only when their surfaces cross.',
+      );
+    }
     return this.createTriggerFromShape(this.createShape(descriptor), descriptor, transform);
   }
 

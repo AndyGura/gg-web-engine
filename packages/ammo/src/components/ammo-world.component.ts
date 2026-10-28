@@ -2,6 +2,7 @@ import {
   BitMask,
   CollisionEvent,
   CollisionGroup,
+  Frame3d,
   IPhysicsWorld3dComponent,
   notInitializedError,
   Pnt3,
@@ -179,16 +180,17 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    * Rapier/matter-js, whose adapters are driven by the native engine's own edge-triggered event
    * queue/callback and pay nothing for a continuing contact in the first place - see
    * `gg-engine-physics-adapter-ammo`), so this package derives them by walking every broad-phase
-   * contact manifold in `processCollisionEvents()`, once per `simulate()` call, unconditionally.
+   * contact manifold in `processManifolds()`, once per `simulate()` call, unconditionally.
    * That walk is cheap per manifold (no per-contact-point/impulse extraction happens for a pair
    * already known to be touching - see that method's own doc) but still scales with the total
    * number of touching pairs in the world every single tick, whether or not anything is listening -
    * for a scene with a very large number of simultaneously-resting bodies (a big debris field, a
-   * dense physics playground) and an app that has no use for these events at all, skipping the walk
-   * entirely removes that cost completely. Only `IRigidBody3dComponent.onCollisionStart`/
-   * `onCollisionEnd` are affected - `ITrigger3dComponent.onEntityEntered`/`onEntityLeft` (a
-   * different, already-existing mechanism, driven by each `AmmoTriggerComponent`'s own
-   * `checkOverlaps()`) keep working regardless of this setting. No other physics adapter in this
+   * dense physics playground) and an app that has no use for these events at all, skipping the
+   * collision-event bookkeeping removes that cost. Only `IRigidBody3dComponent.onCollisionStart`/
+   * `onCollisionEnd` are affected - `ITrigger3dComponent.onEntityEntered`/`onEntityLeft` keep
+   * working regardless of this setting: while the world has a trigger, the walk still runs after
+   * every step to hand each trigger its pairs' contacts (see `processManifolds()` and
+   * `AmmoTriggerComponent.checkOverlaps()`). No other physics adapter in this
    * engine needs an equivalent setting: Rapier2d/3d and matter-js all derive these same events from
    * a native start/stop event rather than polling, so they have no comparable always-on cost to opt
    * out of.
@@ -257,6 +259,41 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     this._loader = new AmmoLoader(this);
   }
 
+  /**
+   * `IPhysicsWorld3dComponent.onFrameSwitch`, after every entity moved its bodies: the contact
+   * manifolds are kept - Bullet warm-starts the solver from their impulses, and a pair still in
+   * contact stays in contact (no `onCollisionEnd`/`onCollisionStart` from the switch) - with their
+   * world-space contact points and normals moved by `delta`. Bullet recomputes the points from
+   * their body-local ones in every step, but takes the normal of a point the narrowphase doesn't
+   * regenerate from the manifold: left in the old frame, it would be off by the switch's yaw.
+   */
+  onFrameSwitch(delta: Frame3d): void {
+    if (!this._dynamicAmmoWorld) {
+      return;
+    }
+    const v = new Ammo.btVector3(0, 0, 0);
+    const dispatcher = this._dynamicAmmoWorld.getDispatcher();
+    for (let i = 0; i < dispatcher.getNumManifolds(); i++) {
+      const manifold = dispatcher.getManifoldByIndexInternal(i);
+      for (let j = 0; j < manifold.getNumContacts(); j++) {
+        const cp = manifold.getContactPoint(j);
+        const a = cp.get_m_positionWorldOnA();
+        const pa = delta.toGlobalPoint({ x: a.x(), y: a.y(), z: a.z() });
+        v.setValue(pa.x, pa.y, pa.z);
+        cp.set_m_positionWorldOnA(v);
+        const b = cp.get_m_positionWorldOnB();
+        const pb = delta.toGlobalPoint({ x: b.x(), y: b.y(), z: b.z() });
+        v.setValue(pb.x, pb.y, pb.z);
+        cp.set_m_positionWorldOnB(v);
+        const n = cp.get_m_normalWorldOnB();
+        const nb = delta.toGlobalDirection({ x: n.x(), y: n.y(), z: n.z() });
+        v.setValue(nb.x, nb.y, nb.z);
+        cp.set_m_normalWorldOnB(v);
+      }
+    }
+    Ammo.destroy(v);
+  }
+
   simulate(delta: number): void {
     const dt = delta / 1000;
     // `kinematic_vel` bodies have no native Bullet integration to lean on (see
@@ -282,6 +319,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     if (this.maxSubSteps) {
       subSteps = Math.min(subSteps, this.maxSubSteps);
     }
+    let stepped = false;
     if (dt > 0 && this._dynamicAmmoWorld) {
       const subStep = dt / subSteps;
       for (const vehicle of this.raycastVehicles) {
@@ -293,16 +331,20 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       // ...and a zero-length step in variable-timestep mode resets the accumulator, dropping that
       // half substep (it also syncs every motion state to its body's current transform)
       this._dynamicAmmoWorld.stepSimulation(0, 0);
+      this._stepCount++;
+      stepped = true;
     }
-    if (this.enableCollisionEvents) {
-      this.processCollisionEvents();
+    // trigger routing needs a step: without one the manifolds are the previous step's, already routed
+    const routeTriggers = stepped && this.triggersByPointer.size > 0;
+    if (this.enableCollisionEvents || routeTriggers) {
+      this.processManifolds(routeTriggers);
     }
     this.afterTick$.next();
   }
 
   /**
    * Pair of native pointers (sorted, joined as `"${lower}:${higher}"`) -> the two
-   * `AmmoRigidBodyComponent`s last seen touching, one tick ago - the state `processCollisionEvents`
+   * `AmmoRigidBodyComponent`s last seen touching, one tick ago - the state `processManifolds`
    * diffs against every call to derive "started touching this frame"/"stopped touching this frame".
    * Deliberately keyed by native pointer rather than component identity so a stale entry naturally
    * drops out the tick after either side's native body is actually destroyed (a fresh allocation at
@@ -310,6 +352,32 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    * .nativeBodyReverseMap` itself - nothing new introduced here).
    */
   private previousContactPairs: Map<string, [AmmoRigidBodyComponent, AmmoRigidBodyComponent]> = new Map();
+
+  private _stepCount = 0;
+
+  /**
+   * How many `simulate()` calls have actually stepped this world. `AmmoTriggerComponent` compares
+   * it with the step its manifold results came from, to know whether they describe the last step.
+   */
+  get stepCount(): number {
+    return this._stepCount;
+  }
+
+  /** Every trigger in this world by its ghost object's pointer - see `processManifolds()`. */
+  private readonly triggersByPointer: Map<number, AmmoTriggerComponent> = new Map();
+
+  /** Called by `AmmoTriggerComponent.addToWorld()`. */
+  registerTrigger(trigger: AmmoTriggerComponent): void {
+    this.triggersByPointer.set(Ammo.getPointer(trigger.nativeBody), trigger);
+  }
+
+  /** Called by `AmmoTriggerComponent.removeFromWorld()`/`dispose()`. */
+  unregisterTrigger(trigger: AmmoTriggerComponent): void {
+    const pointer = Ammo.getPointer(trigger.nativeBody);
+    if (this.triggersByPointer.get(pointer) === trigger) {
+      this.triggersByPointer.delete(pointer);
+    }
+  }
 
   /**
    * Derives `onCollisionStart`/`onCollisionEnd` for every `AmmoRigidBodyComponent` in this world,
@@ -328,10 +396,23 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    * `AmmoRigidBodyComponent` via the shared `AmmoBodyComponent.nativeBodyReverseMap`; that one
    * `instanceof` check is what keeps triggers/character controllers out of collision events
    * entirely, without needing to inspect collision flags directly.
+   *
+   * The same walk routes every manifold involving a trigger's ghost object to that trigger
+   * (`routeTriggers`, once per actual step, whenever the world has a trigger - regardless of
+   * `enableCollisionEvents`): `AmmoTriggerComponent.checkOverlaps()` then decides those pairs from
+   * the step's own narrowphase result instead of running a second one. A manifold with no contacts
+   * is routed too - it tells the trigger the pair was tested and isn't touching - so with triggers
+   * present every manifold's bodies are read, not only those with contacts.
    */
-  private processCollisionEvents(): void {
+  private processManifolds(routeTriggers: boolean): void {
     if (!this._dynamicAmmoWorld) {
       return;
+    }
+    const collisionEvents = this.enableCollisionEvents;
+    if (routeTriggers) {
+      for (const trigger of this.triggersByPointer.values()) {
+        trigger.beginStepContacts(this._stepCount);
+      }
     }
     const dispatcher = this._dynamicAmmoWorld.getDispatcher();
     const numManifolds = dispatcher.getNumManifolds();
@@ -345,13 +426,26 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     for (let i = 0; i < numManifolds; i++) {
       const manifold = dispatcher.getManifoldByIndexInternal(i);
       const numContacts = manifold.getNumContacts();
-      if (numContacts === 0) {
+      if (numContacts === 0 && !routeTriggers) {
         continue;
       }
       const body0 = manifold.getBody0();
       const body1 = manifold.getBody1();
       const ptr0 = Ammo.getPointer(body0);
       const ptr1 = Ammo.getPointer(body1);
+      if (routeTriggers) {
+        const trigger0 = this.triggersByPointer.get(ptr0);
+        const trigger1 = this.triggersByPointer.get(ptr1);
+        if (trigger0 || trigger1) {
+          trigger0?.recordStepManifold(ptr1, manifold, numContacts);
+          trigger1?.recordStepManifold(ptr0, manifold, numContacts);
+          // a trigger never takes part in collision events
+          continue;
+        }
+      }
+      if (!collisionEvents || numContacts === 0) {
+        continue;
+      }
       const comp0 = AmmoBodyComponent.nativeBodyReverseMap.get(ptr0);
       const comp1 = AmmoBodyComponent.nativeBodyReverseMap.get(ptr1);
       if (!(comp0 instanceof AmmoRigidBodyComponent) || !(comp1 instanceof AmmoRigidBodyComponent)) {
@@ -392,6 +486,10 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       if (!existing || bestImpulse > existing.impulse) {
         bestContacts.set(key, { compA: comp0, compB: comp1, cp: bestCp!, impulse: Math.max(bestImpulse, 0) });
       }
+    }
+
+    if (!collisionEvents) {
+      return;
     }
 
     // Started touching this frame: a pair with contacts now that had none (or didn't exist) last

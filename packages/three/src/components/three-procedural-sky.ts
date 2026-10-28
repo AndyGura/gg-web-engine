@@ -129,6 +129,8 @@ export const THREE_PROCEDURAL_SKY_FRAGMENT_SHADER = /* glsl */ `
 ${ATMOSPHERE_GLSL}
 
 uniform mat3 uStarRotation;
+// turns a direction of the scene's own space into the world's global one (see setFrameYaw)
+uniform mat3 uFrameRotation;
 uniform float uSunSize;
 uniform float uExposure;
 uniform vec3 uGroundColor;
@@ -202,7 +204,7 @@ float starLayer(vec3 direction, float density) {
 }
 
 void main() {
-  vec3 v = normalize(vDirection);
+  vec3 v = normalize(uFrameRotation * vDirection);
   vec3 sky = normalize(vec3(v.xy, max(v.z, 0.0)));
   float mie = skyMie();
 
@@ -321,6 +323,7 @@ export class ThreeProceduralSky {
   private pmremTarget: WebGLRenderTarget | null = null;
   private pmremGenerator: PMREMGenerator | null = null;
   private pmremValid: boolean = false;
+  private frameYaw: number = 0;
   private lastAdvance: number | null = null;
 
   constructor() {
@@ -332,6 +335,7 @@ export class ThreeProceduralSky {
         uSunDirection: { value: new Vector3(0, 0, 1) },
         uMoonDirection: { value: new Vector3(0, 0, -1) },
         uStarRotation: { value: new Matrix3() },
+        uFrameRotation: { value: new Matrix3() },
         uSunSize: { value: 0.02 },
         uHaze: { value: 0.2 },
         uExposure: { value: 1 },
@@ -397,6 +401,16 @@ export class ThreeProceduralSky {
     u.uMoonSize.value = options.moonSize;
   }
 
+  /**
+   * The summed yaw of the world's frame switches: the scene's own space is turned by it against the
+   * world's global one, and the sky's settings (sun path, winds) are global, so the shader turns
+   * each view direction back by it.
+   */
+  setFrameYaw(yaw: number): void {
+    this.frameYaw = yaw;
+    this.material.uniforms.uFrameRotation.value.setFromMatrix4(new Matrix4().makeRotationZ(-yaw));
+  }
+
   /** Moves the clouds with the wind and the stars' twinkle on by the time since the last call. */
   advance(now: number): void {
     const dt = this.lastAdvance === null ? 0 : Math.min(0.1, Math.max(0, (now - this.lastAdvance) / 1000));
@@ -419,7 +433,7 @@ export class ThreeProceduralSky {
     const { clouds, cirrus, mode, ...rest } = this._options!;
     // a wind direction still turns the cirrus streaks, so only its length is left out
     const cirrusKey = cirrus ? { ...cirrus, wind: Math.atan2(cirrus.wind.y, cirrus.wind.x) } : null;
-    return JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, cirrusKey, resolution]);
+    return JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, cirrusKey, this.frameYaw, resolution]);
   }
 
   /** The sky drawn into a cube texture `resolution` pixels per side; drawn again only when a setting changed. */

@@ -30,6 +30,45 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- core: `Gg3dWorld.frame` (with `frame$` and a `frame` constructor option), the global placement of
+  a 3D world's local origin - a translation plus a yaw about `+Z` - for open worlds made of
+  sections each simulated near its own origin. Identity by default. `toGlobalPoint`/`toLocalPoint`,
+  `toGlobalDirection`/`toLocalDirection` and `toGlobalRotation`/`toLocalRotation` convert through
+  it; `Frame3d` is the immutable value behind it, with `compose`, `inverse` and `equals`.
+- core: `RigidBodyCorrection` and `MoverCorrection` take an optional `NetworkFrame` (`Frame3d`
+  implements it): `capture(body, frame)` returns global state, `correct(..., tuning, frame)` converts
+  a global target to local; `toGlobal`/`toLocal` convert a state alone. `Entity3d`, `GgCarEntity`
+  and `CharacterController3dEntity` (state and input rotation) convert their network state through
+  their world's frame.
+- core: `Gg3dWorld.switchFrame(newFrame)` moves a world into another frame between two ticks: every
+  entity is moved by the rigid transform `newFrame⁻¹ ∘ oldFrame` (positions rotated about `+Z`,
+  then translated; rotations get the yaw in front; velocities rotated), so nothing changes
+  globally and the next rendered frame looks the same. Called during a tick, it applies after the
+  physics step and before rendering (`pendingFrame` holds it until then); called while a switch is
+  being applied, it applies right after that one. `frameSwitched$` emits the `FrameSwitch`
+  (`delta`, `previousFrame`, `frame`) after each switch.
+- core: `IFrameSwitchable` (`onFrameSwitch(delta)`), implemented by `Entity3d` and its subclasses
+  (raycast vehicles and cars with their wheels, character controllers, triggers, cameras and every
+  built-in camera controller, lights, 3D audio sources, particle systems, the map graph with its
+  loaded and loading chunks, surface-following entities, grabbables). Physics components, the
+  physics world and the visual scene may implement an optional `onFrameSwitch` for native state a
+  pose write misses. Helpers: `isFrameSwitchable`, `switchPoseFrame`, `switchBodyFrame`,
+  `claimFrameSwitch`. With the dev console present (`window.ggstatic`), switching a world holding a
+  positioned entity without the hook warns once per class.
+- ammo, rapier3d: physics components and worlds implement `onFrameSwitch`: bodies keep their
+  activation/sleep state, velocities, contacts and (ammo) interpolation; triggers keep their
+  overlaps; forces applied before the next step are rotated; queries right after a switch find the
+  moved colliders; vehicles keep their wheels and suspension.
+- three: the visual scene implements `onFrameSwitch`: the sky and the environment map turn with a
+  switch's yaw, so they stay in place globally.
+- core: `quantizeNetPosition` (1 mm), `quantizeNetVelocity` (1 mm/s),
+  `quantizeNetAngularVelocity` and `quantizeNetRotation` (5 decimals), for network payloads.
+- core: `Qtrn.normalize`.
+- multiplayer: everything on the wire is in global coordinates. `Network3dController` sends heartbeat
+  positions (zoning cells, distance arbitration, takeover elections) and spawn descriptors'
+  `position`/`rotation` globally; received state stays global until it is applied, through the
+  world's frame as it is then. Peers whose worlds have different frames share entities at the same
+  global pose.
 - core, three: a shader-drawn sky, `ProceduralSky3dOpts` (`{ type: 'PROCEDURAL', timeOfDay, haze,
   clouds: { coverage, density, scale, wind }, stars, moon, ... }`), accepted by
   `setEnvironment({ background, environmentMap })` and the `"Environment"` level class. Every
@@ -38,7 +77,8 @@ where one exists.
   (default) draws it every frame with drifting clouds, `'BAKED'` draws it into a cube texture only
   when a setting changes. As `environmentMap` it lights `'standart'` and PBR materials.
   `proceduralSkyBodies(sky)` returns the sun and moon directions and the sunlight's color and
-  intensity, to drive a directional light. New example `3d/sky` with sliders for every setting
+  intensity, to drive a directional light. Its settings are global: after a frame switch with a
+  yaw the sky stays in place. New example `3d/sky` with sliders for every setting
   and a free camera.
 - core: `DirectionInput.pressDirection`/`releaseDirection(direction, holder)` hold a direction the
   way its key does, for an on-screen button or anything else that is either pushed or not: it is
@@ -49,8 +89,25 @@ where one exists.
 - core: `IInput.running$` reports every input's running state on start and stop.
 - core: `DirectionHeldOutput`, the type of `DirectionInput.output$`; `DirectionKeyboardOutput` is
   its deprecated alias.
+- core: the level JSON `"Trigger"` class (2D and 3D) takes `shape` and the same shape fields as
+  `"Primitive"` - `"COMPOUND"` with `children`, `"SPHERE"`, `"CYLINDER"`, ... `shape` defaults to
+  `"BOX"` with `dimensions`, so existing levels load unchanged. `serializeEntity` reconstructs a
+  trigger of any shape, a compound one included.
+- core: `warnIfMeshTrigger`, `shapeHasMesh` and `shapeContains(shape, kinds)` (whether a shape is,
+  or nests in a `COMPOUND`, any of the given kinds). Creating a trigger whose shape contains a `MESH`
+  (ammo, rapier3d) logs a one-time warning: a triangle mesh is a surface, so such a trigger does not
+  fire for a body fully inside it. Use `CONVEX_HULL` or a `COMPOUND` of convex shapes for a volume.
+  ammo adds a warning for a trigger containing a `MESH` or `PLANE`: it reports a `MESH` or `PLANE`
+  body whenever their bounding boxes overlap, since Bullet cannot test two concave shapes.
 
 ### Changed
+- core, multiplayer: network state is quantised: `RigidBodyCorrection.capture`/`MoverCorrection.capture`
+  round positions to 1 mm, velocities to 1 mm/s and quaternion components to 5 decimals, and the
+  correction helpers normalize the received rotation. Heartbeat positions and spawn descriptors'
+  `position`/`rotation` are rounded the same way. A spawn descriptor's received rotation is
+  normalized too, and the unit-scaled default `deadzone` stays at least 2 mm, above the rounding.
+- multiplayer: `PeerInfo.position` (`peers$`, `netStats().peers`) is the peer's heartbeat position
+  as sent: global and rounded to 1 mm. In a 3D world with a frame, `world.toLocalPoint` places it.
 - core: `DirectionInput.output$` emits only when the resolved output changes - not on starting the
   input, on a key or press that leaves it as it was, or on a stop with nothing resolved.
 
@@ -64,6 +121,35 @@ where one exists.
   stops and starts again while the control is held pushes its direction again, instead of staying
   pressed without effect until the finger lifts.
 - core: `DirectionInput.pressDirection` ignores, with a warning, a name that is not a direction.
+- ammo: a trigger fires only for a body whose shape overlaps it (touching or fully inside), not
+  for one merely inside its bounding box. A box trigger rotated about Z fired for bodies in the
+  corners of its bounding box, and a compound trigger anywhere in its children's bounding boxes.
+  The test reuses the physics step's own contact results, so it adds no per-tick cost for bodies
+  that are not moving.
+- rapier2d, rapier3d: a compound trigger, or a compound body entering a trigger, fires
+  `onEntityEntered` and `onEntityLeft` once per body, not once per touching part.
+- rapier2d, rapier3d: a nested `COMPOUND` child's offset turns with its parent's `rotation`; it
+  used to be added unrotated, placing the collider in the wrong spot.
+- rapier2d, rapier3d: a body removed from the world while inside a trigger fires `onEntityLeft`,
+  and if re-added it enters again. A trigger no longer stays activated with `onEntityLeft` never
+  firing after such a body is re-added while another collider took its freed slot, and collision
+  and trigger events of a removed collider no longer reach a body created after it.
+- matter: a compound trigger fires for bodies inside its parts, and a compound body entering a
+  trigger is reported; both used to be missed. Each body enters and leaves once, a sleeping,
+  kinematic or character body in the notch of a concave compound trigger is not reported, and a
+  body removed and re-added in one tick enters again.
+- core: `serializeEntity` reconstructs a `"Primitive"` of any shape - `COMPOUND`, `CONVEX_HULL`,
+  `MESH`, and in 2D `CAPSULE` and `POLYGON` - from its live body, instead of falling back to its
+  spawn record or returning `undefined`.
+- core: an app class whose generator builds a plain `Entity3d`/`Entity2d` with a body, a plain
+  `Trigger3dEntity`/`Trigger2dEntity` or a plain `Light3dEntity` serializes as that class with its
+  own `config`, not as a `"Primitive"`, `"Trigger"` or `"Light"` that lost the class and its model.
+  The same holds for live serializers an app registers with `registerLiveSerializer`.
+- core: `loadGgGlb` applies its `rotation` in front of each loaded object's own rotation and each
+  prop dummy's rotation. A loaded object whose own rotation did not commute with the load
+  rotation (for example a tilted object under a yawed load), and a nested prop whose dummy and
+  object rotations did not commute, even under an identity load rotation, ended up wrongly
+  oriented.
 
 ## [0.0.88] - 2026-10-25
 

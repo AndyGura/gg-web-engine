@@ -263,7 +263,22 @@ four; a force wakes a sleeping body):
 native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time
 (see `Rapier2dFactory.createTrigger` calling `colliderDescr.setActiveEvents(ActiveEvents.
-COLLISION_EVENTS)`).
+COLLISION_EVENTS)`). Two requirements a native mechanism may not meet on its own:
+
+- **Overlap means the shapes overlap** (touching or one fully inside the other), not their
+  bounding boxes. A broadphase pair list (AABB overlaps) is only a candidate list: a box trigger
+  rotated 45 degrees must not fire for a body in its bounding box's corners, nor a two-box
+  L-shaped `COMPOUND` for one in the empty quadrant of its bounding box. If the engine only hands
+  out broadphase pairs, run a narrowphase test on each. A `MESH` shape is a surface with no inside,
+  so a `MESH` trigger reports only bodies crossing its triangles; `createTrigger` calls core's
+  `warnIfMeshTrigger(descriptor)` to say so.
+- **One enter and one leave per body**, however many parts touch. An engine reporting events per
+  collider pair reports a `COMPOUND` trigger (or body) once per touching part; count touching pairs
+  per body and emit on 0 -> 1 and 1 -> 0, the way a rigid body's `onCollisionStart`/`onCollisionEnd`
+  already must.
+
+Specs for both belong in `<lib>-trigger.component.spec.ts` (a rotated box, an L-shaped compound, a
+body crossing from one compound part into the other).
 
 ### Collision events
 
@@ -504,6 +519,46 @@ is `true`. WASM-backed engines (Ammo, Rapier) are where getting this wrong actua
 a pure-JS engine (Matter) mostly just needs the parameter threaded through for interface conformance.
 See `gg-engine-physics-adapter-ammo`/`-rapier`/`-matter` for exactly what each of those packages had
 to fix here, and any leaks that were found and consciously left as known gaps.
+
+## Frame switch (3D only): `onFrameSwitch` on components and the world
+
+`Gg3dWorld.switchFrame` (see `gg-engine-core-development`) moves every entity by a rigid
+transform `delta` (translation plus yaw about `+Z`) between two ticks. Each entity hands its
+physics component to `switchBodyFrame`, which calls the component's optional
+`onFrameSwitch(delta)` and otherwise writes the `position`/`rotation`/velocity/`up` setters - a
+fallback that wakes sleeping bodies and, in most engines, leaves native state behind. A 3D adapter
+implements the hook on its rigid body, trigger, character controller and raycast vehicle components,
+plus `IPhysicsWorld3dComponent.onFrameSwitch` for world-level state; the world's runs after every
+body's. What the hooks must achieve, whatever the engine:
+
+- The pose moves without waking anything and without changing the activation/sleep state; linear
+  and angular velocities rotate (`delta.toGlobalDirection`), and so do a force and a torque applied
+  since the last step and still waiting for the next one.
+- Anything the engine derives from the previous pose moves too, or the next step reads the switch as
+  motion: interpolation transforms, kinematic targets, cached world-space contact points and normals.
+- Broad-phase bounds are current right after the switch: a raycast, a character sweep or a
+  vehicle's wheel cast made before the next step must find the moved colliders, and triggers must
+  keep their overlaps (no leave/enter).
+- A vehicle's suspension lengths, wheel spin, steering, rpm and gear stay; its wheels are placed from
+  the moved chassis on the switch's own tick.
+- An identity switch should change nothing at all; check it first when chasing a trajectory
+  difference.
+
+**Every 3D adapter runs `packages/core/test/contract/frame-switch.contract.ts`**
+(`describeFrameSwitchContract(name, createWorld, options)` from
+`test/contract/<lib>-frame-switch.spec.ts`). It drives a car 30 s with fixed inputs, once without and
+once with two switches, and compares the runs in global coordinates (position < 1 cm, heading
+< 0.1°, speed < 1 cm/s, wheel positions and contact points < 1 cm) in two scenarios: `recentred`
+(the new frame under the car, as an open world uses it) always at those thresholds; `far` (the
+specified deltas leave the car 15-21 km from the local origin). A single-precision engine cannot
+hold the thresholds that far out - its coordinates there have a 1-2 mm step - so it passes
+`farBounds` set to its measured drift with margin, and its spec says why and how the drift was shown
+to be the precision and not the switch (the same switches on the first two ticks, a car at rest, give
+the same drift). Then triggers keep their overlaps, a sleeping body stays asleep, a raycast right
+after the switch finds a moved static body, a force and a torque applied just before a switch push in
+the same global direction, and a falling body keeps its velocity without a streak.
+`options.ground` replaces the default static `PLANE` for an engine without one; `options.report`
+receives the measured deviations.
 
 ## Known per-library pitfall notes
 
