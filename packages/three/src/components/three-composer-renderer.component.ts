@@ -41,7 +41,7 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   }
 
   render(): void {
-    this.scene.prepareFrame(this.nativeRenderer);
+    this.scene.prepareFrame(this.nativeRenderer, this.world?.worldClock.elapsedTime);
     this.nativeComposer.render();
     if (this.physicsDebugViewActive) {
       this.debugView!.render(this.nativeRenderer, this.camera.nativeCamera);

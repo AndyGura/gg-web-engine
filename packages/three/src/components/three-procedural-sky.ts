@@ -172,15 +172,18 @@ float valueNoise(vec2 p) {
   return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-float fbm(vec2 p, int octaves) {
+// fractal noise of "detail" octaves; a fractional detail fades the last octave in, so detail can
+// fall off with distance without a visible step
+float fbm(vec2 p, float detail) {
   const mat2 turn = mat2(1.6, 1.2, -1.2, 1.6);
   float value = 0.0;
   float total = 0.0;
   float amplitude = 0.5;
   for (int i = 0; i < 5; i++) {
-    if (i >= octaves) break;
-    value += amplitude * valueNoise(p);
-    total += amplitude;
+    float weight = clamp(detail - float(i), 0.0, 1.0);
+    if (weight <= 0.0) break;
+    value += amplitude * weight * valueNoise(p);
+    total += amplitude * weight;
     p = turn * p;
     amplitude *= 0.5;
   }
@@ -190,10 +193,11 @@ float fbm(vec2 p, int octaves) {
 float starLayer(vec3 direction, float density) {
   vec3 p = direction * density;
   vec3 cell = floor(p);
+  // derivatives before any branch: inside one, neighbouring pixels that left it make them undefined
+  float pixel = length(fwidth(p));
   vec3 h = hash33(cell);
   if (h.x < 0.78) return 0.0;
   vec3 star = cell + 0.25 + 0.5 * hash33(cell + 17.0);
-  float pixel = length(fwidth(p));
   float radius = max(0.05, pixel * 0.7);
   float d = length(p - star);
   float brightness = pow(h.y, 6.0) * 6.0 + 0.4;
@@ -247,8 +251,8 @@ void main() {
     vec2 q = sky.xy / lift / uCirrusScale * 1.4 + uCirrusOffset;
     vec2 r = vec2(dot(q, uCirrusAxis) * 0.7, dot(q, vec2(-uCirrusAxis.y, uCirrusAxis.x)) * 3.5);
     // a slow warp bends the streaks into wisps
-    float warp = fbm(r * vec2(0.5, 0.12) + 11.0, 2);
-    float n = fbm(r + vec2(0.0, (warp - 0.5) * 3.0), 4);
+    float warp = fbm(r * vec2(0.5, 0.12) + 11.0, 2.0);
+    float n = fbm(r + vec2(0.0, (warp - 0.5) * 3.0), 4.0);
     float streak = smoothstep(0.0, 0.22, n - 1.05 + uCirrusCoverage * 0.95);
     // fine fibres across the streaks
     float fibres = valueNoise(r * vec2(1.5, 9.0) + warp * 4.0);
@@ -263,15 +267,14 @@ void main() {
     float lift = sky.z + 0.06;
     vec2 p = sky.xy / lift / uCloudScale * 0.7 + uCloudOffset;
     float distance = 1.0 / lift;
-    int octaves = distance > 6.0 ? 3 : (distance > 3.0 ? 4 : 5);
-    float n = fbm(p, octaves);
+    float n = fbm(p, clamp(6.5 - 0.5 * distance, 3.0, 5.0));
     float cover = uCoverage * 1.3;
     float cloud = smoothstep(0.0, 0.35, n - 1.0 + cover);
     float overcast = uCoverage * uCoverage * uDensity;
     float alpha = cloud * uDensity * mix(smoothstep(0.0, 0.03, sky.z), 1.0, overcast);
     // thickness towards the sun: a lit side and a shadowed side
     vec2 towardsLight = (uSunDirection.z > -0.1 ? uSunDirection.xy : uMoonDirection.xy) * 0.12;
-    float shade = smoothstep(0.0, 0.35, fbm(p + towardsLight, 3) - 1.0 + cover);
+    float shade = smoothstep(0.0, 0.35, fbm(p + towardsLight, 3.0) - 1.0 + cover);
     // a deck of clouds is darker where it is thicker, which keeps an overcast sky from being flat
     float thickness = smoothstep(0.3, 0.8, n);
     float darkening = mix(1.0, 0.4, overcast) * (1.0 - 0.45 * shade * uDensity) * mix(1.0, 1.35 - 0.7 * thickness, overcast);
@@ -302,6 +305,19 @@ void main() {
 }
 `;
 
+/** One renderer's bake of a sky: the cube it was drawn into and its prefiltered copy for lighting. */
+type ThreeSkyBake = {
+  cubeTarget: WebGLCubeRenderTarget;
+  cubeCamera: CubeCamera;
+  /** `ThreeProceduralSky.bakeKey` the cube was drawn with, `null` to draw it again. */
+  bakedKey: string | null;
+  pmremGenerator: PMREMGenerator | null;
+  pmremTarget: WebGLRenderTarget | null;
+  pmremValid: boolean;
+  /** Listener for the canvas's `webglcontextrestored`: a restored context has lost every bake. */
+  onContextRestored: () => void;
+};
+
 /**
  * One procedural sky: its shader material, drawn every frame as a box around the camera
  * (`mesh`), or drawn into a cube texture (`bake`) and shown or used for lighting from there.
@@ -315,14 +331,14 @@ export class ThreeProceduralSky {
   public get options(): ResolvedProceduralSky3dOpts | null {
     return this._options;
   }
-  /** Settings the current bake was made with, minus the ones that don't change it. */
-  private bakedKey: string | null = null;
-  private cubeTarget: WebGLCubeRenderTarget | null = null;
-  private cubeCamera: CubeCamera | null = null;
+  /** The settings a bake depends on (everything but `mode` and the wind speeds), as a string. */
+  private bakeKey: string = '';
+  /**
+   * One bake per renderer that drew this sky: each WebGL context has its own textures, and a
+   * scene's renderers each call `prepareFrame` right before they render.
+   */
+  private readonly bakes: Map<WebGLRenderer, ThreeSkyBake> = new Map();
   private readonly bakeScene: Scene = new Scene();
-  private pmremTarget: WebGLRenderTarget | null = null;
-  private pmremGenerator: PMREMGenerator | null = null;
-  private pmremValid: boolean = false;
   private frameYaw: number = 0;
   private lastAdvance: number | null = null;
 
@@ -366,6 +382,16 @@ export class ThreeProceduralSky {
     this.mesh.renderOrder = -Number.MAX_SAFE_INTEGER;
     this.mesh.layers.enableAll();
     this.mesh.raycast = () => {};
+    // a pass that draws the scene with an override material (depth, normals: SSAO, depth of
+    // field) would draw the box as a 1 m cube around the camera: draw nothing for it then
+    this.mesh.onBeforeRender = (_renderer, _scene, _camera, drawnGeometry, material) => {
+      if (material !== this.material) {
+        drawnGeometry.setDrawRange(0, 0);
+      }
+    };
+    this.mesh.onAfterRender = (_renderer, _scene, _camera, drawnGeometry) => {
+      drawnGeometry.setDrawRange(0, Infinity);
+    };
     this.bakeScene.add(new Mesh(geometry, this.material));
   }
 
@@ -399,6 +425,7 @@ export class ThreeProceduralSky {
     u.uStars.value = options.stars;
     u.uMoon.value = options.moon;
     u.uMoonSize.value = options.moonSize;
+    this.updateBakeKey();
   }
 
   /**
@@ -409,12 +436,17 @@ export class ThreeProceduralSky {
   setFrameYaw(yaw: number): void {
     this.frameYaw = yaw;
     this.material.uniforms.uFrameRotation.value.setFromMatrix4(new Matrix4().makeRotationZ(-yaw));
+    this.updateBakeKey();
   }
 
-  /** Moves the clouds with the wind and the stars' twinkle on by the time since the last call. */
-  advance(now: number): void {
-    const dt = this.lastAdvance === null ? 0 : Math.min(0.1, Math.max(0, (now - this.lastAdvance) / 1000));
-    this.lastAdvance = now;
+  /**
+   * Moves the clouds with the wind and the stars' twinkle on to `time`, in milliseconds: the
+   * world clock's elapsed time, so pausing or slowing the world pauses or slows the sky too.
+   * Steps are capped at 0.1 s, for a clock that jumps.
+   */
+  advance(time: number): void {
+    const dt = this.lastAdvance === null ? 0 : Math.min(0.1, Math.max(0, (time - this.lastAdvance) / 1000));
+    this.lastAdvance = time;
     const u = this.material.uniforms;
     u.uTime.value += dt;
     const wind = this._options?.clouds?.wind;
@@ -429,52 +461,90 @@ export class ThreeProceduralSky {
     }
   }
 
-  private currentKey(resolution: number): string {
-    const { clouds, cirrus, mode, ...rest } = this._options!;
+  private updateBakeKey(): void {
+    if (!this._options) {
+      return;
+    }
+    const { clouds, cirrus, mode, ...rest } = this._options;
     // a wind direction still turns the cirrus streaks, so only its length is left out
     const cirrusKey = cirrus ? { ...cirrus, wind: Math.atan2(cirrus.wind.y, cirrus.wind.x) } : null;
-    return JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, cirrusKey, this.frameYaw, resolution]);
+    this.bakeKey = JSON.stringify([rest, clouds ? { ...clouds, wind: null } : null, cirrusKey, this.frameYaw]);
   }
 
-  /** The sky drawn into a cube texture `resolution` pixels per side; drawn again only when a setting changed. */
+  private bakeFor(renderer: WebGLRenderer, resolution: number): ThreeSkyBake {
+    let bake = this.bakes.get(renderer);
+    if (bake && bake.cubeTarget.width !== resolution) {
+      this.releaseRenderer(renderer);
+      bake = undefined;
+    }
+    if (!bake) {
+      const cubeTarget = new WebGLCubeRenderTarget(resolution, { type: HalfFloatType });
+      const created: ThreeSkyBake = {
+        cubeTarget,
+        cubeCamera: new CubeCamera(0.1, 10, cubeTarget),
+        bakedKey: null,
+        pmremGenerator: null,
+        pmremTarget: null,
+        pmremValid: false,
+        onContextRestored: () => {
+          created.bakedKey = null;
+          created.pmremValid = false;
+          created.pmremGenerator?.dispose();
+          created.pmremGenerator = null;
+        },
+      };
+      renderer.domElement?.addEventListener('webglcontextrestored', created.onContextRestored);
+      this.bakes.set(renderer, created);
+      bake = created;
+    }
+    return bake;
+  }
+
+  /**
+   * The sky drawn into a cube texture `resolution` pixels per side, in `renderer`'s context; drawn
+   * again only when a setting changed, or after that context was lost and restored.
+   */
   bake(renderer: WebGLRenderer, resolution: number): Texture {
-    const key = this.currentKey(resolution);
-    if (!this.cubeTarget || this.cubeTarget.width !== resolution) {
-      this.cubeTarget?.dispose();
-      this.cubeTarget = new WebGLCubeRenderTarget(resolution, { type: HalfFloatType });
-      this.cubeCamera = new CubeCamera(0.1, 10, this.cubeTarget);
-      this.bakedKey = null;
+    const bake = this.bakeFor(renderer, resolution);
+    if (bake.bakedKey !== this.bakeKey) {
+      bake.cubeCamera.update(renderer, this.bakeScene);
+      bake.bakedKey = this.bakeKey;
+      bake.pmremValid = false;
     }
-    if (this.bakedKey !== key) {
-      this.cubeCamera!.update(renderer, this.bakeScene);
-      this.bakedKey = key;
-      this.pmremValid = false;
-    }
-    return this.cubeTarget.texture;
+    return bake.cubeTarget.texture;
   }
 
   /** The baked sky prefiltered for image-based lighting (see `bake`). */
   bakeEnvironment(renderer: WebGLRenderer, resolution: number): Texture {
     const cube = this.bake(renderer, resolution);
-    if (!this.pmremValid || !this.pmremTarget) {
-      this.pmremGenerator ??= new PMREMGenerator(renderer);
-      this.pmremTarget = this.pmremGenerator.fromCubemap(cube as any, this.pmremTarget ?? undefined);
-      this.pmremValid = true;
+    const bake = this.bakes.get(renderer)!;
+    if (!bake.pmremValid || !bake.pmremTarget) {
+      bake.pmremGenerator ??= new PMREMGenerator(renderer);
+      bake.pmremTarget = bake.pmremGenerator.fromCubemap(cube as any, bake.pmremTarget ?? undefined);
+      bake.pmremValid = true;
     }
-    return this.pmremTarget.texture;
+    return bake.pmremTarget.texture;
   }
 
-  /** Whether `bake`/`bakeEnvironment` would draw again. */
-  get needsBake(): boolean {
-    return !this._options || !this.cubeTarget || this.bakedKey !== this.currentKey(this.cubeTarget.width);
+  /** Frees the bake made for `renderer`, e.g. once it no longer renders this sky. */
+  releaseRenderer(renderer: WebGLRenderer): void {
+    const bake = this.bakes.get(renderer);
+    if (!bake) {
+      return;
+    }
+    renderer.domElement?.removeEventListener('webglcontextrestored', bake.onContextRestored);
+    bake.cubeTarget.dispose();
+    bake.pmremTarget?.dispose();
+    bake.pmremGenerator?.dispose();
+    this.bakes.delete(renderer);
   }
 
   dispose(): void {
     this.mesh.removeFromParent();
     this.mesh.geometry.dispose();
     this.material.dispose();
-    this.cubeTarget?.dispose();
-    this.pmremTarget?.dispose();
-    this.pmremGenerator?.dispose();
+    for (const renderer of [...this.bakes.keys()]) {
+      this.releaseRenderer(renderer);
+    }
   }
 }

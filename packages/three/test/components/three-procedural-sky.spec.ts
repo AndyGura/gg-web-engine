@@ -1,6 +1,20 @@
-import { Mesh, ShaderMaterial, Texture, Vector3, WebGLRenderer } from 'three';
-import { Frame3d } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '../../src';
+import {
+  BoxGeometry,
+  CubeCamera,
+  Mesh,
+  MeshDepthMaterial,
+  PMREMGenerator,
+  ShaderMaterial,
+  Texture,
+  Vector3,
+  WebGLCubeRenderTarget,
+  WebGLRenderer,
+  WebGLRenderTarget,
+} from 'three';
+import { Frame3d, PROCEDURAL_SKY_DEFAULTS } from '@gg-web-engine/core';
+
+const PROCEDURAL_DEFAULTS = PROCEDURAL_SKY_DEFAULTS;
+import { ThreeProceduralSky, ThreeSceneComponent } from '../../src';
 
 const skyMesh = (scene: ThreeSceneComponent) => scene.nativeScene!.getObjectByName('gg-procedural-sky') as Mesh | undefined;
 
@@ -100,5 +114,100 @@ describe('procedural sky', () => {
     scene.setEnvironment({ background: { type: 'PROCEDURAL' } });
     const fresh = (skyMesh(scene)!.material as ShaderMaterial).uniforms;
     expect(local.clone().applyMatrix3(fresh.uFrameRotation.value).distanceTo(global)).toBeLessThan(1e-9);
+  });
+
+  describe('bakes', () => {
+    const fakeRenderer = () => ({ domElement: new EventTarget() }) as unknown as WebGLRenderer;
+    let update: jest.SpyInstance;
+    let fromCubemap: jest.SpyInstance;
+    beforeEach(() => {
+      update = jest.spyOn(CubeCamera.prototype, 'update').mockImplementation(() => {});
+      fromCubemap = jest.spyOn(PMREMGenerator.prototype, 'fromCubemap').mockImplementation(() => new WebGLRenderTarget());
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('keeps one bake per renderer, drawn again only on a change or a restored context', () => {
+      const sky = new ThreeProceduralSky();
+      sky.setOptions({ ...PROCEDURAL_DEFAULTS });
+      const a = fakeRenderer();
+      const b = fakeRenderer();
+      const cubeA = sky.bake(a, 32);
+      sky.bake(a, 32);
+      expect(update).toHaveBeenCalledTimes(1);
+      // a second renderer (another WebGL context) gets its own cube
+      const cubeB = sky.bake(b, 32);
+      expect(update).toHaveBeenCalledTimes(2);
+      expect(cubeB).not.toBe(cubeA);
+      // a lost and restored context has lost the bake's contents
+      a.domElement.dispatchEvent(new Event('webglcontextrestored'));
+      sky.bake(a, 32);
+      expect(update).toHaveBeenCalledTimes(3);
+      // a setting change redraws for each renderer once
+      sky.setOptions({ ...PROCEDURAL_DEFAULTS, timeOfDay: 18 });
+      sky.bake(a, 32);
+      sky.bake(b, 32);
+      sky.bake(b, 32);
+      expect(update).toHaveBeenCalledTimes(5);
+      // the wind alone doesn't change a baked sky
+      sky.setOptions({ ...PROCEDURAL_DEFAULTS, timeOfDay: 18, clouds: { ...PROCEDURAL_DEFAULTS.clouds!, wind: { x: 1, y: 0 } } });
+      sky.bake(a, 32);
+      expect(update).toHaveBeenCalledTimes(5);
+    });
+
+    it('prefilters the environment per renderer, again after a restored context', () => {
+      const sky = new ThreeProceduralSky();
+      sky.setOptions({ ...PROCEDURAL_DEFAULTS });
+      const a = fakeRenderer();
+      sky.bakeEnvironment(a, 32);
+      sky.bakeEnvironment(a, 32);
+      expect(fromCubemap).toHaveBeenCalledTimes(1);
+      a.domElement.dispatchEvent(new Event('webglcontextrestored'));
+      sky.bakeEnvironment(a, 32);
+      expect(fromCubemap).toHaveBeenCalledTimes(2);
+      sky.bakeEnvironment(fakeRenderer(), 32);
+      expect(fromCubemap).toHaveBeenCalledTimes(3);
+    });
+
+    it('frees the bake of a renderer that left, and a replacing renderer gets a fresh one', async () => {
+      const scene = new ThreeSceneComponent();
+      await scene.init();
+      scene.setEnvironment({ background: { type: 'PROCEDURAL', mode: 'BAKED', bakeResolution: 32 } });
+      const first = fakeRenderer();
+      scene.prepareFrame(first);
+      const firstCube = scene.nativeScene!.background as Texture;
+      const dispose = jest.spyOn(WebGLCubeRenderTarget.prototype, 'dispose');
+      const removeListener = jest.spyOn(first.domElement, 'removeEventListener');
+      scene.releaseRenderer(first);
+      expect(dispose).toHaveBeenCalled();
+      const replacement = fakeRenderer();
+      scene.prepareFrame(replacement);
+      expect(removeListener).toHaveBeenCalledWith('webglcontextrestored', expect.any(Function));
+      expect(scene.nativeScene!.background).not.toBe(firstCube);
+      expect(update).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('draws nothing in a pass that renders the scene with an override material', () => {
+    const sky = new ThreeProceduralSky();
+    const geometry = sky.mesh.geometry as BoxGeometry;
+    const args = [{} as WebGLRenderer, {} as any, {} as any, geometry] as const;
+    sky.mesh.onBeforeRender(...args, new MeshDepthMaterial(), null as any);
+    expect(geometry.drawRange.count).toBe(0);
+    sky.mesh.onAfterRender(...args, new MeshDepthMaterial(), null as any);
+    expect(geometry.drawRange.count).toBe(Infinity);
+    sky.mesh.onBeforeRender(...args, sky.material, null as any);
+    expect(geometry.drawRange.count).toBe(Infinity);
+  });
+
+  it('moves the clouds by the time it is given', () => {
+    const sky = new ThreeProceduralSky();
+    sky.setOptions({ ...PROCEDURAL_DEFAULTS, clouds: { ...PROCEDURAL_DEFAULTS.clouds!, wind: { x: 0.01, y: 0 } } });
+    const u = sky.material.uniforms;
+    sky.advance(1000);
+    sky.advance(1050);
+    expect(u.uCloudOffset.value.x).toBeCloseTo(0.0005);
+    // a paused clock gives the same time: nothing moves
+    sky.advance(1050);
+    expect(u.uCloudOffset.value.x).toBeCloseTo(0.0005);
   });
 });

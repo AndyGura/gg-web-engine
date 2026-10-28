@@ -190,11 +190,13 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   /**
    * Called by a renderer of this scene before each render: advances the clouds of a `'DYNAMIC'`
-   * procedural sky, and draws a baked procedural sky (background or environment map) into its cube
-   * texture when its settings changed since the last bake. A baked sky lives in the WebGL context
-   * of the renderer that drew it first.
+   * procedural sky to `time` (the world clock's elapsed time in milliseconds; wall-clock time when
+   * the renderer isn't in a world), and draws a baked procedural sky (background or environment
+   * map) into that renderer's cube texture when its settings changed since its last bake. Each
+   * renderer keeps a bake of its own, so a replaced renderer or a restored WebGL context gets a
+   * fresh one (see `releaseRenderer`).
    */
-  prepareFrame(renderer: WebGLRenderer): void {
+  prepareFrame(renderer: WebGLRenderer, time: number = performance.now()): void {
     const scene = this._nativeScene;
     if (!scene) {
       return;
@@ -205,12 +207,21 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
         // a cube render target is sampled in the scene's own space: `applyEnvironmentRotation` leaves it unturned
         scene.background = this.backgroundSky.bake(renderer, backgroundOptions.bakeResolution);
       } else {
-        this.backgroundSky.advance(performance.now());
+        this.backgroundSky.advance(time);
       }
     }
     if (this.environmentSky) {
       scene.environment = this.environmentSky.bakeEnvironment(renderer, ThreeSceneComponent.ENVIRONMENT_SKY_RESOLUTION);
     }
+  }
+
+  /**
+   * Frees what procedural skies baked with `renderer`. Called by a renderer of this scene when it
+   * leaves the world or is disposed.
+   */
+  releaseRenderer(renderer: WebGLRenderer): void {
+    this.backgroundSky?.releaseRenderer(renderer);
+    this.environmentSky?.releaseRenderer(renderer);
   }
 
   // Mirrors `AmmoWorldComponent.lockedCollisionGroups`/`registerCollisionGroup` exactly - see that

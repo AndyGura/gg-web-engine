@@ -51,8 +51,10 @@ export type ProceduralSkyCirrus3dOpts = {
  * ```ts
  * const sky: ProceduralSky3dOpts = { type: 'PROCEDURAL', timeOfDay: 17.5, clouds: { coverage: 0.6 } };
  * world.visualScene.setEnvironment({ background: sky, environmentMap: sky });
- * // later, e.g. from a slider: only the fields given change
- * world.visualScene.setEnvironment({ background: { ...sky, timeOfDay: 21 } });
+ * // later, e.g. from a slider: a sky replaces the previous one as a whole, so pass all of it
+ * // again with the change, to both fields it is set on
+ * const night = { ...sky, timeOfDay: 21 };
+ * world.visualScene.setEnvironment({ background: night, environmentMap: night });
  * ```
  */
 export type ProceduralSky3dOpts = {
@@ -145,9 +147,20 @@ export function isProceduralSky(value: unknown): value is ProceduralSky3dOpts {
 
 /** `sky` with every missing setting set to its default (see `PROCEDURAL_SKY_DEFAULTS`). */
 export function resolveProceduralSky(sky: ProceduralSky3dOpts): ResolvedProceduralSky3dOpts {
-  const clouds = sky.clouds === null ? null : { ...PROCEDURAL_SKY_DEFAULTS.clouds!, ...(sky.clouds || {}) };
-  const cirrus = sky.cirrus ? { ...PROCEDURAL_SKY_CIRRUS_DEFAULTS, ...sky.cirrus } : null;
-  return { ...PROCEDURAL_SKY_DEFAULTS, ...sky, clouds, cirrus };
+  const clouds = sky.clouds === null ? null : withDefaults(PROCEDURAL_SKY_DEFAULTS.clouds!, sky.clouds || {});
+  const cirrus = sky.cirrus ? withDefaults(PROCEDURAL_SKY_CIRRUS_DEFAULTS, sky.cirrus) : null;
+  return { ...withDefaults(PROCEDURAL_SKY_DEFAULTS, sky), clouds, cirrus };
+}
+
+/** `defaults` overridden by every field of `values` that is set: a field that is `undefined` keeps its default. */
+function withDefaults<T extends object>(defaults: T, values: object): T {
+  const result: Record<string, unknown> = { ...(defaults as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result as T;
 }
 
 /**

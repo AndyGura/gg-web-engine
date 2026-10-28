@@ -63,6 +63,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     }
     this.world = null;
     this.scene.renderers.delete(this);
+    this.scene.releaseRenderer(this.nativeRenderer);
     if (dispose) {
       this.dispose();
     }
@@ -88,7 +89,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   }
 
   render(): void {
-    this.scene.prepareFrame(this.nativeRenderer);
+    this.scene.prepareFrame(this.nativeRenderer, this.world?.worldClock.elapsedTime);
     this.nativeRenderer.render(this.scene.nativeScene!, this.camera.nativeCamera);
     if (this.physicsDebugViewActive) {
       this.debugView!.render(this.nativeRenderer, this.camera.nativeCamera);
@@ -103,6 +104,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
    */
   dispose(): void {
     this.scene.renderers.delete(this);
+    this.scene.releaseRenderer(this.nativeRenderer);
     this.camera.dispose();
     this.nativeRenderer.clear();
     this.nativeRenderer.dispose();

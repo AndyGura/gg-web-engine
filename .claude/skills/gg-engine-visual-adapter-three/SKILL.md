@@ -48,16 +48,25 @@ maps), so the sky turns with the world's axes and stays put globally;
 position, 1.0)` as `.xyww`, so the box sits at the far plane around any camera, whatever its
 `near`/`far` and position, and the mesh needs no per-camera update. `depthTest`/`depthWrite` off,
 `renderOrder` the lowest safe integer, `frustumCulled` false, `layers.enableAll()` (every camera
-draws it) and a no-op `raycast`. `ThreeSceneComponent` keeps one instance for a procedural
+draws it) and a no-op `raycast`. A pass that draws the scene with `scene.overrideMaterial` (depth or
+normals for SSAO, depth of field) would draw the box as a 1 m cube around the camera, so the mesh's
+`onBeforeRender` sets the geometry's draw range to zero when the material three.js is about to use
+isn't the sky's own, and `onAfterRender` restores it (three.js reads the draw range between the
+two). `ThreeSceneComponent` keeps one instance for a procedural
 `background` (added to `nativeScene` as `gg-procedural-sky` in `'DYNAMIC'` mode) and one for a
 procedural `environmentMap`, and updates their uniforms on every `setEnvironment`.
 
-- **Baking needs a renderer, so it happens in `ThreeSceneComponent.prepareFrame(renderer)`**, which
-  `ThreeRendererComponent.render` and `ThreeComposerRendererComponent.render` call first. Doing it
-  from `Scene.onBeforeRender` would nest a `CubeCamera.update` inside the outer render call. A bake
-  is skipped while the settings key (everything but `mode` and `clouds.wind`) is unchanged. The
-  cube target lives in the WebGL context of the renderer that drew it: two renderers with separate
-  contexts sharing one scene would need a bake each, which isn't done.
+- **Baking needs a renderer, so it happens in `ThreeSceneComponent.prepareFrame(renderer, time)`**,
+  which `ThreeRendererComponent.render` and `ThreeComposerRendererComponent.render` call first.
+  Doing it from `Scene.onBeforeRender` would nest a `CubeCamera.update` inside the outer render
+  call. Each `WebGLRenderer` gets a bake of its own (cube target, `PMREMGenerator`, prefiltered
+  target), since a texture lives in one WebGL context: a scene drawn by two renderers sets the
+  background to that renderer's cube right before it renders, and `prepareFrame` frees the bakes of
+  renderers no longer in `renderers` (a replaced renderer). A bake listens for its canvas's
+  `webglcontextrestored`: three.js re-creates its GPU state on a restore, so the cube comes back
+  empty and is drawn again, with a new `PMREMGenerator`. The settings key that decides a redraw
+  (everything but `mode` and the wind speeds, plus the frame yaw) is a string built once per
+  `setOptions`/`setFrameYaw`, never per frame.
 - **A cube render target is sampled in the scene's own space**: `CubeCamera` renders the Z-up
   scene as it is, and three.js doesn't X-flip a render-target cube the way it does a `CubeTexture`
   from images, so a baked background or environment gets `backgroundRotation`/
@@ -70,9 +79,10 @@ procedural `environmentMap`, and updates their uniforms on every `setEnvironment
   into a target it owns and disposes. Handing the raw cube render target to `scene.environment`
   makes the renderer prefilter it itself (keyed by `pmremVersion`), but that path never registers a
   dispose listener, so its PMREM target would outlive the sky.
-- **Cloud drift and star twinkle advance on wall-clock time between renders, capped at 0.1 s a
-  step** (`advance(performance.now())` from `prepareFrame`): a paused world stops rendering, so the
-  cap keeps the clouds from jumping on resume. Each layer's offset accumulates `wind * dt`, so
+- **Cloud drift and star twinkle advance on the world clock**: the renderer passes
+  `world.worldClock.elapsedTime` (milliseconds) to `prepareFrame`, which hands it to `advance`, so
+  pausing the world or changing its `timeScale` pauses or slows the clouds; a renderer outside a
+  world falls back to `performance.now()`. Steps are capped at 0.1 s, for a clock that jumps. Each layer's offset accumulates `wind * dt`, so
   changing `wind` changes the speed without moving the clouds.
 - **Cirrus** is a second plane above the main layer, sampled in a frame turned to its wind
   (`uCirrusAxis`, `+X` for a zero wind) and stretched across it, with a low-frequency warp for
@@ -83,6 +93,13 @@ procedural `environmentMap`, and updates their uniforms on every `setEnvironment
   `tonemapping_fragment`/`colorspace_fragment`, so a renderer with tone mapping on treats the
   dynamic sky like the baked one, whose half-float cube is linear and goes through three.js's own
   background material.
+- **Noise detail fades with distance instead of stepping**: `fbm(p, detail)` takes a fractional
+  octave count and weights the last octave by its fraction (and normalizes by the weights' sum), so
+  the main layer can lose detail towards the horizon without ring seams around the zenith where
+  an integer octave count would switch.
+- **Derivatives come before any branch**: `starLayer` takes `fwidth` of its cell coordinate before
+  its per-pixel early return. Inside non-uniform control flow, derivatives are undefined, and
+  some GPUs then make stars flicker or vanish along cell borders.
 - Light that is the same for every pixel (sun and moon light at cloud height, the zenith sky used as
   ambient) is computed in the vertex shader and passed as varyings; the moon, twilight and stars
   branch on uniforms so a daytime sky skips them. In SwiftShader at 400x260 the dynamic sky costs

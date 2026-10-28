@@ -17,6 +17,22 @@ describe('procedural sky', () => {
     expect(resolveProceduralSky({ type: 'PROCEDURAL', clouds: null }).clouds).toBeNull();
   });
 
+  it('keeps the default of a setting given as undefined', () => {
+    const sky = resolveProceduralSky({
+      type: 'PROCEDURAL',
+      timeOfDay: undefined,
+      haze: undefined,
+      clouds: { coverage: undefined, density: 0.5 },
+      cirrus: { scale: undefined },
+    });
+    expect(sky.timeOfDay).toBe(PROCEDURAL_SKY_DEFAULTS.timeOfDay);
+    expect(sky.haze).toBe(PROCEDURAL_SKY_DEFAULTS.haze);
+    expect(sky.clouds).toEqual({ ...PROCEDURAL_SKY_DEFAULTS.clouds, density: 0.5 });
+    expect(sky.cirrus).toEqual(PROCEDURAL_SKY_CIRRUS_DEFAULTS);
+    const { sunDirection, sunLight } = proceduralSkyBodies({ type: 'PROCEDURAL', timeOfDay: undefined });
+    expect(Number.isNaN(sunDirection.x + sunDirection.y + sunDirection.z + sunLight.intensity)).toBe(false);
+  });
+
   it('has no cirrus layer unless one is given, and fills in the defaults of one that is', () => {
     expect(resolveProceduralSky({ type: 'PROCEDURAL' }).cirrus).toBeNull();
     expect(resolveProceduralSky({ type: 'PROCEDURAL', cirrus: null }).cirrus).toBeNull();
