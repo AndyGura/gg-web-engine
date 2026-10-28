@@ -15,7 +15,7 @@
 //   node etc/generate_level_schema.mjs            write packages/core/schema/level-{3d,2d}.schema.json
 //   node etc/generate_level_schema.mjs --check    exit 1 if the committed files differ from a fresh generation
 //   node etc/generate_level_schema.mjs --out DIR  write the files into DIR instead
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -97,10 +97,32 @@ function walk(node, fn) {
   return node;
 }
 
-/** `DisplayObject3dOpts<any>` -> `DisplayObject3dOpts`, keeping names unique. */
-function cleanDefName(name, taken) {
-  const plain = decodeURIComponent(name).replace(/<.*>$/, '');
-  return taken.has(plain) ? name : plain;
+/** Applies `fn` to every schema object, parent before children (which are read off `fn`'s result). */
+function walkTopDown(node, fn) {
+  if (Array.isArray(node)) {
+    return node.map(n => walkTopDown(n, fn));
+  }
+  if (node && typeof node === 'object') {
+    const out = fn({ ...node });
+    for (const [k, v] of Object.entries(out)) {
+      out[k] = walkTopDown(v, fn);
+    }
+    return out;
+  }
+  return node;
+}
+
+/**
+ * Definition names without type arguments (`DisplayObject3dOpts<any>` -> `DisplayObject3dOpts`),
+ * keyed by decoded generator name. A name keeps its arguments when dropping them would clash
+ * with another definition (`Foo<A>` and `Foo<B>`, or `Foo<A>` and `Foo`).
+ */
+function cleanDefNames(rawNames) {
+  const decoded = rawNames.map(n => decodeURIComponent(n));
+  const plainOf = name => name.replace(/<.*>$/, '');
+  const count = new Map();
+  for (const name of decoded) count.set(plainOf(name), (count.get(plainOf(name)) ?? 0) + 1);
+  return new Map(decoded.map(name => [name, count.get(plainOf(name)) === 1 ? plainOf(name) : name]));
 }
 
 /** `{@link Foo}` -> `` `Foo` ``, and the whitespace the generator leaves around it. */
@@ -213,15 +235,7 @@ function discriminate(node, $defs) {
 /** Draft-07 output of the generator -> the draft 2020-12 schema we ship. */
 function toShippedSchema({ level, entity }, { builtIns, title }) {
   const defs = { ...level.definitions, ...entity.definitions };
-  const names = new Map();
-  for (const name of Object.keys(defs)) {
-    const others = new Set(
-      Object.keys(defs)
-        .filter(n => n !== name)
-        .map(n => decodeURIComponent(n)),
-    );
-    names.set(name, cleanDefName(name, others));
-  }
+  const names = cleanDefNames(Object.keys(defs));
   const rewrite = node =>
     walk(node, n => {
       if (typeof n.$ref === 'string' && n.$ref.startsWith('#/definitions/')) {
@@ -241,7 +255,7 @@ function toShippedSchema({ level, entity }, { builtIns, title }) {
     });
   const $defs = {};
   for (const [name, schema] of Object.entries(defs)) {
-    $defs[names.get(name)] = rewrite(schema);
+    $defs[names.get(decodeURIComponent(name))] = rewrite(schema);
   }
 
   // Built-in class aliases, read off the `class` constants of the generated union.
@@ -256,11 +270,12 @@ function toShippedSchema({ level, entity }, { builtIns, title }) {
     }
   };
   collectAliases($defs[builtIns]);
-  // Branches are resolved against the untouched definitions, since a branch can itself be a
-  // union that gets rewritten (a `"Primitive"` is one `class` branch and a union on `shape`).
+  // Branches are read before they are rewritten themselves, since a branch can itself be a union
+  // that gets rewritten (a `"Primitive"` is one `class` branch and a union on `shape`): `$ref`
+  // branches against the untouched definitions, inline ones by rewriting parents first.
   const original = structuredClone($defs);
   for (const [name, def] of Object.entries($defs)) {
-    $defs[name] = walk(def, n => discriminate(n, original));
+    $defs[name] = walkTopDown(def, n => discriminate(n, original));
   }
   const builtInRef = { $ref: `#/$defs/${builtIns}` };
   $defs.LevelEntityJson = {
@@ -314,7 +329,7 @@ function addStatedDefaults(schema) {
         }
         const value = statedDefault(prop.description);
         const propPointer = `${pointer}/properties/${key.replace(/~/g, '~0').replace(/\//g, '~1')}`;
-        if (value !== undefined && ajv.validate({ $ref: `level#${encodeURI(propPointer)}` }, value)) {
+        if (value !== undefined && ajv.getSchema(`level#${encodeURI(propPointer)}`)(value)) {
           prop.default = value;
         }
       }
@@ -347,10 +362,15 @@ if (args[0] === '--check') {
     console.error('Run `npm run level-schema` and commit the result.');
     process.exit(1);
   }
+  rmSync(out, { recursive: true, force: true });
   console.log('Level JSON schemas match the level loader types.');
 } else {
   const outIndex = args.indexOf('--out');
   const dir = outIndex >= 0 ? args[outIndex + 1] : TARGET_DIR;
+  if (!dir || dir.startsWith('--')) {
+    console.error('Usage: node etc/generate_level_schema.mjs [--check | --out DIR]');
+    process.exit(1);
+  }
   mkdirSync(dir, { recursive: true });
   for (const spec of SCHEMAS) {
     writeFileSync(join(dir, spec.file), render(spec));

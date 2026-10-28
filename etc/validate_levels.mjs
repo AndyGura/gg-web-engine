@@ -28,13 +28,15 @@ const esbuild = require('esbuild');
 const Ajv2020 = require('ajv/dist/2020').default;
 
 const ROOTS = ['examples', 'templates'];
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'assets', '.angular']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.angular']);
+/** Shared binary/model assets of the examples, no levels in there. */
+const SKIP_PATHS = new Set([join('examples', 'assets')]);
 
 function* walkFiles(dir) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
-      if (!SKIP_DIRS.has(name)) {
+      if (!SKIP_DIRS.has(name) && !SKIP_PATHS.has(relative(repoRoot, path))) {
         yield* walkFiles(path);
       }
     } else {
@@ -60,8 +62,11 @@ function dimensionOf(file) {
 
 /** Top-level `const` declarations annotated `LevelJson`, as a module exporting just them. */
 function sliceLevels(file) {
-  const text = readFileSync(file, 'utf8');
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  // A program of this one file, for its checker: it tells a reference to a top-level name from an
+  // object key, a property access or a local of the same name.
+  const program = ts.createProgram([file], { noResolve: true, noLib: true, types: [], target: ts.ScriptTarget.Latest });
+  const checker = program.getTypeChecker();
+  const source = program.getSourceFile(file);
   const declarations = new Map(); // name -> statement
   const imports = new Map(); // local name -> { module, imported } (imported: name, 'default' or '*')
   const levels = [];
@@ -102,8 +107,8 @@ function sliceLevels(file) {
   const neededImports = new Set();
   const visit = node => {
     if (ts.isTypeNode(node) && !ts.isExpressionWithTypeArguments(node)) return;
-    if (ts.isIdentifier(node)) {
-      const name = node.text;
+    const name = ts.isIdentifier(node) ? topLevelReference(node) : undefined;
+    if (name) {
       if (imports.has(name)) neededImports.add(name);
       const statement = declarations.get(name);
       if (statement && !neededStatements.has(statement)) {
@@ -113,6 +118,30 @@ function sliceLevels(file) {
     }
     ts.forEachChild(node, visit);
   };
+  /** The top-level name `id` refers to, if it refers to one. */
+  function topLevelReference(id) {
+    const symbol = ts.isShorthandPropertyAssignment(id.parent)
+      ? checker.getShorthandAssignmentValueSymbol(id.parent)
+      : checker.getSymbolAtLocation(id);
+    const declaration = symbol?.declarations?.find(d => isTopLevel(d));
+    return declaration ? id.text : undefined;
+  }
+  function isTopLevel(declaration) {
+    const isBinding =
+      ts.isVariableDeclaration(declaration) ||
+      ts.isBindingElement(declaration) ||
+      ts.isFunctionDeclaration(declaration) ||
+      ts.isClassDeclaration(declaration) ||
+      ts.isEnumDeclaration(declaration) ||
+      ts.isImportClause(declaration) ||
+      ts.isImportSpecifier(declaration) ||
+      ts.isNamespaceImport(declaration);
+    if (!isBinding) return false; // an object key, a property, a parameter...
+    for (let node = declaration.parent; node && node !== source; node = node.parent) {
+      if (ts.isFunctionLike(node) || ts.isClassLike(node) || ts.isBlock(node)) return false;
+    }
+    return true;
+  }
   for (const name of levels) {
     const statement = declarations.get(name);
     neededStatements.add(statement);
@@ -172,11 +201,17 @@ const validators = {
   '2d': ajv.compile(JSON.parse(readFileSync(join(repoRoot, 'packages/core/schema/level-2d.schema.json'), 'utf8'))),
 };
 
-/** The most specific errors: ajv reports every branch of a failed union, keep the deepest paths. */
+/**
+ * The most specific errors: ajv reports every branch of a failed union, so per top-level item
+ * (`/entities/3`, `/blueprints/x`, or the root itself) keep only its deepest paths.
+ */
 function summarize(errors) {
-  const deepest = Math.max(...errors.map(e => e.instancePath.split('/').length));
+  const depth = e => e.instancePath.split('/').length;
+  const itemOf = e => e.instancePath.split('/').slice(0, 3).join('/');
+  const deepest = new Map();
+  for (const e of errors) deepest.set(itemOf(e), Math.max(deepest.get(itemOf(e)) ?? 0, depth(e)));
   return errors
-    .filter(e => e.instancePath.split('/').length === deepest && e.keyword !== 'if')
+    .filter(e => depth(e) === deepest.get(itemOf(e)) && e.keyword !== 'if')
     .map(
       e =>
         `    ${e.instancePath || '/'} ${e.message}${e.params?.additionalProperty ? ` (${e.params.additionalProperty})` : ''}`,
