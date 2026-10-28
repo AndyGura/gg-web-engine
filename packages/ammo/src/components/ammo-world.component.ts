@@ -2,6 +2,7 @@ import {
   BitMask,
   CollisionEvent,
   CollisionGroup,
+  Frame3d,
   IPhysicsWorld3dComponent,
   notInitializedError,
   Pnt3,
@@ -256,6 +257,41 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     this._dynamicAmmoWorld.setGravity(this.gravityVector);
     this._factory = new AmmoFactory(this);
     this._loader = new AmmoLoader(this);
+  }
+
+  /**
+   * `IPhysicsWorld3dComponent.onFrameSwitch`, after every entity moved its bodies: the contact
+   * manifolds are kept - Bullet warm-starts the solver from their impulses, and a pair still in
+   * contact stays in contact (no `onCollisionEnd`/`onCollisionStart` from the switch) - with their
+   * world-space contact points and normals moved by `delta`. Bullet recomputes the points from
+   * their body-local ones in every step, but takes the normal of a point the narrowphase doesn't
+   * regenerate from the manifold: left in the old frame, it would be off by the switch's yaw.
+   */
+  onFrameSwitch(delta: Frame3d): void {
+    if (!this._dynamicAmmoWorld) {
+      return;
+    }
+    const v = new Ammo.btVector3(0, 0, 0);
+    const dispatcher = this._dynamicAmmoWorld.getDispatcher();
+    for (let i = 0; i < dispatcher.getNumManifolds(); i++) {
+      const manifold = dispatcher.getManifoldByIndexInternal(i);
+      for (let j = 0; j < manifold.getNumContacts(); j++) {
+        const cp = manifold.getContactPoint(j);
+        const a = cp.get_m_positionWorldOnA();
+        const pa = delta.toGlobalPoint({ x: a.x(), y: a.y(), z: a.z() });
+        v.setValue(pa.x, pa.y, pa.z);
+        cp.set_m_positionWorldOnA(v);
+        const b = cp.get_m_positionWorldOnB();
+        const pb = delta.toGlobalPoint({ x: b.x(), y: b.y(), z: b.z() });
+        v.setValue(pb.x, pb.y, pb.z);
+        cp.set_m_positionWorldOnB(v);
+        const n = cp.get_m_normalWorldOnB();
+        const nb = delta.toGlobalDirection({ x: n.x(), y: n.y(), z: n.z() });
+        v.setValue(nb.x, nb.y, nb.z);
+        cp.set_m_normalWorldOnB(v);
+      }
+    }
+    Ammo.destroy(v);
   }
 
   simulate(delta: number): void {

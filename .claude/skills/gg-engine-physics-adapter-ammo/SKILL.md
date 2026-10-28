@@ -1189,6 +1189,53 @@ straight through). Each corner is `vertices[f[j]]`. Regression: `ammo-frame-rate
 "collides with a triangle mesh". A mesh-shape bug like this is invisible to a test that only checks
 a body *was created* from every shape descriptor - drop something on it.
 
+## Frame switch (`onFrameSwitch`): every copy of the pose Bullet keeps
+
+The hooks (see `gg-engine-physics-adapter` for the contract) live on `AmmoBodyComponent` (ghost
+objects: triggers, character controllers), `AmmoRigidBodyComponent`, `AmmoRaycastVehicleComponent`,
+`AmmoCharacterControllerComponent` and `AmmoWorldComponent`. None calls `activate()`.
+
+- **Rigid body**: velocities first (rotated), then the world transform is changed in place and
+  passed to `setCenterOfMassTransform`, which also sets the interpolation transform (Bullet sweeps
+  from it for CCD and the AABB of a body under continuous collision; left behind, the next step sees
+  a streak from the old pose) and copies the current velocities into the interpolation velocities -
+  hence velocities first. For a kinematic body it takes the interpolation transform from the current
+  world transform, already the new one, so `saveKinematicState` derives no velocity from the switch.
+  Then the motion state (`getMotionState().setWorldTransform`), which kinematic bodies and wheels
+  are placed from. A dynamic body's pending `getTotalForce()`/`getTotalTorque()` (forces applied
+  since the last step; a force at a point is already split into the two) is cleared and re-applied
+  rotated.
+- **AABB**: `updateSingleAabb` on every moved object. Bullet refreshes AABBs in a step only for
+  active, non-static objects, so without it a static or sleeping body stays findable by raycasts and
+  overlaps only where it was.
+- **Contact manifolds** are kept (warm-starting, no collision end/start from the switch). The world
+  hook moves each point's `m_positionWorldOnA/B` and rotates `m_normalWorldOnB`: Bullet recomputes
+  the positions from body-local ones each step, but keeps the normal of a point the narrowphase does
+  not regenerate.
+- **Vehicle**: Bullet recomputes world-space wheel data at the start of each step, so only what is
+  read before it moves: each wheel's `m_contactPointWS`/`m_contactNormalWS`, and its transform via
+  `getWheelTransform(i)` from the moved chassis.
+- **Ghost objects (triggers)** keep their overlapping pairs: everything moves together. Their
+  overlaps are AABB-based, so a static `PLANE` (an infinite AABB) counts as inside every trigger, and
+  a yaw can change which near-miss AABBs overlap.
+
+Pitfalls hit while writing them:
+
+- **Never send the basis through a quaternion.** `getRotation()`/`setRotation()` re-derive the
+  3x3 basis and perturb its float32 components; a running car amplified that into 0.3 mm of drift
+  from an *identity* switch. `moveTransformByFrame` computes `Rz(yaw) * basis` from the rows and
+  writes basis and origin back with `setFromOpenGLMatrix` (column-major). An identity switch then
+  changes nothing.
+- **`btMatrix3x3.getRow(i)` returns a copy, and every call returns the same temporary
+  `btVector3`.** Holding `getRow(0)`, `getRow(1)`, `getRow(2)` gives three handles to row 2 (the
+  wrong basis, a car turning off course by tens of meters), and `setValue` on one changes nothing in
+  the matrix. Read each row's components before the next call.
+- **Far from the origin, ammo.js is single precision.** 15-21 km out a coordinate has a 1-2 mm step:
+  the frame-switch suite's `far` car drive differs from the near-origin one by ~3 cm, ~0.14° and
+  ~6 cm/s, and spawning the car there (switches on the first two ticks, at rest) gives the same.
+  Near the origin (the `recentred` scenario) it stays within ~1.5 mm. `ammo-frame-switch.spec.ts`
+  passes the measured `farBounds`.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/ammo` specifically, not by end users of

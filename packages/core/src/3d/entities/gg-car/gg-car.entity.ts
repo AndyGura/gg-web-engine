@@ -21,6 +21,8 @@ import {
 import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
 import { DisplayObject3dOpts } from '../../factories';
 import { isMaterialReadable3d } from '../../components/rendering/i-material-readable-3d.component';
+import { IFrameSwitchable } from '../../interfaces/i-frame-switchable';
+import { Frame3d } from '../../models/frame-3d';
 
 export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
@@ -211,7 +213,12 @@ export class GgCarEntity<
   RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
 >
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d, ISerializableEntity, INetworkSyncable<GgCarNetState>, INetworkInputDriven<GgCarInput>
+  implements
+    IPositionable3d,
+    ISerializableEntity,
+    INetworkSyncable<GgCarNetState>,
+    INetworkInputDriven<GgCarInput>,
+    IFrameSwitchable
 {
   static readonly entityTypeName: string = 'GgCarEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -219,6 +226,13 @@ export class GgCarEntity<
   get position(): Point3 {
     return this.raycastVehicle.position;
   }
+
+  /**
+   * `IFrameSwitchable`: nothing of its own to move - the pose and velocities live in
+   * `raycastVehicle`, a child entity the world switches itself. Engine rpm, gear, shifting and the
+   * driver's inputs carry on unchanged.
+   */
+  public onFrameSwitch(_delta: Frame3d): void {}
 
   set position(value: Point3) {
     this.raycastVehicle.position = value;

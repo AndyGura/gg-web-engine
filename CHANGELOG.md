@@ -40,6 +40,27 @@ where one exists.
   a global target to local; `toGlobal`/`toLocal` convert a state alone. `Entity3d`, `GgCarEntity`
   and `CharacterController3dEntity` (state and input rotation) convert their network state through
   their world's frame.
+- core: `Gg3dWorld.switchFrame(newFrame)` moves a world into another frame between two ticks: every
+  entity is moved by the rigid transform `newFrame⁻¹ ∘ oldFrame` (positions rotated about `+Z`,
+  then translated; rotations get the yaw in front; velocities rotated), so nothing changes
+  globally and the next rendered frame looks the same. Called during a tick, it applies after the
+  physics step and before rendering (`pendingFrame` holds it until then); called while a switch is
+  being applied, it applies right after that one. `frameSwitched$` emits the `FrameSwitch`
+  (`delta`, `previousFrame`, `frame`) after each switch.
+- core: `IFrameSwitchable` (`onFrameSwitch(delta)`), implemented by `Entity3d` and its subclasses
+  (raycast vehicles and cars with their wheels, character controllers, triggers, cameras and every
+  built-in camera controller, lights, 3D audio sources, particle systems, the map graph with its
+  loaded and loading chunks, surface-following entities, grabbables). Physics components, the
+  physics world and the visual scene may implement an optional `onFrameSwitch` for native state a
+  pose write misses. Helpers: `isFrameSwitchable`, `switchPoseFrame`, `switchBodyFrame`,
+  `claimFrameSwitch`. With the dev console present (`window.ggstatic`), switching a world holding a
+  positioned entity without the hook warns once per class.
+- ammo, rapier3d: physics components and worlds implement `onFrameSwitch`: bodies keep their
+  activation/sleep state, velocities, contacts and (ammo) interpolation; triggers keep their
+  overlaps; forces applied before the next step are rotated; queries right after a switch find the
+  moved colliders; vehicles keep their wheels and suspension.
+- three: the visual scene implements `onFrameSwitch`: the sky and the environment map turn with a
+  switch's yaw, so they stay in place globally.
 - core: `quantizeNetPosition` (1 mm), `quantizeNetVelocity` (1 mm/s),
   `quantizeNetAngularVelocity` and `quantizeNetRotation` (5 decimals), for network payloads.
 - core: `Qtrn.normalize`.

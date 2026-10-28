@@ -3,6 +3,7 @@ import {
   DebugBody3DSettings,
   ICharacterController3dComponent,
   IEntity,
+  Frame3d,
   Pnt3,
   Point3,
   Point4,
@@ -143,6 +144,19 @@ export class AmmoCharacterControllerComponent
 
   public get isGrounded(): boolean {
     return this._isGrounded;
+  }
+
+  /**
+   * `ICharacterController3dComponent.onFrameSwitch`: moves the ghost object by `delta` (see
+   * `AmmoBodyComponent.onFrameSwitch`) and rotates `up` and the last `move()`'s ground normal;
+   * `isGrounded` stays.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    super.onFrameSwitch(delta);
+    this._up = delta.toGlobalDirection(this._up);
+    if (this._groundNormal) {
+      this._groundNormal = delta.toGlobalDirection(this._groundNormal);
+    }
   }
 
   public get groundNormal(): Point3 | null {

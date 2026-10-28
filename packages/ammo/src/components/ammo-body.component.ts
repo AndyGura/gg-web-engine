@@ -1,4 +1,4 @@
-import { BitMask, CollisionGroup, IEntity, Point3, Point4, Shape3DDescriptor } from '@gg-web-engine/core';
+import { BitMask, CollisionGroup, Frame3d, IEntity, Point3, Point4, Shape3DDescriptor } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoGgWorld } from '../types';
@@ -62,6 +62,72 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   protected applyWorldTransform(transform: Ammo.btTransform): void {
     this.nativeBody.setWorldTransform(transform);
     this.nativeBody.activate(true);
+  }
+
+  /**
+   * Frame switch (`Gg3dWorld.switchFrame`): moves the collision object by `delta` without waking it
+   * or touching anything else (the base version, for the ghost objects of triggers and character
+   * controllers; rigid bodies override it). A ghost object keeps its overlapping pairs: everything
+   * moves together, so the next broadphase pass finds the same pairs. Its AABB is updated at once
+   * (`updateSingleAabb`) - nothing else would before the next step, and a query (a raycast, a
+   * character's sweep) made before it would find the object where it was.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    this.moveTransformByFrame(this.nativeBody.getWorldTransform(), delta);
+    this.nativeBody.setWorldTransform(this.nativeBody.getWorldTransform());
+    this.updateAabbInWorld();
+  }
+
+  /**
+   * Writes `delta` applied to `transform` into it: the origin rotated about +Z and translated, the
+   * basis turned by the yaw (`Rz(yaw) * basis`, computed from the basis rows and written back with
+   * `setFromOpenGLMatrix`). The basis never goes through a quaternion: `getRotation`/`setRotation`
+   * re-derive the matrix and perturb its float32 components, which a running simulation amplifies -
+   * an identity switch would not be a no-op. (`getBasis().getRow(i)` returns a copy - one temporary
+   * shared by every call - so the rows cannot be rewritten in place.)
+   */
+  protected moveTransformByFrame(transform: Ammo.btTransform, delta: Frame3d): void {
+    const origin = transform.getOrigin();
+    const position = delta.toGlobalPoint({ x: origin.x(), y: origin.y(), z: origin.z() });
+    const basis = transform.getBasis();
+    // each `getRow` call returns the same temporary btVector3, so read it before the next call
+    const row = (i: number): number[] => {
+      const r = basis.getRow(i);
+      return [r.x(), r.y(), r.z()];
+    };
+    const a0 = row(0);
+    const a1 = row(1);
+    const a2 = row(2);
+    const c = Math.cos(delta.yaw);
+    const s = Math.sin(delta.yaw);
+    const b0 = delta.yaw === 0 ? a0 : [0, 1, 2].map(i => c * a0[i] - s * a1[i]);
+    const b1 = delta.yaw === 0 ? a1 : [0, 1, 2].map(i => s * a0[i] + c * a1[i]);
+    // column-major: m[4 * column + row]
+    transform.setFromOpenGLMatrix([
+      b0[0],
+      b1[0],
+      a2[0],
+      0,
+      b0[1],
+      b1[1],
+      a2[1],
+      0,
+      b0[2],
+      b1[2],
+      a2[2],
+      0,
+      position.x,
+      position.y,
+      position.z,
+      1,
+    ]);
+  }
+
+  /** Refreshes the object's broadphase AABB from its current transform, while it is in the world. */
+  protected updateAabbInWorld(): void {
+    if (this.addedToWorld) {
+      this.world.dynamicAmmoWorld?.updateSingleAabb(this.nativeBody);
+    }
   }
 
   public name: string = '';

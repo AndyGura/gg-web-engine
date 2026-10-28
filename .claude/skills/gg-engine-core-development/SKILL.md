@@ -109,6 +109,66 @@ whatever the loader currently expects), bump `GG_META_FORMAT_VERSION` in
 `blender-addon/gg_web_engine_exporter/exporter.py` and update `blender-addon/README.md`'s
 object-convention table to match — the two sides aren't type-checked against each other.
 
+## World frame switch: `Gg3dWorld.switchFrame` and `IFrameSwitchable`
+
+`switchFrame(newFrame)` computes `delta = newFrame.inverse().compose(frame)` and moves the world's
+content by it, then sets `frame` and emits `frameSwitched$` (`FrameSwitch`: `delta`,
+`previousFrame`, `frame`). Called from inside a tick before the physics step (`GgWorld`'s protected
+`isBeforePhysicsStep`), it is parked in `pendingFrame` and applied from `onPhysicsStepped()` - the
+protected no-op hook `GgWorld.tick` calls right after the physics block (also in a world without
+physics), before the post-physics listeners and rendering. Otherwise it applies at once. A second
+switch before the pending one applies replaces it. A call made while a switch is being applied (an
+`onFrameSwitch` hook, a collision or trigger callback fired by the physics world's own hook, a
+`frameSwitched$` subscriber) is parked the same way and applied right after that switch completes,
+so `frame` and `frameSwitched$` always describe every move. `GgWorld`'s tick clears
+`isBeforePhysicsStep` in a `finally`: a throwing physics step would otherwise hold every later switch
+back.
+
+What gets moved, in order:
+- Every entity in `world.children` (the flat list, nested ones included), deepest first, through its
+  `onFrameSwitch(delta)` (`IFrameSwitchable`, `3d/interfaces/i-frame-switchable.ts`). Each hook moves
+  only what it owns; children get their own call. Positions go through `delta.toGlobalPoint`
+  (rotated about `+Z`, then translated), orientations through `toGlobalRotation` (yaw multiplied in
+  front), velocities, offsets and normals through `toGlobalDirection` (rotated only).
+- Then `physicsWorld.onFrameSwitch?.(delta)` - for world-level native state (contact manifolds, the
+  broad phase), after every body moved.
+- Then `visualScene.onFrameSwitch?.(delta)` (`IVisualScene3dComponent`): turns the directional
+  environment (a sky texture `background`, the `environmentMap`) by `delta.yaw`, so the sky keeps its
+  global orientation. `Environment3dEntity` only sets those fields and needs no hook of its own.
+
+Only entities in `world.children` at the time move: one removed and added back later (pooling)
+keeps its old local pose, for the app to map.
+
+Helpers in the same file: `switchBodyFrame(component, delta)` hands a physics component to its own
+optional `onFrameSwitch` (on `IRigidBody3dComponent`, `ITrigger3dComponent`,
+`ICharacterController3dComponent`) and otherwise falls back to the pose/velocity/`up` setters, which
+may wake a sleeping body; `switchPoseFrame(target, delta)` does the same for anything with
+`position`/`rotation` (display objects, cameras, lights, audio sources). Both go through
+`claimFrameSwitch(target, delta)`, a WeakMap of the last `delta` instance each object moved by: one
+switch hands every hook the same `Frame3d`, so an object reached from two entities (the camera of a
+`Camera3dEntity` and of a `Renderer3dEntity`) moves once. A hook moving shared state itself calls
+it too.
+
+State that is easy to miss when writing a hook: velocities cached for the next tick
+(`RaycastVehicle3dEntity`'s pre-step velocities, `Grabbable3dEntity`'s last commanded velocity,
+the character's fall/air/actual velocity and `externalDisplacement`), smoothing targets (camera
+controllers rotate `theta` by the yaw and move their target, reset their motion and re-emit the
+pending target), forces applied since the last step (the adapters' rigid-body hooks rotate them),
+functions returning world-space values (`SurfaceFollowingEntity.followFunc` is wrapped by the composed frame; assigning a new one
+resets it; the animators `Entity3dPositioningAnimator`/`Camera3dAnimator` are the exception: their
+function is re-evaluated every tick and typically reads live entity positions - a follow camera -
+so they have no hook and their function answers in the current frame; a path fixed in space is
+written in global coordinates and mapped through `world.toLocalPoint`), and asynchronous loads (`MapGraph3dEntity` composes the switches made while a chunk's
+GLB loads and applies them when it lands; entities still being prepared are moved at once).
+
+An entity with `position` and `rotation` but no hook is left in place, and - only when
+`window.ggstatic` exists, the existing dev-only signal - `console.warn` names its `entityTypeName`
+once per world. Engine code never imports `GgStatic` for it.
+
+Tests: `test/3d/gg-3d-world-switch-frame.spec.ts` (timing, every built-in hook, dedupe, the warning);
+the adapters run the shared physics suite `test/contract/frame-switch.contract.ts` (see
+`gg-engine-physics-adapter`).
+
 ## Networking contracts: core knows how to be corrected, not who corrects it
 
 Core carries only what `@gg-web-engine/multiplayer` drives; it never mentions peers, owners,

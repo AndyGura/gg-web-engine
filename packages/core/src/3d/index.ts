@@ -41,6 +41,7 @@ export * from './entities/controllers/input/orbit-camera.controller';
 export * from './entities/controllers/input/player-character.controller';
 export * from './entities/surface-following.entity';
 
+export * from './interfaces/i-frame-switchable';
 export * from './interfaces/i-positionable-3d';
 
 export * from './models/body-options';

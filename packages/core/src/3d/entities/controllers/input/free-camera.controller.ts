@@ -26,6 +26,8 @@ import {
 } from '../../../../base';
 import { ControllerBindings, sameBinding } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
+import { IFrameSwitchable } from '../../../interfaces/i-frame-switchable';
+import { Frame3d } from '../../../models/frame-3d';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
 /** Which gamepad controls fly the camera - see `GamepadControl` for the control names */
@@ -168,7 +170,7 @@ export type FreeCameraControllerKeys = Pick<
  * );
  * ```
  */
-export class FreeCameraController extends IEntity implements IRebindableController {
+export class FreeCameraController extends IEntity implements IRebindableController, IFrameSwitchable {
   static readonly entityTypeName: string = 'FreeCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
@@ -245,6 +247,26 @@ export class FreeCameraController extends IEntity implements IRebindableControll
   }
 
   protected resetMotion$: Subject<void> = new Subject<void>();
+
+  /** The look target mouse/gamepad input drives the elastic rotation towards; `null` without elasticity. */
+  protected sphericalTarget$: BehaviorSubject<Spherical> | null = null;
+
+  /**
+   * `IFrameSwitchable`: turns the look direction (and the elastic rotation still under way) by
+   * `delta`'s yaw. The camera itself is the renderer entity's, which the world moves.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    const target$ = this.sphericalTarget$;
+    // read first: the target may be the very object `_spherical` is
+    const pending = target$ ? { ...target$.getValue() } : null;
+    this._spherical.theta += delta.yaw;
+    if (target$ && pending) {
+      // restarts the elastic motion from the turned look direction...
+      this.resetMotion$.next();
+      // ...towards the turned target
+      target$.next({ ...pending, theta: pending.theta + delta.yaw });
+    }
+  }
 
   /**
    * Creates a new FreeCameraInput instance.
@@ -380,6 +402,7 @@ export class FreeCameraController extends IEntity implements IRebindableControll
     ).pipe(takeUntil(this._onRemoved$));
     if (this.options.cameraRotationElasticity > 0) {
       const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this._spherical);
+      this.sphericalTarget$ = s$;
       mouseDelta$.subscribe(delta => {
         const s = s$.getValue();
         s$.next({

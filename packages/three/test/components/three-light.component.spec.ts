@@ -2,13 +2,16 @@ import {
   Color,
   CubeTexture,
   DirectionalLight,
+  Euler,
   Fog,
   FogExp2,
   HemisphereLight,
+  Matrix4,
   OrthographicCamera,
   Texture,
   Vector3,
 } from 'three';
+import { Frame3d } from '@gg-web-engine/core';
 import { ThreeLightComponent } from '../../src/components/three-light.component';
 import { ThreeSceneComponent } from '../../src/components/three-scene.component';
 
@@ -113,5 +116,28 @@ describe('ThreeSceneComponent environment', () => {
     expect(native.background).toBeNull();
     expect(native.environment).toBeNull();
     expect(native.fog).toBeNull();
+  });
+
+  it('keeps the sky and the environment map globally in place across a frame switch', async () => {
+    const scene = new ThreeSceneComponent();
+    await scene.init();
+    const native = scene.nativeScene!;
+    scene.setEnvironment({ background: new CubeTexture(), environmentMap: new Texture() });
+    // three.js samples a sky at rotation^T * view direction
+    const sampled = (euler: Euler, direction: Vector3) =>
+      direction.clone().applyMatrix4(new Matrix4().makeRotationFromEuler(euler).transpose());
+    const globalDirection = new Vector3(0.3, -0.8, 0.52).normalize();
+    const before = sampled(native.backgroundRotation, globalDirection);
+    const delta = new Frame3d({ x: 100, y: -20, z: 0 }, 1.1);
+    scene.onFrameSwitch(delta);
+    const d = delta.toGlobalDirection(globalDirection);
+    const localDirection = new Vector3(d.x, d.y, d.z);
+    expect(sampled(native.backgroundRotation, localDirection).distanceTo(before)).toBeLessThan(1e-9);
+    expect(sampled(native.environmentRotation, localDirection).distanceTo(before)).toBeLessThan(1e-9);
+    // a sky set after the switch is turned the same way; a color background has nothing to turn
+    scene.setEnvironment({ background: new Texture() });
+    expect(sampled(native.backgroundRotation, localDirection).distanceTo(before)).toBeLessThan(1e-9);
+    scene.setEnvironment({ background: 0x112233 });
+    expect(native.backgroundRotation.z).toBe(0);
   });
 });

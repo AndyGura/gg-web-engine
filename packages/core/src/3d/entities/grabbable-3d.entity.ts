@@ -1,6 +1,7 @@
 import { CollisionGroup, Pnt3, Point3 } from '../../base';
 import { Entity3d } from './entity-3d';
 import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * Tuning for a `Grabbable3dEntity`'s hold behavior - how it's driven towards the carrier's hold
@@ -175,6 +176,14 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
       throw new Error('Grabbable3dEntity requires a physics body (objectBody) to be grabbable');
     }
     this.grabOptions = { ...DEFAULT_OPTIONS, ...grabOptions };
+  }
+
+  /** `IFrameSwitchable`: `Entity3d`'s, plus the hold spring's last commanded velocity, rotated. */
+  public onFrameSwitch(delta: Frame3d): void {
+    super.onFrameSwitch(delta);
+    if (this._lastCommandedVelocity) {
+      this._lastCommandedVelocity = delta.toGlobalDirection(this._lastCommandedVelocity);
+    }
   }
 
   /**

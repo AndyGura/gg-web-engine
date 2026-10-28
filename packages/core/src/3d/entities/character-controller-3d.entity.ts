@@ -21,6 +21,8 @@ import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { networkFrameOf } from '../network-frame';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { CharacterController3dOptions } from '../models/character-controller-options';
+import { IFrameSwitchable, switchBodyFrame } from '../interfaces/i-frame-switchable';
+import { Frame3d } from '../models/frame-3d';
 
 /**
  * Options for a `CharacterController3dEntity`: the capsule shape/mover tuning from
@@ -169,7 +171,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     IPositionable3d,
     INetworkSyncable<MoverNetState<Point3, Point4>>,
     INetworkInputDriven<CharacterInput3d>,
-    ISerializableEntity
+    ISerializableEntity,
+    IFrameSwitchable
 {
   static readonly entityTypeName: string = 'CharacterController3dEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -406,6 +409,26 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       this.object3D.visible = this.worldVisible;
     }
     super.updateVisibility();
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the capsule by `delta` (pose, `up` and ground normal - see
+   * `ICharacterController3dComponent.onFrameSwitch`) and the mesh with it, and rotates the
+   * momentum (`fallVelocity`, `airHorizontalVelocity`), `actualVelocity` and a pending
+   * `externalDisplacement`. Grounded, crouching, jump and input state carry on.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    switchBodyFrame(this.characterController, delta);
+    this._position = this.characterController.position;
+    this._rotation = this.characterController.rotation;
+    if (this.object3D) {
+      this.object3D.position = this._position;
+      this.object3D.rotation = this._rotation;
+    }
+    this._fallVelocity = delta.toGlobalDirection(this._fallVelocity);
+    this._airHorizontalVelocity = delta.toGlobalDirection(this._airHorizontalVelocity);
+    this._actualVelocity = delta.toGlobalDirection(this._actualVelocity);
+    this.externalDisplacement = delta.toGlobalDirection(this.externalDisplacement);
   }
 
   constructor(

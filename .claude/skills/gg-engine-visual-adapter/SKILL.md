@@ -200,7 +200,11 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   Chromium (ANGLE/SwiftShader) and reading pixels back looking along each axis - with faces that
   carry a marker on their top and left edges, since solid-colored faces show the direction but not a
   rotated or mirrored image - and, for the environment map, the reflection on a mirror-like sphere.
-  The loader's `disposeTexture(texture)` frees a texture either load method returned.
+  The loader's `disposeTexture(texture)` frees a texture either load method returned. The optional
+  `onFrameSwitch(delta)` (called by `Gg3dWorld.switchFrame` after every entity moved) turns the sky
+  texture and the environment map about `+Z` by `delta.yaw`, on top of their Z-up orientation, and
+  keeps that turn for textures set later; `environment` reads back unchanged. Without it, a switch
+  with a yaw leaves the sky turned against the camera.
 - **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
   `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
   `zoom` 1, `origin` `'center'`) on the 2D one. A 2D camera's `position` is the world point drawn

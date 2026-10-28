@@ -2,6 +2,7 @@ import {
   BitMask,
   CollisionEvent,
   CollisionGroup,
+  Frame3d,
   IPhysicsWorld3dComponent,
   Pnt3,
   Point3,
@@ -312,6 +313,70 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       notify();
     }
   }
+
+  /**
+   * Frame switch (`Gg3dWorld.switchFrame`), called after every body's own `onFrameSwitch`: brings
+   * the broad phase up to the moved colliders, so a raycast, a character sweep or a vehicle's wheel
+   * cast right after the switch finds them where they are.
+   *
+   * Rapier refreshes its broad phase (the BVH every query walks) only inside `World.step()`, and
+   * skips a step of length 0 altogether: `propagateModifiedBodyPositionsToColliders` moves the
+   * colliders but leaves their BVH leaves where they were, and a query at the new place finds
+   * nothing. So the switch runs one {@link FRAME_SWITCH_STEP}-long step: every `kinematic_pos` body
+   * targets its current pose for it (its pending target restored afterwards), and every body that
+   * slept before it is put back to sleep after it - Rapier wakes any body whose pose was written,
+   * whatever `wakeUp` said. Its collision events are delivered as usual; a switch moves everything
+   * together, so there are none. Vehicles are not updated for it.
+   *
+   * It is a full step, only short: gravity, applied forces and the contact solver run for 1 µs too.
+   * Gravity and forces move a body by a negligible amount in that time, but the solver's
+   * penetration correction does not scale with the step's length and can still nudge resting
+   * contacts apart by a fraction of their penetration: a sub-millimetre settle per switch. Rapier
+   * has no narrower call that refreshes the broad phase alone.
+   */
+  onFrameSwitch(_delta: Frame3d): void {
+    const world = this._nativeWorld;
+    if (!world) {
+      return;
+    }
+    const kinematic: { body: RigidBody; to: Point3; toRot: Point4 }[] = [];
+    for (const component of this.kinematicPosBodies) {
+      const body = component.nativeBody;
+      if (body) {
+        kinematic.push({ body, to: Pnt3.clone(body.nextTranslation()), toRot: Qtrn.clone(body.nextRotation()) });
+        body.setNextKinematicTranslation(body.translation());
+        body.setNextKinematicRotation(body.rotation());
+      }
+    }
+    const sleeping: RigidBody[] = [];
+    world.forEachRigidBody(body => {
+      if (body.isSleeping()) {
+        sleeping.push(body);
+      }
+    });
+    const timestep = world.timestep;
+    world.timestep = Rapier3dWorldComponent.FRAME_SWITCH_STEP;
+    try {
+      world.step(this.eventQueue);
+    } finally {
+      world.timestep = timestep;
+    }
+    const pendingEvents: (() => void)[] = [];
+    this.collectCollisionEvents(pendingEvents);
+    for (const body of sleeping) {
+      body.sleep();
+    }
+    for (const move of kinematic) {
+      move.body.setNextKinematicTranslation(move.to);
+      move.body.setNextKinematicRotation(move.toRot);
+    }
+    for (const notify of pendingEvents) {
+      notify();
+    }
+  }
+
+  /** Length (seconds) of the step a frame switch runs to refresh the broad phase - see `onFrameSwitch`. */
+  public static readonly FRAME_SWITCH_STEP = 1e-6;
 
   /**
    * Drains `eventQueue` and routes each entry to whichever component(s) care, as a notification

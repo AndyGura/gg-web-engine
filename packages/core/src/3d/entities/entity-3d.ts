@@ -21,10 +21,12 @@ import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { networkFrameOf } from '../network-frame';
 import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
+import { Frame3d } from '../models/frame-3d';
+import { IFrameSwitchable, switchBodyFrame, switchPoseFrame } from '../interfaces/i-frame-switchable';
 
 export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d, INetworkSyncable<RigidBodyNetState<Point3, Point4>>
+  implements IPositionable3d, INetworkSyncable<RigidBodyNetState<Point3, Point4>>, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'Entity3d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -158,6 +160,25 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
         this.runTransformBinding(this.objectBody!, this.object3D);
       });
       this.runTransformBinding(this.objectBody, this.object3D);
+    }
+  }
+
+  /**
+   * `IFrameSwitchable`: moves the body by `delta` (pose and velocities, through the component's own
+   * `onFrameSwitch` when the physics adapter has one - see `IRigidBody3dComponent.onFrameSwitch`)
+   * and binds the display object to it; without a body, moves the display object.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    if (this.objectBody) {
+      switchBodyFrame(this.objectBody, delta);
+      this.runTransformBinding(this.objectBody, this.object3D);
+    } else if (this.object3D) {
+      switchPoseFrame(this.object3D, delta);
+      this._position = this.object3D.position;
+      this._rotation = this.object3D.rotation;
+    } else {
+      this._position = delta.toGlobalPoint(this._position);
+      this._rotation = delta.toGlobalRotation(this._rotation);
     }
   }
 

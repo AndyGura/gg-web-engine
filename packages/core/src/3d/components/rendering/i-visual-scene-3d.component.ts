@@ -1,6 +1,7 @@
 import { IVisualSceneComponent, Point3, Point4, RenderLayer } from '../../../base';
 import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 import { Environment3dOpts } from '../../models/environment';
+import { Frame3d } from '../../models/frame-3d';
 
 export interface IVisualScene3dComponent<
   VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
@@ -48,4 +49,12 @@ export interface IVisualScene3dComponent<
    * overhead.
    */
   setEnvironment(environment: Partial<Environment3dOpts<VTypeDoc['texture']>>): void;
+
+  /**
+   * Frame switch (`Gg3dWorld.switchFrame`), after every entity moved: turns the directional parts of
+   * the environment (a sky texture `background`, the `environmentMap`) about `+Z` by `delta.yaw`, so
+   * the sky stays put globally while the world's local axes turn. The texture itself does not change
+   * and `environment` reads back the same; the turn carries over to textures set later.
+   */
+  onFrameSwitch?(delta: Frame3d): void;
 }

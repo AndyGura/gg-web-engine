@@ -24,6 +24,8 @@ import {
 } from '../../../../base';
 import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
+import { IFrameSwitchable } from '../../../interfaces/i-frame-switchable';
+import { Frame3d } from '../../../models/frame-3d';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
@@ -183,7 +185,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  */
 export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IEntity
-  implements IRebindableController
+  implements IRebindableController, IFrameSwitchable
 {
   static readonly entityTypeName: string = 'PlayerCharacterController';
   public readonly tickOrder = TickOrder.CONTROLLERS;
@@ -279,6 +281,14 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       // indefinitely in third-person view.
       this.camera.camera.fov = this.baseFov;
     }
+  }
+
+  /**
+   * `IFrameSwitchable`: turns the look direction by `delta`'s yaw. The camera and the character are
+   * entities the world moves itself; the next `updateCamera` places them from the turned look.
+   */
+  public onFrameSwitch(delta: Frame3d): void {
+    this._spherical.theta += delta.yaw;
   }
 
   public toggleViewMode(): void {
