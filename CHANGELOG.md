@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.89] - 2026-10-28
+
 ### Added
 - core: `Gg3dWorld.frame` (with `frame$` and a `frame` constructor option), the global placement of
   a 3D world's local origin - a translation plus a yaw about `+Z` - for open worlds made of
@@ -1628,7 +1630,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.88...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.89...HEAD
+[0.0.89]: https://github.com/AndyGura/gg-web-engine/compare/0.0.88...0.0.89
 [0.0.88]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...0.0.88
 [0.0.87]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...0.0.87
 [0.0.86]: https://github.com/AndyGura/gg-web-engine/compare/0.0.85...0.0.86

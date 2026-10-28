@@ -563,6 +563,32 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   frame - as if at the origin, unrotated, at scale 1 - so a car model's footprint along its own
   forward axis, whatever way it faces. Nested children hidden with `visible = false` are left out;
   multiply by `scale` for the size as drawn.
+- **World frame (3D) for open worlds made of sections**: `Gg3dWorld.frame` (a `Frame3d`: `position`
+  plus `yaw` about +Z, no pitch/roll) says where the world's local origin sits in a larger global
+  space, so each section can be simulated near its own origin. Identity by default; set it with the
+  `frame` constructor option or `world.frame = { position, yaw }` before placing content - setting it
+  moves nothing, it only changes the mapping (`frame$` emits changes). Convert with
+  `world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/`toLocalDirection` (vectors: velocities,
+  offsets) and `toGlobalRotation`/`toLocalRotation` (quaternions). `Frame3d` composes
+  (`a.compose(b)` applies `b` first) and inverts; `newFrame.inverse().compose(oldFrame)` maps content
+  from one frame's local space into another's. 2D worlds have no frame.
+- **Switching a running world to another frame**: `world.switchFrame(newFrame)` moves everything the
+  world holds by `newFrame.inverse().compose(oldFrame)`, so nothing changes globally - the player
+  crossing into the next section keeps driving, nothing pops. Bodies keep their velocities, sleep
+  state and contacts, cars their wheels and suspension, cameras and their controllers their
+  smoothing, triggers their overlaps. Called from inside a tick (a tick listener, an entity's
+  `tick$`), it waits until after that tick's physics step and applies before rendering
+  (`world.pendingFrame` shows it meanwhile). `world.frameSwitched$` emits `{ delta, previousFrame,
+  frame }` afterwards: anything of the app's own holding world-space coordinates outside entities (a
+  cached target point, a path) moves through `delta.toGlobalPoint`/`toGlobalDirection`/
+  `toGlobalRotation`. Only entities in the world at the time move: one removed and re-added later (a
+pool) is mapped by the app. Animator functions (`Camera3dAnimator`, `Entity3dPositioningAnimator`)
+answer in the current frame each tick, so a follow camera reading the car's position just keeps
+following; a path fixed in space is written in global coordinates and mapped with
+`world.toLocalPoint`/`toLocalRotation`. An app entity class holding such state implements `IFrameSwitchable`
+  (`onFrameSwitch(delta)`; `Entity3d` subclasses call `super.onFrameSwitch(delta)` first); with the
+  dev console loaded, a switch warns once per positioned entity class without the hook. Keep the
+  content near the new origin: a far frame (km away) costs single-precision physics its accuracy.
 - **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
   not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
   it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.
@@ -609,7 +635,11 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   out by default. `oppositeKeys` makes one of them win per axis - `new DirectionInput(keyboard,
   'arrows', { oppositeKeys: { upDown: 'down' } })`, or the same option on `CarHandlingController`/
   `GgCarHandlingController` for a brake that overrides the throttle; `directionInput.oppositeKeys
-  = {...}` changes it while the game runs. Keys only: gamepad and touch directions are summed.
+  = {...}` changes it while the game runs. It decides the keys together with directions held
+  through `directionInput.pressDirection('down', holder)`/`releaseDirection` - what an on-screen
+  button does (`TouchButton.bindDirection(input, 'down')`, the mobile layouts' pedal, steering and
+  move buttons) - in any mix; analog directions (gamepad sticks and triggers, touch sticks, tilt)
+  are summed.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's
@@ -656,7 +686,26 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz }, { filter })` (faces named by world
   direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
   `-Y`; `filter: 'nearest'` for a pixel-art sky, as in `loadTexture`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
-  matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
+  matching `"Light"`/`"Environment"` classes.
+  For a sky without image files, pass a `ProceduralSky3dOpts` as `background` (and the same object
+  as `environmentMap` to light `'standart'`/PBR materials with it): `{ type: 'PROCEDURAL', timeOfDay:
+  17.5, haze: 0.3, clouds: { coverage: 0.6, density: 0.8, scale: 1, wind: { x: 0.006, y: 0 } },
+  stars: 1, moon: 1 }`, every field optional (`PROCEDURAL_SKY_DEFAULTS`). `timeOfDay` runs `0..24`
+  (sunrise `6`, noon `12`, sunset `18`), the sun's path is set by `sunAzimuth`/`sunPeakElevation`,
+  `clouds: { coverage: 1, density: 1 }` is a full overcast and `clouds: null` a cloudless sky.
+  `cirrus: { coverage, density, scale, wind }` (off unless given; `{}` for its defaults) adds a
+  layer of high, thin streaks drawn along its `wind`, above the main clouds. Call
+  `setEnvironment` again any time, e.g. every tick to animate the time of day; a sky object
+  replaces the previous one as a whole, so pass all of it with the change (`{ ...sky, timeOfDay }`),
+  to `environmentMap` too if it is set there. Clouds drift on the world clock, so they stop while
+  the world is paused and follow its `timeScale`.
+  `mode: 'DYNAMIC'` (default) draws it every frame with drifting clouds and twinkling stars;
+  `mode: 'BAKED'` draws it into a cube texture (`bakeResolution` per side) only when a setting
+  changes - nearly free per frame, clouds stand still. As `environmentMap` it is always baked, and
+  re-baked (and prefiltered) on each change, so animating a lighting sky every frame costs a bake per
+  frame. The sky doesn't light anything directly: point a `DIRECTIONAL` light at it with
+  `proceduralSkyBodies(sky)`, which returns `sunDirection`, `moonDirection` and `sunLight: { color,
+  intensity }` (`intensity` `0..1`, dimmed at dusk and under overcast). Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
   billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,
@@ -1074,7 +1123,8 @@ world.addEntity(new MobileControls()); // shown on touch-first devices only; ena
   every layout.
 - An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
   To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
-  and analog sources combined) rather than `output$` (keys only).
+  and analog sources combined) rather than `output$`, which only reports the held directions -
+  keys and on-screen buttons - not sticks, tilt or a gamepad.
 - An app that embeds the canvas in a page, or uses the Fullscreen API, passes a positioned wrapper
   element as `container`; otherwise the overlay covers the viewport.
 
@@ -1118,7 +1168,14 @@ Rules of thumb:
   before declaring ready - links open seconds after `connect()`. On `lobby.closed$` `'lost'` (the
   connection to the backend dropped) the player is out of the room.
 - Custom entity classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a
-  player drives them) - see `gg-engine-multiplayer`.
+  player drives them) - see `gg-engine-multiplayer`. Their payloads must be in **global
+  coordinates**: convert local → global when capturing and global → local when applying, through
+  the world's frame helpers (`world.toGlobalPoint`/`toLocalPoint`, `toGlobalDirection`/
+  `toLocalDirection` for velocities, `toGlobalRotation`/`toLocalRotation`), reading the frame when
+  you apply - or pass `world.frame` to `RigidBodyCorrection`/`MoverCorrection`'s `capture`/`correct`.
+  Quantise what you send (`quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`).
+  With the default identity frame (and in 2D) local is global, so this costs nothing until a frame
+  is set.
 - In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
 
 ## Framework integration
