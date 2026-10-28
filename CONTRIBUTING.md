@@ -264,8 +264,11 @@ the add-on actually changed.
      repository to GitHub Pages.
 5. Do the manual follow-ups the job doesn't cover:
    - confirm the code sample in the root `README.md` quickstart still matches the current API;
-   - rebuild and redeploy the examples gallery (`examples/build_examples.sh`, then
-     `examples/deploy.sh`);
+   - pull `main` (the job's `X.Y.Z release` commit should be the only new one), then rebuild and
+     redeploy the examples gallery: `bash examples/build_examples.sh`, and only if it succeeds,
+     `bash examples/deploy.sh` (both scripts are run through `bash`, they aren't executable). An
+     `E404` on a just-published `@gg-web-engine/*` tarball during the build is npm still
+     propagating it; wait a few minutes and rerun;
    - spot-check that the gallery's StackBlitz links open at the new tag.
 
 ### If a release fails partway
