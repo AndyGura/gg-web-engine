@@ -73,8 +73,11 @@ describe('procedural sky', () => {
     const noon = proceduralSkyBodies({ type: 'PROCEDURAL', timeOfDay: 12, haze: 0 }).sunLight;
     const evening = proceduralSkyBodies({ type: 'PROCEDURAL', timeOfDay: 17.8 }).sunLight;
     const night = proceduralSkyBodies({ type: 'PROCEDURAL', timeOfDay: 23 }).sunLight;
-    const overcast = proceduralSkyBodies({ type: 'PROCEDURAL', timeOfDay: 12, clouds: { coverage: 1, density: 1 } })
-      .sunLight;
+    const overcast = proceduralSkyBodies({
+      type: 'PROCEDURAL',
+      timeOfDay: 12,
+      clouds: { coverage: 1, density: 1 },
+    }).sunLight;
     expect(noon.intensity).toBeGreaterThan(0.7);
     expect(noon.color >> 16).toBe(0xff);
     expect(noon.color & 0xff).toBeGreaterThan(0xb0);

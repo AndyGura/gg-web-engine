@@ -16,7 +16,8 @@ import { Frame3d, PROCEDURAL_SKY_DEFAULTS } from '@gg-web-engine/core';
 const PROCEDURAL_DEFAULTS = PROCEDURAL_SKY_DEFAULTS;
 import { ThreeProceduralSky, ThreeSceneComponent } from '../../src';
 
-const skyMesh = (scene: ThreeSceneComponent) => scene.nativeScene!.getObjectByName('gg-procedural-sky') as Mesh | undefined;
+const skyMesh = (scene: ThreeSceneComponent) =>
+  scene.nativeScene!.getObjectByName('gg-procedural-sky') as Mesh | undefined;
 
 describe('procedural sky', () => {
   it('draws a dynamic sky as a box at the far plane, with the settings as uniforms', async () => {
@@ -122,7 +123,9 @@ describe('procedural sky', () => {
     let fromCubemap: jest.SpyInstance;
     beforeEach(() => {
       update = jest.spyOn(CubeCamera.prototype, 'update').mockImplementation(() => {});
-      fromCubemap = jest.spyOn(PMREMGenerator.prototype, 'fromCubemap').mockImplementation(() => new WebGLRenderTarget());
+      fromCubemap = jest
+        .spyOn(PMREMGenerator.prototype, 'fromCubemap')
+        .mockImplementation(() => new WebGLRenderTarget());
     });
     afterEach(() => jest.restoreAllMocks());
 
@@ -149,7 +152,11 @@ describe('procedural sky', () => {
       sky.bake(b, 32);
       expect(update).toHaveBeenCalledTimes(5);
       // the wind alone doesn't change a baked sky
-      sky.setOptions({ ...PROCEDURAL_DEFAULTS, timeOfDay: 18, clouds: { ...PROCEDURAL_DEFAULTS.clouds!, wind: { x: 1, y: 0 } } });
+      sky.setOptions({
+        ...PROCEDURAL_DEFAULTS,
+        timeOfDay: 18,
+        clouds: { ...PROCEDURAL_DEFAULTS.clouds!, wind: { x: 1, y: 0 } },
+      });
       sky.bake(a, 32);
       expect(update).toHaveBeenCalledTimes(5);
     });
