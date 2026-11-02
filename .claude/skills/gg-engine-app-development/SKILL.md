@@ -528,7 +528,16 @@ following; a path fixed in space is written in global coordinates and mapped wit
   list themselves as gamepads too): `GamepadInput.choice`, a `{ id, nth }` every world's input
   follows - save it and assign it back at startup; without one, the first gamepad with the
   standard mapping. A controls menu shows `GamepadInput.gamepadName(GamepadInput.selectedGamepad())`
-  and steps with `GamepadInput.chooseNext(1)`/`(-1)`.
+  and steps with `GamepadInput.chooseNext(1)`/`(-1)`. Rumble:
+  `world.gamepadInput.rumble({ strong: 1, weak: 0.5, duration: 200 })` plays the motors of that
+  same gamepad (0..1 each, ms; optional `leftTrigger`/`rightTrigger` for impulse triggers) and
+  returns whether it can rumble (`canRumble`); a new call replaces the effect, `stopRumble()`
+  stops it, and so do a pause (`inputEnabled` off) and a change of gamepad. Never read
+  `navigator.getGamepads()`/`vibrationActuator` yourself. For a lasting rumble (an engine, a rough
+  road) pass `duration: Infinity`: the engine keeps it playing until `stopRumble()` or the next
+  effect, and a game that stops running (its tab hidden) ends it within a second by itself. A
+  trigger-only effect on a gamepad without trigger motors is ignored and leaves the grip rumble
+  playing. Steering wheels' force feedback has no web API: rumble only.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`

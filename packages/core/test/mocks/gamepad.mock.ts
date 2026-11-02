@@ -11,6 +11,8 @@ export type FakeGamepad = {
   id?: string;
   /** `Gamepad.index`, 0 by default */
   index?: number;
+  /** `Gamepad.vibrationActuator` (`fakeActuator()`), none by default */
+  vibrationActuator?: unknown;
 };
 
 export const fakeGamepad = (pad: FakeGamepad = {}): Gamepad => {
@@ -29,7 +31,39 @@ export const fakeGamepad = (pad: FakeGamepad = {}): Gamepad => {
     buttons,
     axes,
     timestamp: 0,
+    vibrationActuator: pad.vibrationActuator ?? null,
   } as unknown as Gamepad;
+};
+
+/**
+ * A fake `GamepadHapticActuator` recording its calls: `played` the `playEffect` ones, `resets` how
+ * many times `reset` was called. `effects` lists what it plays (`dual-rumble` by default); `throws`
+ * makes `playEffect` throw, `rejects` makes it return a rejected promise; `noReset` leaves `reset` out.
+ */
+export const fakeActuator = (
+  options: { effects?: string[]; throws?: boolean; rejects?: boolean; noReset?: boolean } = {},
+) => {
+  const actuator = {
+    played: [] as { type: string; params: GamepadEffectParameters }[],
+    resets: 0,
+    effects: options.effects ?? ['dual-rumble'],
+    playEffect(type: string, params: GamepadEffectParameters) {
+      actuator.played.push({ type, params });
+      if (options.throws) {
+        throw new DOMException('not supported', 'NotSupportedError');
+      }
+      return options.rejects
+        ? Promise.reject(new DOMException('preempted', 'AbortError'))
+        : Promise.resolve('complete');
+    },
+    reset: options.noReset
+      ? undefined
+      : () => {
+          actuator.resets++;
+          return Promise.resolve('complete');
+        },
+  };
+  return actuator;
 };
 
 /**

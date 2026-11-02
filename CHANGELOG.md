@@ -37,6 +37,16 @@ where one exists.
 - core: JSON Schemas for level JSON, `@gg-web-engine/core/schema/level-3d.schema.json` and
   `@gg-web-engine/core/schema/level-2d.schema.json` (draft 2020-12), generated from the level
   loader's settings types, to validate a level or drive an editor before `loadLevel`.
+- core: gamepad rumble. `GamepadInput.rumble({ strong, weak, duration })` plays `dual-rumble` on
+  the gamepad the input reads (its `gamepadIndex`, else the player's `GamepadInput.choice` / the
+  gamepad in use), so an app never reads `navigator.getGamepads()` or `vibrationActuator` itself;
+  optional `leftTrigger`/`rightTrigger` drive impulse triggers where the browser lists
+  `trigger-rumble`; `duration: Infinity` holds an effect (an engine, a rough road) until it is
+  stopped or replaced. `stopRumble()` stops it, as do the input stopping (`world.inputEnabled`
+  off) and the gamepad it reads changing - on the gamepad, whichever input started it; `canRumble`
+  tells whether the gamepad has motors the browser can play. Effects the browser refuses or
+  preempts are ignored. Rumble only: steering wheels' force feedback has no web API. New type
+  `GamepadRumble`.
 
 ### Fixed
 - core: a focused button no longer swallows every key down: `KeyboardInput` skips only the keys it
