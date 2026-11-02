@@ -25,6 +25,7 @@ describe('GamepadInput', () => {
     pads.restore();
     GamepadInput.choice = null;
     (GamepadInput as any).knownGamepads.length = 0;
+    (GamepadInput as any).rumbling.length = 0;
   });
 
   const connect = (pad: FakeGamepad = {}) => {
@@ -895,13 +896,87 @@ describe('GamepadInput', () => {
       connect({ vibrationActuator: triggersOnly });
       expect(input.rumble({ strong: 1, weak: 1, duration: 100 })).toBe(false);
       expect(triggersOnly.played.length).toBe(0);
-      // the same gamepad snapshot without its actuator on the next poll: its rumble stops
+      // another gamepad without motors on the next poll: the rumble stops
       const actuator = fakeActuator();
-      pads.setAll([fakeGamepad({ vibrationActuator: actuator })]);
+      connect({ vibrationActuator: actuator });
       input.rumble({ strong: 1, weak: 1, duration: 100 });
-      pads.setAll([fakeGamepad({ id: 'no motors' })]);
+      connect({ id: 'no motors' });
       expect(input.rumble({ strong: 1, weak: 1, duration: 100 })).toBe(false);
       expect(actuator.resets).toBe(1);
+    });
+
+    it('plays on the gamepad of the last poll without reading the gamepads again, until a new choice', () => {
+      const actuator = fakeActuator();
+      connect({ vibrationActuator: actuator });
+      const getGamepads = jest.spyOn(navigator, 'getGamepads');
+      input.rumble({ strong: 1, weak: 1, duration: 100 });
+      expect(input.canRumble).toBe(true);
+      expect(getGamepads).not.toHaveBeenCalled();
+      // the gamepad replaced between two polls: not seen until the next poll...
+      pads.set({ id: 'other' });
+      expect(input.rumble({ strong: 1, weak: 1, duration: 100 })).toBe(true);
+      expect(getGamepads).not.toHaveBeenCalled();
+      // ...unless a choice was made since
+      GamepadInput.choice = { id: 'other', nth: 0 };
+      expect(input.rumble({ strong: 1, weak: 1, duration: 100 })).toBe(false);
+      expect(getGamepads).toHaveBeenCalledTimes(1);
+      expect(actuator.resets).toBe(1);
+      getGamepads.mockRestore();
+    });
+
+    it("stops what another input plays on the same gamepad: the motors are the gamepad's", () => {
+      const actuator = fakeActuator();
+      const other = new GamepadInput();
+      other.start();
+      connect({ vibrationActuator: actuator });
+      other.poll();
+      input.rumble({ strong: 1, weak: 1, duration: 5000 });
+      other.stopRumble();
+      expect(actuator.resets).toBe(1);
+      input.rumble({ strong: 1, weak: 1, duration: 5000 });
+      other.stop(); // a paused world's input, while another world's rumbles
+      expect(actuator.resets).toBe(2);
+      // one that never read the gamepad stops nothing
+      const blind = new GamepadInput();
+      blind.start();
+      input.rumble({ strong: 1, weak: 1, duration: 5000 });
+      blind.stop();
+      expect(actuator.resets).toBe(2);
+    });
+
+    it('holds an effect of infinite duration, played again from the poll until stopped', () => {
+      const now = jest.spyOn(performance, 'now');
+      now.mockReturnValue(1000);
+      const actuator = fakeActuator();
+      connect({ vibrationActuator: actuator });
+      expect(input.rumble({ strong: 0.3, weak: 0, duration: Infinity })).toBe(true);
+      expect(actuator.played).toEqual([
+        { type: 'dual-rumble', params: { duration: 1000, strongMagnitude: 0.3, weakMagnitude: 0 } },
+      ]);
+      now.mockReturnValue(1400);
+      input.poll(); // too early
+      expect(actuator.played.length).toBe(1);
+      now.mockReturnValue(1500);
+      input.poll();
+      expect(actuator.played.length).toBe(2);
+      input.poll(); // just renewed
+      expect(actuator.played.length).toBe(2);
+      now.mockReturnValue(2100);
+      (GgGlobalClock.instance as any)._tick$.next([0, 16]); // the shared poll renews it too
+      expect(actuator.played.length).toBe(3);
+      // a one-shot effect replaces it: nothing renewed any more
+      input.rumble({ strong: 1, weak: 1, duration: 100 });
+      now.mockReturnValue(5000);
+      input.poll();
+      expect(actuator.played.length).toBe(4);
+      // held again, then stopped
+      input.rumble({ strong: 0.3, weak: 0, duration: Infinity });
+      input.stopRumble();
+      now.mockReturnValue(9000);
+      input.poll();
+      expect(actuator.played.length).toBe(5);
+      expect(actuator.resets).toBe(1);
+      now.mockRestore();
     });
 
     it('swallows an effect the gamepad throws on or rejects', async () => {
@@ -930,10 +1005,14 @@ describe('GamepadInput', () => {
       ]);
       const plain = fakeActuator();
       connect({ vibrationActuator: plain });
-      input.rumble({ strong: 0, weak: 0, duration: 100, leftTrigger: 1 });
+      input.rumble({ strong: 0.2, weak: 0.4, duration: 100, rightTrigger: 0.8 });
       expect(plain.played).toEqual([
-        { type: 'dual-rumble', params: { duration: 100, strongMagnitude: 0, weakMagnitude: 0 } },
+        { type: 'dual-rumble', params: { duration: 100, strongMagnitude: 0.2, weakMagnitude: 0.4 } },
       ]);
+      // the trigger motors alone, on a gamepad without them: ignored, the grip rumble goes on
+      expect(input.rumble({ strong: 0, weak: 0, duration: 100, leftTrigger: 1 })).toBe(true);
+      expect(plain.played.length).toBe(1);
+      expect(plain.resets).toBe(0);
     });
   });
 

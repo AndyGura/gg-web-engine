@@ -1626,23 +1626,39 @@ What it holds to:
   the browser listed it for. Specs clear the list in `afterEach`
   (`(GamepadInput as any).knownGamepads.length = 0`).
 - **Rumble** (`rumble(effect)`, `stopRumble()`, `canRumble`) plays on the gamepad the input reads
-  (`targetGamepad`: `gamepadIndex`'s, else `select`'s - the same pure pick `findGamepad` makes
-  after its `inUseDevice` bookkeeping), looked up from `connectedGamepads()` on each call rather
-  than `this._gamepad`, so a `choice` made since the last poll rumbles at once. The device played
-  on is kept as `rumbling` (`index`, `id` and its actuator - `Gamepad` objects are snapshots, the
-  actuator outlives them): a `rumble` aimed at another device, `readGamepad` reading another
-  device (or none) and `stopInternal` all reset the old actuator, so a pause menu (`inputEnabled`
-  off) and a new choice never leave a pad rumbling. A stopped input plays nothing (`rumble`
-  returns `false`), but `canRumble` still answers for a controls menu. An actuator counts only
-  with `playEffect` and, where the browser lists `effects` (Chromium, Safari; not in TS's DOM
-  types, hence the private `RumbleActuator`), `dual-rumble` among them; `trigger-rumble` is used
-  only when listed and a trigger magnitude is set, else the grip motors play alone. Every
-  `playEffect`/`reset` is in a `try` with its promise's rejection swallowed (`ignoreRejection`):
-  Chromium rejects an effect preempted by the next one, and an app renewing short effects every
-  tick would get an unhandled rejection per tick. Without `reset()` a zero-strength effect stops
-  the motors. Durations are capped at 5000 ms (Chromium's maximum). Specs give `fakeGamepad` a
-  `fakeActuator()` (`test/mocks/gamepad.mock.ts`) recording `played` effects and `resets`.
-  Steering-wheel force feedback (springs, constant force) has no web API: nothing to add here.
+  (`rumbleGamepad`): `_gamepad` of the last poll, or - before the first poll (`hasRead` false),
+  or when `GamepadInput.choice` was assigned since it (the static `choiceVersion` counter against
+  the instance's `readChoiceVersion`) - a fresh `targetGamepad(connectedGamepads())` pick, so a
+  gamepad just chosen rumbles at once while an effect renewed every tick costs no second
+  `navigator.getGamepads()` read. The gamepads rumbling are static (`rumbling`, one
+  `RumblingDevice` per device - `index`, `id`, the actuator, a held effect and when it was last
+  played; `Gamepad` objects are snapshots, the actuator outlives them), because the motors are the
+  gamepad's, not an input's: an instance only remembers the device it aimed at (`rumbleTarget`),
+  and its `stopRumble` stops that device and the one it reads (`device`) - so a paused world's
+  input (`inputEnabled` off, `stopInternal`) silences what another world's input started on the
+  same pad. `readGamepad` reading another device (or none) and a `rumble` aimed at another device
+  stop only the input's own target. `duration: Infinity` is a held effect: played
+  `HELD_RUMBLE_EFFECT_MS` (1000 ms) long and played again from `pollGamepads`
+  (`renewHeldRumble`, wall time via `performance.now()` - specs stub it with `jest.spyOn`) once
+  `HELD_RUMBLE_RENEW_MS` (500 ms) old, so a game that stops polling ends it within a second;
+  a one-shot effect replacing it ends the renewal. A trigger-only effect on a gamepad without
+  `trigger-rumble` is ignored outright (returns `true`, plays nothing, stops nothing): the
+  "no strength stops" rule counts only the motors that will be driven. A stopped input plays
+  nothing (`rumble` returns `false`), but `canRumble` still answers for a controls menu. An
+  actuator counts only with `playEffect` and, where the browser lists `effects` (Chromium,
+  Safari; not in TS's DOM types, hence the private `RumbleActuator`), `dual-rumble` among them;
+  `trigger-rumble` is used only when listed and a trigger magnitude is set, else the grip motors
+  play alone. Every `playEffect`/`reset` is in a `try` with its promise's rejection swallowed
+  (`ignoreRejection`): per the Gamepad Extensions spec and Chromium a preempted effect's promise
+  *resolves* with `"preempted"`, so the rejections are refused parameters or a gamepad gone
+  meanwhile - nothing an app can act on, and from an effect renewed every tick they would be an
+  unhandled rejection per tick. Without `reset()` a zero-strength effect stops the motors.
+  Durations are capped at 5000 ms (Chromium's maximum). Devices are compared with the module's
+  `sameDevice(a, b)` (index and id) everywhere - `knownGamepads`, `inUseDevice`, `device`,
+  `rumbleTarget`, `rumbling` - never by a hand-written pair of comparisons. Specs give
+  `fakeGamepad` a `fakeActuator()` (`test/mocks/gamepad.mock.ts`) recording `played` effects and
+  `resets`, and clear `rumbling` in `afterEach` next to `knownGamepads`. Steering-wheel force
+  feedback (springs, constant force) has no web API: nothing to add here.
 - `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
   the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
   per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.

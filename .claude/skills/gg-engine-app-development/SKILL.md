@@ -534,8 +534,10 @@ following; a path fixed in space is written in global coordinates and mapped wit
   returns whether it can rumble (`canRumble`); a new call replaces the effect, `stopRumble()`
   stops it, and so do a pause (`inputEnabled` off) and a change of gamepad. Never read
   `navigator.getGamepads()`/`vibrationActuator` yourself. For a lasting rumble (an engine, a rough
-  road), play ~150 ms effects again every few ticks, so it ends by itself when the game stops.
-  Steering wheels' force feedback has no web API: rumble only.
+  road) pass `duration: Infinity`: the engine keeps it playing until `stopRumble()` or the next
+  effect, and a game that stops running (its tab hidden) ends it within a second by itself. A
+  trigger-only effect on a gamepad without trigger motors is ignored and leaves the grip rumble
+  playing. Steering wheels' force feedback has no web API: rumble only.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
