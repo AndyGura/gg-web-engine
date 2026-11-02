@@ -657,7 +657,16 @@ following; a path fixed in space is written in global coordinates and mapped wit
   list themselves as gamepads too): `GamepadInput.choice`, a `{ id, nth }` every world's input
   follows - save it and assign it back at startup; without one, the first gamepad with the
   standard mapping. A controls menu shows `GamepadInput.gamepadName(GamepadInput.selectedGamepad())`
-  and steps with `GamepadInput.chooseNext(1)`/`(-1)`.
+  and steps with `GamepadInput.chooseNext(1)`/`(-1)`. Rumble:
+  `world.gamepadInput.rumble({ strong: 1, weak: 0.5, duration: 200 })` plays the motors of that
+  same gamepad (0..1 each, ms; optional `leftTrigger`/`rightTrigger` for impulse triggers) and
+  returns whether it can rumble (`canRumble`); a new call replaces the effect, `stopRumble()`
+  stops it, and so do a pause (`inputEnabled` off) and a change of gamepad. Never read
+  `navigator.getGamepads()`/`vibrationActuator` yourself. For a lasting rumble (an engine, a rough
+  road) pass `duration: Infinity`: the engine keeps it playing until `stopRumble()` or the next
+  effect, and a game that stops running (its tab hidden) ends it within a second by itself. A
+  trigger-only effect on a gamepad without trigger motors is ignored and leaves the grip rumble
+  playing. Steering wheels' force feedback has no web API: rumble only.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
@@ -674,7 +683,12 @@ following; a path fixed in space is written in global coordinates and mapped wit
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
-  see the dedicated `gg-engine-level-json` skill for full authoring details.
+  see the dedicated `gg-engine-level-json` skill for full authoring details. A level can be
+  validated before loading against the JSON Schema core ships,
+  `@gg-web-engine/core/schema/level-3d.schema.json` / `level-2d.schema.json` (draft 2020-12). Classes
+  the app registers pass it with any `config`; to check theirs too, write an app schema that
+  `$ref`s the engine one and adds one `if`/`then` per class (`gg-engine-level-json`, "Validating a
+  level").
 - **Lights, sky and fog (3D)**: `world.addLight(descriptor, position?, target?)` creates an
   `AMBIENT`/`HEMISPHERE`/`DIRECTIONAL`/`POINT`/`SPOT` light (see `Light3dDescriptor` in
   `packages/core/src/3d/models/lights.ts` - color, intensity, `castShadow` and `shadow: { mapSize,
@@ -732,7 +746,7 @@ following; a path fixed in space is written in global coordinates and mapped wit
   replace on `m.vertexShader`, whose text is not a stable API.
 - **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
   returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
-  3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
+  3D, on `Point2` vectors: sizes, speeds and `gravity` in meters (`{ x: 0, y: 9 }` pulls down
   in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
   `attachTo` any 2D entity, `anchor` as in 3D (the image's top edge towards `-y`). Blend modes are `normal`, `additive` and `multiply` only; the entity's
   component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
@@ -1012,9 +1026,14 @@ class GameScreen extends Screen {
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
-- **Focus**: key presses are ignored while an `<input>`, `<textarea>`, `<select>` or `<button>` has
-  focus (`KeyboardInput.externalFocusBlacklist`), so a clicked HTML button over the game swallows
-  WASD until focus moves. Call `button.blur()` in its click handler.
+- **Focus**: key presses the focused HTML element uses itself don't reach the bindings: every key
+  while a text `<input>`, `<textarea>` or `<select>` has focus (`KeyboardInput.externalFocusBlacklist`),
+  only Enter and Space while a `<button>` (or an `<input>` button or checkbox) has
+  (`KeyboardInput.externalFocusOwnKeys`) - the browser clicks it on those, every other key (Escape,
+  WASD) passes. So a DOM pause menu focusing its Resume button still closes on a bound Escape, but
+  Space bound to jump clicks a button left focused by a mouse click instead: call `button.blur()` in
+  its click handler. `KeyboardInput.focusUsesKey(code)` tells the same for a listener of your own;
+  `skipKeyDownsOnExternalFocus = false` on an input turns the skipping off.
 - **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
   the game's layer and sits below any screen pushed on top. An on-screen pause button opening the
   pause screen is `new MobileControls({ container: this.layer, pauseButton: { onPress: () =>
@@ -1034,9 +1053,11 @@ class GameScreen extends Screen {
 
 A HUD or menu drawn with pixi over a 3D (or another 2D) game is a world of its own: a `Gg2dWorld`
 with the pixi scene and no physics world (physics is optional), a renderer with `transparent: true`
-on a second canvas stacked over the game's, and a camera whose `origin` is `'top-left'`, so world
-coordinates are canvas pixels with `(0, 0)` at the top-left corner and y down. It runs on its own
-clock, so pausing the game world leaves the UI running.
+on a second canvas stacked over the game's, a scene created with `pixelsPerMeter: 1` (one world
+unit per screen pixel at zoom 1, instead of the default 100 that sizes game sprites), and a camera
+whose `origin` is `'top-left'`, so world coordinates are canvas pixels with `(0, 0)` at the
+top-left corner and y down. It runs on its own clock, so pausing the game world leaves the UI
+running.
 
 ```typescript
 import { Entity2d, Gg2dWorld } from '@gg-web-engine/core';
@@ -1044,7 +1065,7 @@ import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Container, Sprite } from 'pixi.js';
 import { firstValueFrom } from 'rxjs';
 
-const ui: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent() });
+const ui: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent({ pixelsPerMeter: 1 }) });
 await ui.init();
 const camera = ui.visualScene.factory.createCamera();
 camera.origin = 'top-left';
@@ -1176,7 +1197,7 @@ Rules of thumb:
   Quantise what you send (`quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`).
   With the default identity frame (and in 2D) local is global, so this costs nothing until a frame
   is set.
-- In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
+- 2D worlds are meters too, so `Network2dController` uses the same defaults as 3D (`unitScale` 1).
 
 ## Framework integration
 
@@ -1284,7 +1305,9 @@ entity commands that need no game-rules knowledge**:
 argument *shape* differs by dimension (mirroring how `addPrimitiveRigidBody` and its position/
 rotation args already differ) — same command names, different parsing:
 
-- `gravity` — 3D takes a `z` scalar or a full `x y z` vector; 2D takes a `y` scalar or `x y`.
+- `gravity` — 3D takes a `z` scalar or a full `x y z` vector (default `0 0 -9.82`); 2D takes a `y`
+  scalar or `x y` (default `0 9.82`, screen Y down); m/s² in both. Rigid bodies and
+  `CharacterController(2d|3d)Entity` characters without a `gravity` option follow the new value at once.
 - `set_position NAME X Y [Z]` — teleport any named entity that has a `.position` (3D takes
   `X Y Z`, 2D takes `X Y`). This is the generic "teleport" command — it works on *any* named
   entity, not just a "player", since it goes through the same `Entity3d`/`Entity2d` position
@@ -1301,15 +1324,17 @@ rotation args already differ) — same command names, different parsing:
   to spawn one. `bodyType` defaults to `dynamic` (falls under gravity);
   numeric shorthand: `0`=static, `2`=kinematic_pos, `3`=kinematic_vel.
 
-3D worlds also register two commands for a default controllable character, gated on a physics
-world and at least one renderer already being present:
+Both worlds also register `player_spawn` for a default controllable character, gated on a physics
+world and at least one renderer already being present; 3D adds `player_mode`:
 
-- `player_spawn X Y Z` — spawn a default player character (capsule body, WASD/arrows movement,
-  mouse-look) at world-space position `X Y Z` (Z-up, so `Z` is height off the ground), controlling
-  the first renderer's camera. Prints the spawned controller entity's name (the "controlled by"
-  part of the output) — that name is what `player_mode` below needs.
-- `player_mode NAME first-person|third-person` — switch the named `PlayerCharacterController`
-  entity (`NAME` from `player_spawn`'s output) between first- and third-person view.
+- `player_spawn X Y Z` (3D) / `player_spawn X Y` (2D) — spawn a default player character (a 0.4 m
+  radius / 1 m centersDistance capsule, WASD/arrows movement, mouse-look in 3D) at that world-space
+  position (Z-up in 3D, so `Z` is height off the ground), controlling the first renderer's camera.
+  Prints the spawned controller entity's name (the "controlled by" part of the output) — that name
+  is what `player_mode` below needs.
+- `player_mode NAME first-person|third-person` (3D only) — switch the named
+  `PlayerCharacterController` entity (`NAME` from `player_spawn`'s output) between first- and
+  third-person view.
 
 Pausing is already covered by `timescale 0` (and the underlying `world.pauseWorld()`/
 `resumeWorld()` methods) — there's no separate `pause`/`resume` command. `timescale 0` + `step`
@@ -1743,11 +1768,12 @@ const characterAtlasUrl = '/assets/characters/character-atlas.png';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-// Pixel-scale room: floor near the bottom, ceiling near the top, walls left/right, three platforms
-// at increasing height that need a running jump to reach (the gaps are well beyond `maxStepHeight`).
-const ROOM_WIDTH = 900;
-const ROOM_HEIGHT = 600;
-const WALL = 40;
+// A 9 x 6 m room (the 2D world measures in meters, y down): floor near the bottom, ceiling near the
+// top, walls left/right, three platforms at increasing height that need a running jump to reach
+// (the gaps are well beyond `maxStepHeight`).
+const ROOM_WIDTH = 9;
+const ROOM_HEIGHT = 6;
+const WALL = 0.4;
 
 const level: LevelJson = {
   entities: [
@@ -1783,22 +1809,22 @@ const level: LevelJson = {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformLow',
-      position: { x: -260, y: 140 },
-      config: { dimensions: { x: 180, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: -2.6, y: 1.4 },
+      config: { dimensions: { x: 1.8, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformMid',
-      position: { x: 20, y: 0 },
-      config: { dimensions: { x: 160, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: 0.2, y: 0 },
+      config: { dimensions: { x: 1.6, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformHigh',
-      position: { x: 260, y: -140 },
-      config: { dimensions: { x: 160, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: 2.6, y: -1.4 },
+      config: { dimensions: { x: 1.6, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
   ],
 };
@@ -1815,14 +1841,20 @@ world.init().then(async () => {
   const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
-    renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);
+    // the whole room (plus a 1 m margin) stays in view
+    const ppm = world.visualScene.pixelsPerMeter;
+    renderer.camera.zoom = Math.min(newSize.x / ((ROOM_WIDTH + 1) * ppm), newSize.y / ((ROOM_HEIGHT + 1) * ppm), 1);
   });
 
   await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
+  // a snappier fall than the default 9.82 m/s² - the character and everything else in this world
+  // follows it, in m/s²
+  world.physicsWorld!.gravity = { x: 0, y: 20 };
 
   // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
   // ../assets/characters/generate-character-atlas.py) sliced into named animation clips.
-  // 'nearest' keeps the pixel-art look crisp when scaled up
+  // 'nearest' keeps the pixel-art look crisp when scaled up; a 48x72 px frame is 0.48x0.72 m, so at
+  // scale 1.2 the sprite stands about 0.86 m tall - roughly the capsule's 0.4 + 0.4 + 0.2 m
   const atlasTexture = await world.visualScene.factory.loadTexture(characterAtlasUrl, { filter: 'nearest' });
   const sprite = world.visualScene.factory.createAnimatedSprite(atlasTexture, {
     frameWidth: 48,
@@ -1838,21 +1870,17 @@ world.init().then(async () => {
   sprite.scale = { x: 1.2, y: 1.2 };
 
   const characterController = world.physicsWorld!.factory.createCharacterController(
-    { radius: 20, centersDistance: 40, up: Pnt2.nY, maxStepHeight: 12 },
-    { position: { x: -ROOM_WIDTH / 2 + 100, y: ROOM_HEIGHT / 2 - WALL - 40 } },
+    { radius: 0.2, centersDistance: 0.4, up: Pnt2.nY, maxStepHeight: 0.12 },
+    { position: { x: -ROOM_WIDTH / 2 + 1, y: ROOM_HEIGHT / 2 - WALL - 0.4 } },
   );
   const player = new CharacterController2dEntity(
     {
-      radius: 20,
-      centersDistance: 40,
-      walkSpeed: 260,
+      radius: 0.2,
+      centersDistance: 0.4,
+      walkSpeed: 2.6, // m/s
       runSpeedMultiplier: 1.8,
       crouchSpeedMultiplier: 0.5,
-      jumpSpeed: 780,
-      // this world's own gravity default (9.82) is tuned for a meter-scale 3D world, not this
-      // pixel-scale room - override with a pixel-scale-appropriate fall acceleration instead of
-      // touching `world.physicsWorld.gravity` (which nothing else in this scene depends on).
-      gravity: 2000,
+      jumpSpeed: 7.8, // m/s: about 1.5 m up under this world's 20 m/s² gravity
       airControlFactor: 0.4,
     },
     sprite,
@@ -1880,7 +1908,7 @@ world.init().then(async () => {
     { capacity: 100, texture: world.visualScene.factory.createTextureFromCanvas(dustCanvas), zIndex: 1 },
     {
       lifetime: 0.4,
-      size: 20,
+      size: 0.2, // meters, like every particle size and speed below
       tint: 0xc9c2b8,
       drag: 4,
       frames: ParticleFrames.grid(4, 1),
@@ -1889,18 +1917,18 @@ world.init().then(async () => {
     },
   );
   // the character's feet, in its own frame: the capsule is centered on `position`, y points down
-  const FEET = { x: 0, y: 20 + 20 };
+  const FEET = { x: 0, y: 0.2 + 0.2 };
   let wasGrounded = true;
   let fallSpeed = 0;
   let runDustTimer = 0;
   // after the character has moved this tick (its own tick is before the physics step)
   createInlineTickController(world, TickOrder.RENDERING - 20, 'DustSpawner').subscribe(([, delta]) => {
     const feet = Pnt2.add(player.position, FEET);
-    if (player.isGrounded && !wasGrounded && fallSpeed > 300) {
-      // landed: puffs spreading out to both sides, more of them after a higher fall
-      dust.emit(Math.min(12, Math.round(fallSpeed / 100)), (p, ctx) => {
+    if (player.isGrounded && !wasGrounded && fallSpeed > 3) {
+      // landed: puffs spreading out to both sides, more of them after a higher fall (one per m/s)
+      dust.emit(Math.min(12, Math.round(fallSpeed)), (p, ctx) => {
         p.position = feet;
-        p.velocity = { x: ctx.range(-180, 180), y: ctx.range(-40, 0) };
+        p.velocity = { x: ctx.range(-1.8, 1.8), y: ctx.range(-0.4, 0) };
       });
     }
     if (player.isGrounded && player.isRunning && player.moveDirection !== 0) {
@@ -1908,9 +1936,9 @@ world.init().then(async () => {
       if (runDustTimer >= 90) {
         runDustTimer = 0;
         dust.emit(1, (p, ctx) => {
-          p.position = { x: feet.x - player.facing * 12, y: feet.y + ctx.range(-4, 0) };
-          p.velocity = { x: -player.facing * ctx.range(20, 60), y: ctx.range(-30, -10) };
-          p.size = { x: 14, y: 14 };
+          p.position = { x: feet.x - player.facing * 0.12, y: feet.y + ctx.range(-0.04, 0) };
+          p.velocity = { x: -player.facing * ctx.range(0.2, 0.6), y: ctx.range(-0.3, -0.1) };
+          p.size = { x: 0.14, y: 0.14 };
         });
       }
     } else {
@@ -1919,7 +1947,7 @@ world.init().then(async () => {
     wasGrounded = player.isGrounded;
     fallSpeed = player.actualVelocity.y;
   });
-  world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 120 }));
+  world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 1.2 }));
   // on-screen controls on phones and tablets; does nothing on a desktop
   world.addEntity(new MobileControls());
 
