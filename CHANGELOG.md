@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.90] - 2026-11-02
+
 ### Added
 
 - core: `KeyboardInput.externalFocusOwnKeys`, elements (CSS selectors) that use only some keys while
@@ -1812,7 +1814,8 @@ tuning)`. `NetworkApplyContext.sinceReceivedMs` (optional): how long ago the sta
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.89...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.90...HEAD
+[0.0.90]: https://github.com/AndyGura/gg-web-engine/compare/0.0.89...0.0.90
 [0.0.89]: https://github.com/AndyGura/gg-web-engine/compare/0.0.88...0.0.89
 [0.0.88]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...0.0.88
 [0.0.87]: https://github.com/AndyGura/gg-web-engine/compare/0.0.86...0.0.87
