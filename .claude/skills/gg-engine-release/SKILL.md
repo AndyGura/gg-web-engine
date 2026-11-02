@@ -107,6 +107,17 @@ over docs-ts's empty stub together with the banner, then writes `llms.txt`/`llms
 site root with `node ../etc/generate_agent_docs.mjs --llms docs`), and commits the version bump back to `main`, tags the release, and deploys
 `documentation/site` to GitHub Pages.
 
+## The runner image is pinned
+
+`release_action.yml` runs on an explicit `ubuntu-24.04`, never `ubuntu-latest`, like every other
+workflow here. Its "Setup python" step pins an exact Python patch version (for the docs build's
+mkdocs), and `actions/setup-python` only finds a version that has a build for the runner's Ubuntu
+release. When `ubuntu-latest` moves to a newer Ubuntu, an old patch version has no build there and
+the job fails within seconds (`The version 'X.Y.Z' with architecture 'x64' was not found for
+Ubuntu NN.04`). Nothing is published by then, so the same version number can be retried with a new
+trigger commit. Before changing the runner, check the Python version is listed for it in
+`https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json`.
+
 ## Known failure modes when a package is new to the release
 
 A package's first-ever appearance in a release (freshly added to `libs`, e.g. `audio`) hits two
