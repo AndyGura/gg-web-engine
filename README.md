@@ -430,7 +430,7 @@ Supporting pieces:
 - **[Inputs](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)** -
   `KeyboardInput` (key bindings as `Observable<boolean>`), `MouseInput` (deltas, pointer lock),
   `DirectionInput` (WASD/arrows plus analog sources) and `GamepadInput` (buttons, triggers and
-  sticks by index, feeding the other inputs) - are created and consumed by controller entities.
+  sticks by index, feeding the other inputs; rumble) - are created and consumed by controller entities.
 - **Factories** ([2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/),
   [3D](https://andygura.github.io/gg-web-engine/modules/core/3d/factories.ts/)) create primitive
   display objects and rigid bodies from a shape descriptor.

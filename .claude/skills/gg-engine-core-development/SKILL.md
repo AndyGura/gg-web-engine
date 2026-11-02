@@ -1625,6 +1625,24 @@ What it holds to:
   restart is not pushed now - while a gamepad new on that poll reports what is held, the press
   the browser listed it for. Specs clear the list in `afterEach`
   (`(GamepadInput as any).knownGamepads.length = 0`).
+- **Rumble** (`rumble(effect)`, `stopRumble()`, `canRumble`) plays on the gamepad the input reads
+  (`targetGamepad`: `gamepadIndex`'s, else `select`'s - the same pure pick `findGamepad` makes
+  after its `inUseDevice` bookkeeping), looked up from `connectedGamepads()` on each call rather
+  than `this._gamepad`, so a `choice` made since the last poll rumbles at once. The device played
+  on is kept as `rumbling` (`index`, `id` and its actuator - `Gamepad` objects are snapshots, the
+  actuator outlives them): a `rumble` aimed at another device, `readGamepad` reading another
+  device (or none) and `stopInternal` all reset the old actuator, so a pause menu (`inputEnabled`
+  off) and a new choice never leave a pad rumbling. A stopped input plays nothing (`rumble`
+  returns `false`), but `canRumble` still answers for a controls menu. An actuator counts only
+  with `playEffect` and, where the browser lists `effects` (Chromium, Safari; not in TS's DOM
+  types, hence the private `RumbleActuator`), `dual-rumble` among them; `trigger-rumble` is used
+  only when listed and a trigger magnitude is set, else the grip motors play alone. Every
+  `playEffect`/`reset` is in a `try` with its promise's rejection swallowed (`ignoreRejection`):
+  Chromium rejects an effect preempted by the next one, and an app renewing short effects every
+  tick would get an unhandled rejection per tick. Without `reset()` a zero-strength effect stops
+  the motors. Durations are capped at 5000 ms (Chromium's maximum). Specs give `fakeGamepad` a
+  `fakeActuator()` (`test/mocks/gamepad.mock.ts`) recording `played` effects and `resets`.
+  Steering-wheel force feedback (springs, constant force) has no web API: nothing to add here.
 - `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
   the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
   per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.

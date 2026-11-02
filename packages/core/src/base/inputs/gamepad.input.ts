@@ -119,6 +119,34 @@ export type GamepadInputOptions = {
  */
 export type GamepadChoice = { id: string; nth: number };
 
+/**
+ * A rumble effect for `GamepadInput.rumble`: how hard each motor turns, 0 to 1 (clamped), for how
+ * many milliseconds. `strong` is the heavy, low-frequency motor (usually the left grip), `weak` the
+ * light, high-frequency one (the right grip). `leftTrigger` and `rightTrigger` drive the motors in
+ * the triggers of gamepads that have them (Xbox impulse triggers, `trigger-rumble`: Chromium on
+ * Windows); on any other gamepad they are ignored and the grip motors play alone.
+ */
+export type GamepadRumble = {
+  strong: number;
+  weak: number;
+  duration: number;
+  leftTrigger?: number;
+  rightTrigger?: number;
+};
+
+/** what TS's DOM types lack: the effects an actuator plays (Chromium, Safari) */
+type RumbleActuator = GamepadHapticActuator & { readonly effects?: readonly string[] };
+
+/** The longest effect browsers play: Chromium rejects anything longer */
+const MAX_RUMBLE_MS = 5000;
+
+const clampMagnitude = (value: number | undefined): number => Math.min(1, Math.max(0, value || 0));
+
+/** Settles `promise` quietly: an effect is "preempted" by the next one, a reset of a gone gamepad fails */
+const ignoreRejection = (promise: unknown): void => {
+  Promise.resolve(promise).catch(() => {});
+};
+
 const DEFAULT_OPTIONS: GamepadInputOptions = {
   stickDeadzone: 0.12,
   triggerDeadzone: 0.02,
@@ -183,7 +211,8 @@ const asList = (controls: GamepadControls): readonly GamepadControl[] =>
  * too), `bindDirection` adds a stick or the d-pad to a `DirectionInput` as an analog contribution.
  * The built-in input controllers do both for their own keys and directions (see each one's
  * `gamepad` option), so a game drives from a gamepad with no code of its own. For an action with
- * no key, `pressed$`/`value$` read a control directly.
+ * no key, `pressed$`/`value$` read a control directly. `rumble` plays the motors of the gamepad it
+ * reads.
  *
  * Browsers only list a gamepad once a button was pressed on it, so `connected` turns `true` on the
  * first press, not when the cable is plugged in.
@@ -200,6 +229,8 @@ const asList = (controls: GamepadControls): readonly GamepadControl[] =>
  * world.gamepadInput.bindKeys(world.keyboardInput, { KeyF: 'b2' });
  * // a controls menu: capture whatever the player pushes next
  * world.gamepadInput.controlPushed$.pipe(take(1)).subscribe(control => bindings.horn = control);
+ * // a crash: both motors, a fifth of a second
+ * world.gamepadInput.rumble({ strong: 1, weak: 0.6, duration: 200 });
  * ```
  */
 export class GamepadInput extends IInput {
@@ -395,6 +426,32 @@ export class GamepadInput extends IInput {
     return known;
   }
 
+  /**
+   * The actuator `rumble` plays `dual-rumble` on, `null` for a gamepad without one: no motors, or a
+   * browser without `playEffect` (Firefox)
+   */
+  private static rumbleActuator(gamepad: Gamepad | null): RumbleActuator | null {
+    const actuator = gamepad?.vibrationActuator as RumbleActuator | null | undefined;
+    if (!actuator || typeof actuator.playEffect !== 'function') {
+      return null;
+    }
+    // `effects` lists what the actuator plays where the browser tells (Chromium, Safari)
+    return !actuator.effects || actuator.effects.includes('dual-rumble') ? actuator : null;
+  }
+
+  /** Stops what `actuator` plays: `reset()`, else (a browser without it) an effect of no strength */
+  private static resetActuator(actuator: RumbleActuator): void {
+    try {
+      if (typeof actuator.reset === 'function') {
+        ignoreRejection(actuator.reset());
+      } else {
+        ignoreRejection(actuator.playEffect('dual-rumble', { duration: 1, strongMagnitude: 0, weakMagnitude: 0 }));
+      }
+    } catch (e) {
+      // the gamepad is gone meanwhile
+    }
+  }
+
   /** The gamepad in use among `gamepads`, if it is connected */
   private static findInUse(gamepads: Gamepad[]): Gamepad | undefined {
     const inUse = GamepadInput.inUseDevice;
@@ -429,6 +486,8 @@ export class GamepadInput extends IInput {
    * a disconnection
    */
   private device: { index: number; id: string } | null = null;
+  /** the gamepad `rumble` played an effect on last, told apart by index and id, until stopped */
+  private rumbling: { index: number; id: string; actuator: RumbleActuator } | null = null;
 
   constructor(options: Partial<GamepadInputOptions> = {}) {
     super();
@@ -712,6 +771,98 @@ export class GamepadInput extends IInput {
   }
 
   /**
+   * Whether the gamepad this input reads, as connected right now, has rumble motors the browser
+   * can play: a `vibrationActuator` with `playEffect` and `dual-rumble`. `false` with no gamepad,
+   * and in browsers without rumble (Firefox). Unlike `rumble`, it answers while this input is
+   * stopped too, for a controls menu shown with the world's input off.
+   */
+  public get canRumble(): boolean {
+    return !!GamepadInput.rumbleActuator(this.targetGamepad(GamepadInput.connectedGamepads()));
+  }
+
+  /**
+   * Plays `effect` on the rumble motors of the gamepad this input reads (its `gamepadIndex`, else
+   * the one `GamepadInput.selectedGamepad()` picks), looked up when called, so a gamepad chosen
+   * since the last poll rumbles at once. The effect replaces the one playing; one with no strength
+   * or no duration stops it. Magnitudes are clamped to 0..1, `duration` to 0..5000 ms (the longest
+   * effect browsers play). Returns whether the gamepad can rumble (`canRumble`); a stopped input
+   * plays nothing and returns `false`.
+   *
+   * The rumble stops with `stopRumble`, when this input stops (the world's `inputEnabled` off, for
+   * a pause menu) and when the gamepad it reads changes (a new `choice`, the gamepad gone): the
+   * old gamepad's motors stop. For a lasting rumble that follows the game (an engine, a rough
+   * road), play short effects (~150 ms) again every few ticks: it then also ends by itself shortly
+   * after the game stops calling.
+   *
+   * This is rumble only, the Gamepad API's `dual-rumble` (and `trigger-rumble`, see
+   * `GamepadRumble`): the force feedback of a steering wheel (springs, a constant force against
+   * the hands) has no web API. What the browser refuses (no `dual-rumble` on the gamepad, an
+   * effect preempted by the next one) is ignored.
+   *
+   * @example
+   * ```ts
+   * // a hit: a jolt of both motors
+   * world.gamepadInput.rumble({ strong: 1, weak: 0.5, duration: 250 });
+   * // a rough road, renewed every tick while on it
+   * world.gamepadInput.rumble({ strong: 0.3, weak: 0, duration: 150 });
+   * ```
+   */
+  public rumble(effect: GamepadRumble): boolean {
+    if (!this.running) {
+      return false;
+    }
+    const gamepad = this.targetGamepad(GamepadInput.connectedGamepads());
+    const actuator = GamepadInput.rumbleActuator(gamepad);
+    if (!gamepad || !actuator) {
+      this.stopRumble();
+      return false;
+    }
+    if (this.rumbling && (this.rumbling.index !== gamepad.index || this.rumbling.id !== gamepad.id)) {
+      // another gamepad than the one rumbling: that one stops
+      this.stopRumble();
+    }
+    const duration = Math.min(MAX_RUMBLE_MS, Math.max(0, Math.round(effect.duration || 0)));
+    const strongMagnitude = clampMagnitude(effect.strong);
+    const weakMagnitude = clampMagnitude(effect.weak);
+    const leftTrigger = clampMagnitude(effect.leftTrigger);
+    const rightTrigger = clampMagnitude(effect.rightTrigger);
+    if (duration === 0 || strongMagnitude + weakMagnitude + leftTrigger + rightTrigger === 0) {
+      this.stopRumble();
+      return true;
+    }
+    this.rumbling = { index: gamepad.index, id: gamepad.id, actuator };
+    const triggers = (leftTrigger > 0 || rightTrigger > 0) && !!actuator.effects?.includes('trigger-rumble');
+    try {
+      ignoreRejection(
+        triggers
+          ? actuator.playEffect('trigger-rumble', {
+              duration,
+              strongMagnitude,
+              weakMagnitude,
+              leftTrigger,
+              rightTrigger,
+            })
+          : actuator.playEffect('dual-rumble', { duration, strongMagnitude, weakMagnitude }),
+      );
+    } catch (e) {
+      // refused by the gamepad
+    }
+    return true;
+  }
+
+  /**
+   * Stops the rumble `rumble` played on this input's gamepad (`vibrationActuator.reset()`). Done
+   * by itself when this input stops and when the gamepad it reads changes.
+   */
+  public stopRumble(): void {
+    const rumbling = this.rumbling;
+    if (rumbling) {
+      this.rumbling = null;
+      GamepadInput.resetActuator(rumbling.actuator);
+    }
+  }
+
+  /**
    * Reads the gamepad now. Done on every frame while running; call it yourself to read between
    * frames or from a test (with `navigator.getGamepads` stubbed).
    */
@@ -739,6 +890,7 @@ export class GamepadInput extends IInput {
       GamepadInput.frameSubscription?.unsubscribe();
       GamepadInput.frameSubscription = null;
     }
+    this.stopRumble();
     // every binding lets go of what it holds: every control reads as released. The gamepad itself
     // stays known (`connected`, `standardMapping`, `inUse`), so a menu shown while the world's input
     // is off still names its buttons, and nothing on `connected$` flickers over the stop
@@ -751,16 +903,18 @@ export class GamepadInput extends IInput {
   }
 
   private findGamepad(gamepads: Gamepad[]): Gamepad | null {
-    if (this.options.gamepadIndex === null) {
-      if (GamepadInput.inUseDevice && !GamepadInput.findInUse(gamepads)) {
-        // the gamepad in use is gone: forgotten by a poll only, never by a menu reading
-        // `selectedGamepad()` during a momentary disconnection
-        GamepadInput.inUseDevice = null;
-      }
-      return GamepadInput.select(gamepads);
+    if (this.options.gamepadIndex === null && GamepadInput.inUseDevice && !GamepadInput.findInUse(gamepads)) {
+      // the gamepad in use is gone: forgotten by a poll only, never by a menu reading
+      // `selectedGamepad()` during a momentary disconnection
+      GamepadInput.inUseDevice = null;
     }
+    return this.targetGamepad(gamepads);
+  }
+
+  /** The gamepad among `gamepads` this input reads: `gamepadIndex`'s, else `select`'s. Pure. */
+  private targetGamepad(gamepads: Gamepad[]): Gamepad | null {
     const index = this.options.gamepadIndex;
-    return gamepads.find(x => x.index === index) ?? null;
+    return index === null ? GamepadInput.select(gamepads) : (gamepads.find(x => x.index === index) ?? null);
   }
 
   private readGamepad(gamepad: Gamepad | null): void {
@@ -798,6 +952,10 @@ export class GamepadInput extends IInput {
     // gamepad read after none was (the first ever, or one plugged back in) is no switch, so a
     // "press any button" menu gets the press that made the browser list it
     const device = gamepad && { index: gamepad.index, id: gamepad.id };
+    if (this.rumbling && (!device || device.index !== this.rumbling.index || device.id !== this.rumbling.id)) {
+      // the gamepad rumbling is not the one read any more: its motors stop
+      this.stopRumble();
+    }
     const switched =
       !!device &&
       !!this.device &&
