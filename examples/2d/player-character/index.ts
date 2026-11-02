@@ -20,11 +20,12 @@ const characterAtlasUrl = '/assets/characters/character-atlas.png';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-// Pixel-scale room: floor near the bottom, ceiling near the top, walls left/right, three platforms
-// at increasing height that need a running jump to reach (the gaps are well beyond `maxStepHeight`).
-const ROOM_WIDTH = 900;
-const ROOM_HEIGHT = 600;
-const WALL = 40;
+// A 9 x 6 m room (the 2D world measures in meters, y down): floor near the bottom, ceiling near the
+// top, walls left/right, three platforms at increasing height that need a running jump to reach
+// (the gaps are well beyond `maxStepHeight`).
+const ROOM_WIDTH = 9;
+const ROOM_HEIGHT = 6;
+const WALL = 0.4;
 
 const level: LevelJson = {
   entities: [
@@ -60,22 +61,22 @@ const level: LevelJson = {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformLow',
-      position: { x: -260, y: 140 },
-      config: { dimensions: { x: 180, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: -2.6, y: 1.4 },
+      config: { dimensions: { x: 1.8, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformMid',
-      position: { x: 20, y: 0 },
-      config: { dimensions: { x: 160, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: 0.2, y: 0 },
+      config: { dimensions: { x: 1.6, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'PlatformHigh',
-      position: { x: 260, y: -140 },
-      config: { dimensions: { x: 160, y: 24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
+      position: { x: 2.6, y: -1.4 },
+      config: { dimensions: { x: 1.6, y: 0.24 }, material: { color: 0x9a8c98 }, body: { bodyType: 'static' } },
     },
   ],
 };
@@ -92,14 +93,20 @@ world.init().then(async () => {
   const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
-    renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);
+    // the whole room (plus a 1 m margin) stays in view
+    const ppm = world.visualScene.pixelsPerMeter;
+    renderer.camera.zoom = Math.min(newSize.x / ((ROOM_WIDTH + 1) * ppm), newSize.y / ((ROOM_HEIGHT + 1) * ppm), 1);
   });
 
   await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
+  // a snappier fall than the default 9.82 m/s² - the character and everything else in this world
+  // follows it, in m/s²
+  world.physicsWorld!.gravity = { x: 0, y: 20 };
 
   // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
   // ../assets/characters/generate-character-atlas.py) sliced into named animation clips.
-  // 'nearest' keeps the pixel-art look crisp when scaled up
+  // 'nearest' keeps the pixel-art look crisp when scaled up; a 48x72 px frame is 0.48x0.72 m, so at
+  // scale 1.2 the sprite stands about 0.86 m tall - roughly the capsule's 0.4 + 0.4 + 0.2 m
   const atlasTexture = await world.visualScene.factory.loadTexture(characterAtlasUrl, { filter: 'nearest' });
   const sprite = world.visualScene.factory.createAnimatedSprite(atlasTexture, {
     frameWidth: 48,
@@ -115,21 +122,17 @@ world.init().then(async () => {
   sprite.scale = { x: 1.2, y: 1.2 };
 
   const characterController = world.physicsWorld!.factory.createCharacterController(
-    { radius: 20, centersDistance: 40, up: Pnt2.nY, maxStepHeight: 12 },
-    { position: { x: -ROOM_WIDTH / 2 + 100, y: ROOM_HEIGHT / 2 - WALL - 40 } },
+    { radius: 0.2, centersDistance: 0.4, up: Pnt2.nY, maxStepHeight: 0.12 },
+    { position: { x: -ROOM_WIDTH / 2 + 1, y: ROOM_HEIGHT / 2 - WALL - 0.4 } },
   );
   const player = new CharacterController2dEntity(
     {
-      radius: 20,
-      centersDistance: 40,
-      walkSpeed: 260,
+      radius: 0.2,
+      centersDistance: 0.4,
+      walkSpeed: 2.6, // m/s
       runSpeedMultiplier: 1.8,
       crouchSpeedMultiplier: 0.5,
-      jumpSpeed: 780,
-      // this world's own gravity default (9.82) is tuned for a meter-scale 3D world, not this
-      // pixel-scale room - override with a pixel-scale-appropriate fall acceleration instead of
-      // touching `world.physicsWorld.gravity` (which nothing else in this scene depends on).
-      gravity: 2000,
+      jumpSpeed: 7.8, // m/s: about 1.5 m up under this world's 20 m/s² gravity
       airControlFactor: 0.4,
     },
     sprite,
@@ -157,7 +160,7 @@ world.init().then(async () => {
     { capacity: 100, texture: world.visualScene.factory.createTextureFromCanvas(dustCanvas), zIndex: 1 },
     {
       lifetime: 0.4,
-      size: 20,
+      size: 0.2, // meters, like every particle size and speed below
       tint: 0xc9c2b8,
       drag: 4,
       frames: ParticleFrames.grid(4, 1),
@@ -166,18 +169,18 @@ world.init().then(async () => {
     },
   );
   // the character's feet, in its own frame: the capsule is centered on `position`, y points down
-  const FEET = { x: 0, y: 20 + 20 };
+  const FEET = { x: 0, y: 0.2 + 0.2 };
   let wasGrounded = true;
   let fallSpeed = 0;
   let runDustTimer = 0;
   // after the character has moved this tick (its own tick is before the physics step)
   createInlineTickController(world, TickOrder.RENDERING - 20, 'DustSpawner').subscribe(([, delta]) => {
     const feet = Pnt2.add(player.position, FEET);
-    if (player.isGrounded && !wasGrounded && fallSpeed > 300) {
-      // landed: puffs spreading out to both sides, more of them after a higher fall
-      dust.emit(Math.min(12, Math.round(fallSpeed / 100)), (p, ctx) => {
+    if (player.isGrounded && !wasGrounded && fallSpeed > 3) {
+      // landed: puffs spreading out to both sides, more of them after a higher fall (one per m/s)
+      dust.emit(Math.min(12, Math.round(fallSpeed)), (p, ctx) => {
         p.position = feet;
-        p.velocity = { x: ctx.range(-180, 180), y: ctx.range(-40, 0) };
+        p.velocity = { x: ctx.range(-1.8, 1.8), y: ctx.range(-0.4, 0) };
       });
     }
     if (player.isGrounded && player.isRunning && player.moveDirection !== 0) {
@@ -185,9 +188,9 @@ world.init().then(async () => {
       if (runDustTimer >= 90) {
         runDustTimer = 0;
         dust.emit(1, (p, ctx) => {
-          p.position = { x: feet.x - player.facing * 12, y: feet.y + ctx.range(-4, 0) };
-          p.velocity = { x: -player.facing * ctx.range(20, 60), y: ctx.range(-30, -10) };
-          p.size = { x: 14, y: 14 };
+          p.position = { x: feet.x - player.facing * 0.12, y: feet.y + ctx.range(-0.04, 0) };
+          p.velocity = { x: -player.facing * ctx.range(0.2, 0.6), y: ctx.range(-0.3, -0.1) };
+          p.size = { x: 0.14, y: 0.14 };
         });
       }
     } else {
@@ -196,7 +199,7 @@ world.init().then(async () => {
     wasGrounded = player.isGrounded;
     fallSpeed = player.actualVelocity.y;
   });
-  world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 120 }));
+  world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 1.2 }));
   // on-screen controls on phones and tablets; does nothing on a desktop
   world.addEntity(new MobileControls());
 

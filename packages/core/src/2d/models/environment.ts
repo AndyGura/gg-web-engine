@@ -39,7 +39,8 @@ export type ParallaxLayer2dOpts<Tex> = {
   repeat?: ParallaxLayer2dRepeat;
   /** World position of the texture's top-left corner while the camera is at the origin. Default `{ x: 0, y: 0 }`. */
   offset?: Point2;
-  /** World units per texture pixel, per axis (a single number applies to both). Default `1`. */
+  /** Multiplies the texture's natural world size (one texel per screen pixel at camera zoom 1, see
+   * `ICamera2dComponent.zoom`), per axis (a single number applies to both). Default `1`. */
   scale?: Point2 | number;
 };
 

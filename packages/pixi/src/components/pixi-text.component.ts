@@ -4,14 +4,29 @@ import { PixiDisplayObjectComponent } from './pixi-display-object.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 import { copyContainerState } from '../utils/clone-container';
 
-/** pixi.js implementation of `IText2dComponent`: a pixi `Text`. Built by `PixiFactory.createText`. */
+/**
+ * pixi.js implementation of `IText2dComponent`: a pixi `Text`, rasterized at `style.fontSize`
+ * pixels and scaled down by the scene's `pixelsPerMeter`, so it is drawn at one texel per screen
+ * pixel at camera `zoom` 1 and `scale` is relative to that. Built by `PixiFactory.createText`.
+ */
 export class PixiTextComponent extends PixiDisplayObjectComponent implements IText2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly nativeSprite!: Text;
   private _style: Text2dStyle = {};
 
-  constructor(text: string, style: Text2dStyle = {}) {
-    super(new Text({ text }));
+  /** @param pixelsPerMeter - The scene's texel density; the text's base scale is one over it. */
+  constructor(
+    text: string,
+    style: Text2dStyle = {},
+    public readonly pixelsPerMeter: number = 100,
+  ) {
+    super(PixiTextComponent.nativeText(text, pixelsPerMeter));
     this.setStyle(style);
+  }
+
+  private static nativeText(text: string, pixelsPerMeter: number): Text {
+    const native = new Text({ text });
+    native.scale.x = native.scale.y = 1 / pixelsPerMeter;
+    return native;
   }
 
   public get text(): string {
@@ -44,7 +59,8 @@ export class PixiTextComponent extends PixiDisplayObjectComponent implements ITe
   }
 
   clone(): PixiTextComponent {
-    const clone = new PixiTextComponent(this.text, this._style);
+    const clone = new PixiTextComponent(this.text, this._style, this.pixelsPerMeter);
+    // the native scale copied here already carries the base scale and whatever `scale` was set
     copyContainerState(this.nativeSprite, clone.nativeSprite);
     return clone;
   }

@@ -419,7 +419,7 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
       centersDistance: this.centersDistance,
     })[0];
     // see `Rapier3dCharacterControllerComponent.addToWorld`'s doc for why both of these are needed
-    // for `Rapier2dWorldComponent.dispatchCollisionEvents` to ever see a pair involving this
+    // for `Rapier2dWorldComponent.collectCollisionEvents` to ever see a pair involving this
     // character controller
     colliderDescr.setActiveCollisionTypes(ActiveCollisionTypes.ALL);
     colliderDescr.setActiveEvents(ActiveEvents.COLLISION_EVENTS);

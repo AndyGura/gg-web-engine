@@ -12,6 +12,7 @@ import { EntityJson, LevelJson } from '../../src/base/level-loader';
 import { Point2 } from '../../src/base/models/points';
 import { Shape2DDescriptor } from '../../src/2d/models/shapes';
 import {
+  Camera2DSettings,
   CompoundChild2DSettings,
   Environment2DSettings,
   ParallaxLayer2DSettings,
@@ -131,6 +132,10 @@ export type ParallaxLayer2DEntityJson = EntityCommon & { class: 'ParallaxLayer';
 /** An `"Environment"` entity. */
 export type Environment2DEntityJson = EntityCommon & { class: 'Environment'; config?: Environment2DSettings };
 
+type CameraConfig2D = Omit<Camera2DSettings, EntityLevelKeys>;
+/** A `"Camera"` entity. */
+export type Camera2DEntityJson = EntityCommon & Positioned2D & { class: 'Camera'; config?: CameraConfig2D };
+
 type PlayerConfig2D = Omit<Player2DSettings, EntityLevelKeys>;
 /** A `"Player"` entity. */
 export type Player2DEntityJson = EntityCommon & Positioned2D & { class: 'Player'; config?: PlayerConfig2D };
@@ -143,6 +148,7 @@ export type Sound2DEntityJson = EntityCommon & Positioned2D & { class: 'Sound'; 
 export type BuiltIn2DEntityJson =
   | Primitive2DEntityJson
   | Trigger2DEntityJson
+  | Camera2DEntityJson
   | ParallaxLayer2DEntityJson
   | Environment2DEntityJson
   | Player2DEntityJson
@@ -182,9 +188,11 @@ export type LevelSchema2DChecks = [
       WithLevelKeys<TriggerConfig2D> & Omit<Primitive2DShapeSettings, 'shape'> & { shape?: Primitive2DShapeName }
     >
   >,
+  Assert<Same<Camera2DSettings, WithLevelKeys<CameraConfig2D>>>,
   Assert<Same<Player2DSettings, WithLevelKeys<PlayerConfig2D>>>,
   Assert<Same<Sound2DSettings, WithLevelKeys<SoundConfig2D>>>,
   // `config` is optional exactly where its settings have no required field.
+  Assert<Same<ConfigRequired<CameraConfig2D>, false>>,
   Assert<Same<ConfigRequired<ParallaxLayer2DSettings>, true>>,
   Assert<Same<ConfigRequired<Environment2DSettings>, false>>,
   Assert<Same<ConfigRequired<PlayerConfig2D>, false>>,

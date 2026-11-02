@@ -29,9 +29,13 @@ describe('Rapier2dRigidBodyComponent force API', () => {
     body.addToWorld({ physicsWorld: world } as any);
     return body;
   };
-  // this adapter's factory sets `RigidBodyDesc.mass` and leaves the collider's default density,
-  // so the native body weighs the requested mass plus the shape's own - measure against that
-  const nativeMass = (body: ReturnType<typeof circle>) => body.nativeBody!.mass();
+  // the factory puts the requested mass on the collider (`ColliderDesc.setMass`), so the native
+  // body weighs exactly what was asked for - a unit circle at density 1 would otherwise add pi kg
+  const nativeMass = (body: ReturnType<typeof circle>) => {
+    const mass = body.nativeBody!.mass();
+    expect(mass).toBeCloseTo(body.bodyOptions.mass, 5);
+    return mass;
+  };
 
   it('a force re-applied every tick accelerates the body by F / m', () => {
     const body = circle(2);

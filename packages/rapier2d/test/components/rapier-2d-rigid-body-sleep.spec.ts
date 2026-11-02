@@ -81,7 +81,10 @@ describe('Rapier2dRigidBodyComponent sleep API', () => {
     };
 
     it('lets a resting dynamic body fall asleep by default', () => {
-      const body = factory.createRigidBody({ shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } }, { position: { x: 0, y: 0 } });
+      const body = factory.createRigidBody(
+        { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: 0, y: 0 } },
+      );
       body.addToWorld({ physicsWorld: world } as any);
 
       restFor(5);
@@ -90,7 +93,10 @@ describe('Rapier2dRigidBodyComponent sleep API', () => {
     });
 
     it('keeps a canSleep: false body awake while resting, and sleep() is a no-op on it', () => {
-      const body = factory.createRigidBody({ shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } }, { position: { x: 0, y: 0 } });
+      const body = factory.createRigidBody(
+        { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } },
+        { position: { x: 0, y: 0 } },
+      );
       body.addToWorld({ physicsWorld: world } as any);
 
       restFor(5);

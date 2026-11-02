@@ -9,11 +9,12 @@ import {
   Point2,
   warnOnce,
 } from '@gg-web-engine/core';
-import { Bodies, Body, Collision, Composite, Detector, Query, Vector } from 'matter-js';
+import { Bodies, Body, Collision, Composite, Detector, Query } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterTriggerComponent } from './matter-trigger.component';
 import { MatterWorldComponent } from './matter-world.component';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
+import { fromMatterLength, fromMatterPoint, toMatterLength, toMatterPoint } from '../matter-units';
 
 const DEFAULT_OPTIONS: Required<
   Omit<CharacterController2dOptions, 'radius' | 'centersDistance' | 'ownCollisionGroups'>
@@ -104,6 +105,10 @@ type AxisMoveResult = {
  *
  * **Divergence from the interface's own options**: `minStepWidth` is accepted but not honored - see
  * `applyStepAssist`'s own doc for why.
+ *
+ * **Units**: the options, `position`, `move()`'s translation and everything else on the interface
+ * are meters; `nativeBody` and the whole mover below (`native`, the marching, the queries) are in
+ * matter-js's native units, converted at this class's boundary (see `matter-units.ts`).
  */
 export class MatterCharacterControllerComponent implements ICharacterController2dComponent<MatterPhysicsTypeDocRepo> {
   public entity: IEntity | null = null;
@@ -113,7 +118,10 @@ export class MatterCharacterControllerComponent implements ICharacterController2
   public readonly centersDistance: number;
   public readonly nativeBody: Body;
 
+  /** As given, in meters - what `clone()` rebuilds from. */
   private readonly options: Required<CharacterController2dOptions>;
+  /** The lengths of `options` the mover reads every tick, in native units. */
+  private readonly native: { radius: number; offset: number; maxStepHeight: number; snapToGroundDistance: number };
 
   private _up: Point2;
   public get up(): Point2 {
@@ -143,11 +151,11 @@ export class MatterCharacterControllerComponent implements ICharacterController2
   public readonly debugBodySettings: DebugBody2DSettings;
 
   public get position(): Point2 {
-    return Pnt2.clone(this.nativeBody.position);
+    return fromMatterPoint(this.nativeBody.position);
   }
 
   public set position(value: Point2) {
-    Body.setPosition(this.nativeBody, Vector.create(value.x, value.y));
+    Body.setPosition(this.nativeBody, toMatterPoint(value));
   }
 
   public get rotation(): number {
@@ -200,12 +208,24 @@ export class MatterCharacterControllerComponent implements ICharacterController2
     this.radius = options.radius;
     this.centersDistance = options.centersDistance;
     this._up = Pnt2.norm(this.options.up);
+    this.native = {
+      radius: toMatterLength(this.options.radius),
+      offset: toMatterLength(this.options.offset),
+      maxStepHeight: toMatterLength(this.options.maxStepHeight),
+      snapToGroundDistance: toMatterLength(this.options.snapToGroundDistance),
+    };
 
-    this.nativeBody = Bodies.rectangle(0, 0, options.radius * 2, options.centersDistance + options.radius * 2, {
-      isStatic: true,
-      chamfer: { radius: options.radius },
-    });
-    Body.setPosition(this.nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
+    this.nativeBody = Bodies.rectangle(
+      0,
+      0,
+      toMatterLength(options.radius * 2),
+      toMatterLength(options.centersDistance + options.radius * 2),
+      {
+        isStatic: true,
+        chamfer: { radius: toMatterLength(options.radius) },
+      },
+    );
+    Body.setPosition(this.nativeBody, toMatterPoint(transform?.position ?? Pnt2.O));
     Body.setAngle(this.nativeBody, transform?.rotation || 0);
 
     this.debugBodySettings = new DebugBody2DSettings(
@@ -318,7 +338,7 @@ export class MatterCharacterControllerComponent implements ICharacterController2
       return { pos: start, blocked: false, normal: null, overlappingBodies: [] };
     }
     const dir = Pnt2.scalarMult(delta, 1 / totalLen);
-    const maxSubstep = Math.max(this.radius / 2, 1e-3);
+    const maxSubstep = Math.max(this.native.radius / 2, 1e-3);
     const steps = Math.min(1024, Math.max(1, Math.ceil(totalLen / maxSubstep)));
     const stepLen = totalLen / steps;
     const stepVec = Pnt2.scalarMult(dir, stepLen);
@@ -344,15 +364,15 @@ export class MatterCharacterControllerComponent implements ICharacterController2
       }
       if (blockingNormal) {
         // Rather than simply reverting the whole (up to `maxSubstep`-long) substep - which would
-        // only ever be as precise as the substep length itself, up to ~0.1 units short of the real
-        // surface - push the phantom body back out of `candidate` along the blocking contact's own
+        // only ever be as precise as the substep length itself, up to half a radius short of the
+        // real surface - push the phantom body back out of `candidate` along the blocking contact's own
         // normal by its exact overlap depth (the same technique `recoverFromPenetration` uses),
         // landing it right at the true contact surface regardless of substep granularity.
         // `this.options.offset` on top of that is the small skin gap `CharacterController2dOptions
         // .offset`'s own doc describes ("keep the underlying sweep test numerically stable") - without
         // it, this would land at *exactly* zero-gap contact, which is one bad floating-point rounding
         // away from a spurious re-penetration on the very next tick's query.
-        const corrected = Pnt2.add(candidate, Pnt2.scalarMult(blockingNormal, blockingDepth + this.options.offset));
+        const corrected = Pnt2.add(candidate, Pnt2.scalarMult(blockingNormal, blockingDepth + this.native.offset));
         Body.setPosition(this.nativeBody, corrected);
         return { pos: corrected, blocked: true, normal: blockingNormal, overlappingBodies };
       }
@@ -398,11 +418,11 @@ export class MatterCharacterControllerComponent implements ICharacterController2
     up: Point2,
     obstacles: Body[],
   ): Point2 {
-    if (!initial.blocked || this.options.maxStepHeight <= 0) {
+    if (!initial.blocked || this.native.maxStepHeight <= 0) {
       Body.setPosition(this.nativeBody, initial.pos);
       return initial.pos;
     }
-    const maxStep = this.options.maxStepHeight;
+    const maxStep = this.native.maxStepHeight;
     const upProbe = this.probe(start, Pnt2.scalarMult(up, maxStep), obstacles);
     const raisedAmount = Pnt2.dot(Pnt2.sub(upProbe.pos, start), up);
     if (raisedAmount <= 1e-6) {
@@ -432,6 +452,7 @@ export class MatterCharacterControllerComponent implements ICharacterController2
    * `MatterRigidBodyComponent.linearVelocity`'s existing getter/setter (which already carries the
    * conversion between matter-js's internal per-step velocity units and this engine's public m/s
    * units - see `MATTER_VELOCITY_SCALE`'s own doc) rather than touching `Body.velocity` directly.
+   * `horizLen` is the horizontal distance of this tick's move in meters, so the push is in m/s.
    */
   private pushDynamicBodies(bodies: Body[], direction: Point2, horizLen: number, dt: number | undefined): void {
     const pushMass = this.options.pushMass;
@@ -486,10 +507,12 @@ export class MatterCharacterControllerComponent implements ICharacterController2
     const up = this._up;
     const obstacles = this.collectObstacles();
 
-    let pos = this.recoverFromPenetration(this.position, obstacles);
+    // from here on every position and translation is in native units
+    const translation = toMatterPoint(desiredTranslation);
+    let pos = this.recoverFromPenetration(Pnt2.clone(this.nativeBody.position), obstacles);
 
-    const vertical = Pnt2.scalarMult(up, Pnt2.dot(desiredTranslation, up));
-    const horizontal = Pnt2.sub(desiredTranslation, vertical);
+    const vertical = Pnt2.scalarMult(up, Pnt2.dot(translation, up));
+    const horizontal = Pnt2.sub(translation, vertical);
     const horizLen = Pnt2.len(horizontal);
 
     let pushBodies: Body[] = [];
@@ -542,8 +565,8 @@ export class MatterCharacterControllerComponent implements ICharacterController2
       Body.setPosition(this.nativeBody, pos);
     }
 
-    if (!grounded && !movingUp && this.options.snapToGroundDistance > 0) {
-      const probeResult = this.probe(pos, Pnt2.scalarMult(up, -this.options.snapToGroundDistance), obstacles);
+    if (!grounded && !movingUp && this.native.snapToGroundDistance > 0) {
+      const probeResult = this.probe(pos, Pnt2.scalarMult(up, -this.native.snapToGroundDistance), obstacles);
       if (probeResult.blocked && probeResult.normal && this.isWalkable(probeResult.normal, up)) {
         pos = probeResult.pos;
         grounded = true;
@@ -556,7 +579,7 @@ export class MatterCharacterControllerComponent implements ICharacterController2
     this._groundNormal = groundNormal;
 
     if (horizLen > 1e-9) {
-      this.pushDynamicBodies(pushBodies, Pnt2.scalarMult(horizontal, 1 / horizLen), horizLen, dt);
+      this.pushDynamicBodies(pushBodies, Pnt2.scalarMult(horizontal, 1 / horizLen), fromMatterLength(horizLen), dt);
     }
   }
 

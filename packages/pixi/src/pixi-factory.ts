@@ -3,6 +3,7 @@ import {
   IDisplayObject2dComponentFactory,
   ParallaxLayer2dOpts,
   Pnt2,
+  Point2,
   Shape2DDescriptor,
   Text2dStyle,
   ParticleSystem2dRenderOptions,
@@ -46,13 +47,33 @@ export type PixiGridAtlasOptions = {
 
 export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
 
+/**
+ * Builds every native display object in pixel space and gives it a base scale of one over the
+ * scene's `pixelsPerMeter`, so the world stays in meters (a 48x72 px sprite is 0.48x0.72 m at the
+ * default 100 px/m, a `{ x: 1, y: 2 }` box is 1x2 m) while textures, text and strokes keep their
+ * pixel sizes - one texel per screen pixel at camera `zoom` 1. `PixiDisplayObjectComponent.scale`
+ * is relative to that base scale, so every object starts at scale 1.
+ */
 export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualTypeDocRepo2D> {
   /**
-   * @param scene - The scene this factory belongs to; `prepare` uploads to its renderers. Without
-   * one, `prepare` does nothing.
+   * @param scene - The scene this factory belongs to: its `pixelsPerMeter` sizes everything built
+   * here, and `prepare` uploads to its renderers. Without one, `prepare` does nothing.
+   * @param pixelsPerMeter - The texel density for a factory without a scene (tests, tooling).
+   * Default 100, ignored when `scene` is given.
    */
-  constructor(private readonly scene?: PixiSceneComponent) {
+  constructor(
+    private readonly scene?: PixiSceneComponent,
+    pixelsPerMeter: number = 100,
+  ) {
     super();
+    this._pixelsPerMeter = pixelsPerMeter;
+  }
+
+  private readonly _pixelsPerMeter: number;
+
+  /** Screen pixels per meter at camera `zoom` 1: the scene's `pixelsPerMeter`. */
+  public get pixelsPerMeter(): number {
+    return this.scene?.pixelsPerMeter ?? this._pixelsPerMeter;
   }
 
   createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent {
@@ -63,16 +84,29 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
     return component;
   }
 
-  /** Fills an untextured shape's path with `material.color` and outlines it with `material.stroke`. */
+  /**
+   * Fills an untextured shape's path, drawn in pixel space (meters times `pixelsPerMeter`), with
+   * `material.color`, outlines it with `material.stroke` (its width in screen pixels at zoom 1)
+   * and scales the result down to meters.
+   */
   private paint(graphics: Graphics, material: PixiDisplayObject3dOpts): Graphics {
     graphics.fill(material.color ?? this.randomColor());
     if (material.stroke) {
       graphics.stroke({ width: material.stroke.width, color: material.stroke.color });
     }
+    graphics.scale.x = graphics.scale.y = 1 / this.pixelsPerMeter;
     return graphics;
   }
 
-  /** A sprite showing `texture`, centered on its position, tinted with `material.color` if set. */
+  /** A pixel-space point of a shape given in meters. */
+  private px(p: Point2): Point2 {
+    return { x: p.x * this.pixelsPerMeter, y: p.y * this.pixelsPerMeter };
+  }
+
+  /**
+   * A sprite showing `texture`, `width` x `height` meters (its native scale, whatever the
+   * texture's own size), centered on its position, tinted with `material.color` if set.
+   */
   private texturedSprite(texture: Texture, width: number, height: number, material: PixiDisplayObject3dOpts): Sprite {
     const sprite = new Sprite(texture);
     sprite.width = width;
@@ -92,9 +126,10 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           return this.texturedSprite(material.texture, width, height, material);
         }
         if (material.stroke) {
-          return this.paint(new Graphics().rect(-width / 2, -height / 2, width, height), material);
+          const { x: w, y: h } = this.px(descriptor.dimensions);
+          return this.paint(new Graphics().rect(-w / 2, -h / 2, w, h), material);
         }
-        // a tinted white sprite is cheaper to draw than a Graphics rect
+        // a tinted white sprite is cheaper to draw than a Graphics rect; its size is its native scale
         const sprite = new Sprite(Texture.WHITE);
         sprite.width = width;
         sprite.height = height;
@@ -107,10 +142,10 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           // assume that texture is circular
           return this.texturedSprite(material.texture, descriptor.radius * 2, descriptor.radius * 2, material);
         }
-        return this.paint(new Graphics().circle(0, 0, descriptor.radius), material);
+        return this.paint(new Graphics().circle(0, 0, descriptor.radius * this.pixelsPerMeter), material);
       case 'CAPSULE': {
-        const halfDistance = descriptor.centersDistance / 2;
-        const radius = descriptor.radius;
+        const halfDistance = (descriptor.centersDistance / 2) * this.pixelsPerMeter;
+        const radius = descriptor.radius * this.pixelsPerMeter;
         return this.paint(
           new Graphics()
             .moveTo(radius, -halfDistance)
@@ -123,9 +158,9 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
         );
       }
       case 'CONVEX_HULL':
-        return this.paint(new Graphics().poly(Pnt2.hull(descriptor.vertices).map(v => ({ x: v.x, y: v.y }))), material);
+        return this.paint(new Graphics().poly(Pnt2.hull(descriptor.vertices).map(v => this.px(v))), material);
       case 'POLYGON':
-        return this.paint(new Graphics().poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y }))), material);
+        return this.paint(new Graphics().poly(descriptor.vertices.map(v => this.px(v))), material);
       case 'COMPOUND': {
         const container = new Container();
         // opacity applies once, to the whole compound, not again to each part
@@ -149,7 +184,9 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
    * Builds an animated sprite from a texture laid out as a uniform grid atlas (see
    * `PixiGridAtlasOptions`) - the entry point for a character sprite with named clips (idle/walk/
    * run/jump, ...). Slices each clip's own row into `frameCount` individual frame textures sharing
-   * `baseTexture`'s source (no copying/re-encoding, just distinct `frame` rectangles).
+   * `baseTexture`'s source (no copying/re-encoding, just distinct `frame` rectangles). The sprite's
+   * natural size is a frame's size in texels over the scene's `pixelsPerMeter` (a 48x72 px frame is
+   * 0.48x0.72 m at 100 px/m); `scale` is relative to that.
    */
   createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent {
     const { frameWidth, frameHeight, clips } = options;
@@ -172,17 +209,18 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
     }
     const sprite = new AnimatedSprite(resolvedClips[clipNames[0]].frames, false);
     sprite.anchor.x = sprite.anchor.y = 0.5;
+    sprite.scale.x = sprite.scale.y = 1 / this.pixelsPerMeter;
     return new PixiAnimatedSpriteComponent(sprite, resolvedClips);
   }
 
   createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerComponent {
-    return new PixiParallaxLayerComponent(options);
+    return new PixiParallaxLayerComponent(options, this.pixelsPerMeter);
   }
 
   createParticleSystem(
     options: ParticleSystem2dRenderOptions<Texture> & Partial<PixiParticleSystemExtraOpts>,
   ): PixiParticleSystemComponent {
-    return new PixiParticleSystemComponent(options);
+    return new PixiParticleSystemComponent(options, this.pixelsPerMeter);
   }
 
   async loadTexture(url: string, options: TextureOptions = {}): Promise<Texture> {
@@ -233,11 +271,12 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
   }
 
   createCamera(): PixiCameraComponent {
-    return new PixiCameraComponent();
+    return new PixiCameraComponent(this.pixelsPerMeter);
   }
 
+  /** A text rasterized at `style.fontSize` pixels, drawn at one texel per screen pixel at zoom 1. */
   createText(text: string, style: Text2dStyle = {}): PixiTextComponent {
-    return new PixiTextComponent(text, style);
+    return new PixiTextComponent(text, style, this.pixelsPerMeter);
   }
 
   private applyTextureOptions(texture: Texture, options: TextureOptions): Texture {

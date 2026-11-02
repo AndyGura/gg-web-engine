@@ -265,9 +265,9 @@ shared world for the other peers (the local player's input is still switched off
   velocities - those are post-solve, and the hit body is then often the faster one, which made it
   "claim" the hitter right back. Some adapters (Ammo) report impulse 0 on a contact's first step;
   `ContactContext.estimatedImpulse` (closing speed × lighter mass) is the adapter-independent stand-in.
-- **2D worlds are pixels.** Both 2D physics adapters work at 100 px/m; every distance default (deadzone,
-  snap distance, ownership floor, impulse threshold) is scaled by `unitScale` (`Network2dController`
-  defaults it to 100). A 1-unit test box in a 2D world is a 1-pixel box and behaves absurdly.
+- **2D worlds are meters, like 3D.** Every distance default (deadzone, snap distance, ownership
+  floor, impulse threshold) is scaled by `unitScale`, which is 1 on both `Network2dController` and
+  `Network3dController`; only a world that deliberately uses another unit passes it.
 - **One prefixing controller per process.** The default-name middleware (`prefixEntityNames`) is
   process-wide, because names are generated at construction, before an entity has a world. It is
   registered while the controller is in a world (`onSpawned` to `onRemoved`), not only while

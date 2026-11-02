@@ -8,8 +8,9 @@ import {
   Point2,
 } from '@gg-web-engine/core';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
-import { Container, Texture } from 'pixi.js';
+import { Bounds, Container, Matrix, Texture } from 'pixi.js';
 import { cloneContainer } from '../utils/clone-container';
+import { isWorldContainer } from '../utils/world-container';
 
 /**
  * The `label` pixi.js gives a display object built without an explicit one: its class name (a
@@ -47,7 +48,9 @@ export class PixiDisplayObjectComponent
 
   /**
    * The native scale the object was built with: a sized sprite (a plain or textured `BOX`, a
-   * textured `CIRCLE`) gets its size from its native scale. `scale` is relative to it, so
+   * textured `CIRCLE`) gets its size in meters from its native scale, and every other native object
+   * (a `Graphics` shape, a text, an animated sprite, a particle system) is built in pixel space and
+   * scaled down by the scene's `pixelsPerMeter`. `scale` is relative to it, so
    * `scale = { x: 1, y: 1 }` is always the size the object was created at.
    */
   protected readonly baseScale: Point2;
@@ -157,9 +160,24 @@ export class PixiDisplayObjectComponent
     return new PixiDisplayObjectComponent(child);
   }
 
-  /** Bounds in world (stage) coordinates, like the 3D adapters' `getBoundings`. */
+  /**
+   * Bounds in world coordinates (meters), like the 3D adapters' `getBoundings`: the local bounds
+   * taken through the object's own transform (native scale included) and every ancestor's, up to
+   * but not including the scene's world container. That container is the world frame itself - each
+   * renderer scales it by `zoom * pixelsPerMeter` and pivots it on its camera when it draws - so
+   * `Container.getBounds()`, which goes all the way up to the stage, would come back in canvas
+   * pixels offset by the camera once a renderer has drawn. An object outside any world container
+   * (never added to a scene) measures through every ancestor it has.
+   */
   getBoundings(): GgBox2d {
-    const bounds = this.nativeSprite.getBounds();
+    const local = this.nativeSprite.getLocalBounds();
+    const bounds = new Bounds(local.minX, local.minY, local.maxX, local.maxY);
+    const toWorld = new Matrix();
+    for (let c: Container | null = this.nativeSprite; c && !isWorldContainer(c); c = c.parent) {
+      c.updateLocalTransform();
+      toWorld.prepend(c.localTransform);
+    }
+    bounds.applyMatrix(toWorld);
     return {
       min: { x: bounds.minX, y: bounds.minY },
       max: { x: bounds.maxX, y: bounds.maxY },
@@ -168,8 +186,9 @@ export class PixiDisplayObjectComponent
 
   /**
    * `Container.getLocalBounds()` - the subtree in the container's own frame, leaving out hidden
-   * children - scaled by `baseScale`, since a sized sprite's built size is its native scale, which
-   * the native local bounds leave out along with the rest of the container's own transform.
+   * children - scaled by `baseScale` into meters, since an object's built size is its native scale
+   * (a sized sprite's size, the pixel-space drawing's one over `pixelsPerMeter`), which the native
+   * local bounds leave out along with the rest of the container's own transform.
    */
   getLocalBoundings(): GgBox2d {
     const bounds = this.nativeSprite.getLocalBounds();

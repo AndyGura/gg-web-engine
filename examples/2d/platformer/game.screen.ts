@@ -46,36 +46,41 @@ export class GameScreen extends Screen {
     );
     await world.init();
 
-    // a camera zoomed so about 700 px of the level fit vertically, whatever the window size
+    // a camera zoomed so about 7 m of the level fit vertically, whatever the window size
     const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
-    let viewWidth = 0; // in level pixels
+    const ppm = world.visualScene.pixelsPerMeter;
+    let viewWidth = 0; // in meters
     renderer.rendererSize$.subscribe(size => {
       if (size) {
-        renderer.camera.zoom = size.y / 700;
-        viewWidth = size.x / renderer.camera.zoom;
+        renderer.camera.zoom = size.y / (7 * ppm);
+        viewWidth = size.x / (renderer.camera.zoom * ppm);
       }
     });
+
+    // a snappier fall than the default 9.82 m/s²: the player (and anything else) follows the world's gravity
+    world.physicsWorld.gravity = { x: 0, y: 20 };
 
     const texture = (canvas: HTMLCanvasElement) => world.visualScene.factory.createTextureFromCanvas(canvas);
 
     // --- backdrop: a screen-fixed sky, then clouds and two rows of hills scrolling slower than the
-    // level as the camera moves (lower parallax reads as farther away; zIndex < 0 is behind the level)
+    // level as the camera moves (lower parallax reads as farther away; zIndex < 0 is behind the level).
+    // A texture's own pixels set its size: 100 px of texture is 1 m, so `offset` is in meters too
     world.visualScene.setEnvironment({ background: texture(drawSky()) });
-    world.addParallaxLayer({ texture: texture(drawClouds()), parallax: 0.1, zIndex: -3, offset: { x: 0, y: -440 } });
+    world.addParallaxLayer({ texture: texture(drawClouds()), parallax: 0.1, zIndex: -3, offset: { x: 0, y: -4.4 } });
     const farHills = texture(
       drawHills('#a8d5a2', [
         [2, 30],
         [5, 12],
       ]),
     );
-    world.addParallaxLayer({ texture: farHills, parallax: 0.25, zIndex: -2, offset: { x: 0, y: -360 } });
+    world.addParallaxLayer({ texture: farHills, parallax: 0.25, zIndex: -2, offset: { x: 0, y: -3.6 } });
     const nearHills = texture(
       drawHills('#6fb36b', [
         [3, 25],
         [7, 8],
       ]),
     );
-    world.addParallaxLayer({ texture: nearHills, parallax: 0.5, zIndex: -1, offset: { x: 0, y: -250 } });
+    world.addParallaxLayer({ texture: nearHills, parallax: 0.5, zIndex: -1, offset: { x: 0, y: -2.5 } });
 
     // --- the level (level.ts). The classes it uses beyond the built-in ones come from entities.ts.
     registerLevelClasses(world);
@@ -98,31 +103,40 @@ export class GameScreen extends Screen {
     });
     // an eye on the capsule, so it's clear which way the player faces (moved along every tick)
     const eye = new Entity2d({
-      object2D: world.visualScene.factory.createCircle(4, { color: 0xffffff, stroke: { width: 2, color: 0x2b1d14 } }),
+      object2D: world.visualScene.factory.createCircle(0.04, {
+        color: 0xffffff,
+        stroke: { width: 2, color: 0x2b1d14 },
+      }),
     });
     eye.object2D!.zIndex = 1;
     world.addEntity(eye);
 
-    // --- particles: one system per look, each a single draw call
+    // --- particles: one system per look, each a single draw call (sizes in meters, speeds in m/s)
     const softDot = texture(drawSoftDot());
     const sparks = world.addParticleSystem(
       { capacity: 300, texture: softDot, blending: 'additive', zIndex: 5 },
-      { lifetime: [0.3, 0.7], size: 12, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+      { lifetime: [0.3, 0.7], size: 0.12, gravity: { x: 0, y: 9 }, drag: 2, opacityOverLife: [1, 0] },
     );
     /** a burst of `count` sparks of `color` flying out of `at` in every direction */
     const burst = (at: Point2, color: number, count = 16) =>
       sparks.emit(count, (p, ctx) => {
         p.position = at;
-        p.velocity = Pnt2.rot({ x: ctx.range(150, 400), y: 0 }, ctx.random() * Math.PI * 2);
+        p.velocity = Pnt2.rot({ x: ctx.range(1.5, 4), y: 0 }, ctx.random() * Math.PI * 2);
         p.tint = color;
       });
     const dust = world.addParticleSystem(
       { capacity: 60, texture: softDot, zIndex: 1 },
-      { lifetime: 0.4, size: 18, tint: 0xd8cbb5, drag: 4, sizeOverLife: [0.6, 1.6], opacityOverLife: [0.8, 0] },
+      { lifetime: 0.4, size: 0.18, tint: 0xd8cbb5, drag: 4, sizeOverLife: [0.6, 1.6], opacityOverLife: [0.8, 0] },
     );
     const confetti = world.addParticleSystem(
       { capacity: 400, texture: texture(drawConfetti()), zIndex: 6 },
-      { lifetime: [1.5, 2.5], size: { x: 10, y: 5 }, gravity: { x: 0, y: 500 }, drag: 1.5, opacityOverLife: [1, 1, 0] },
+      {
+        lifetime: [1.5, 2.5],
+        size: { x: 0.1, y: 0.05 },
+        gravity: { x: 0, y: 5 },
+        drag: 1.5,
+        opacityOverLife: [1, 1, 0],
+      },
     );
     const CONFETTI_COLORS = [0xe94f37, 0xffd23f, 0x4cd964, 0x3fa7f5, 0xb36bff];
 
@@ -188,10 +202,10 @@ export class GameScreen extends Screen {
         child.onEntityEntered.subscribe(() => {
           // coming down onto it from above (the player's middle well above the slime's) squashes it and
           // bounces the player up; anything else hurts
-          if (player.actualVelocity.y > 0 && player.position.y < child.position.y - 30) {
+          if (player.actualVelocity.y > 0 && player.position.y < child.position.y - 0.3) {
             child.squash();
             burst(child.position, 0xb36bff, 20);
-            player.fallVelocity = { x: 0, y: -550 };
+            player.fallVelocity = { x: 0, y: -5.5 };
           } else {
             hurt();
           }
@@ -200,18 +214,18 @@ export class GameScreen extends Screen {
         child.onReached.subscribe(flag => {
           if (state !== 'playing') return;
           if (!flag.isGoal) {
-            checkpoint = { x: flag.position.x, y: -60 };
-            burst({ x: flag.position.x + 20, y: -100 }, 0x4cd964, 12);
+            checkpoint = { x: flag.position.x, y: -0.6 };
+            burst({ x: flag.position.x + 0.2, y: -1 }, 0x4cd964, 12);
             return;
           }
           state = 'won';
           controller.active = false;
           outro = OUTRO_MS;
           // confetti: three bursts from above the flag, tumbling as they fall
-          for (const dx of [-120, 0, 120]) {
+          for (const dx of [-1.2, 0, 1.2]) {
             confetti.emit(60, (p, ctx) => {
-              p.position = { x: flag.position.x + dx, y: -260 };
-              p.velocity = { x: ctx.range(-350, 350), y: ctx.range(-650, -150) };
+              p.position = { x: flag.position.x + dx, y: -2.6 };
+              p.velocity = { x: ctx.range(-3.5, 3.5), y: ctx.range(-6.5, -1.5) };
               p.tint = CONFETTI_COLORS[Math.floor(ctx.random() * CONFETTI_COLORS.length)];
               p.rotation = ctx.random() * Math.PI;
               p.angularVelocity = ctx.range(-12, 12);
@@ -229,10 +243,10 @@ export class GameScreen extends Screen {
       // the camera eases towards a point ahead of the player (where it is going) and above it, but
       // never shows what lies beyond the level's ends
       const { left, right } = LEVEL_BOUNDS;
-      const targetX = player.position.x + 120 * player.facing;
+      const targetX = player.position.x + 1.2 * player.facing;
       const cameraTarget = {
         x: viewWidth >= right - left ? (left + right) / 2 : clamp(targetX, left + viewWidth / 2, right - viewWidth / 2),
-        y: player.position.y - 110,
+        y: player.position.y - 1.1,
       };
       cameraPosition = Pnt2.lerp(cameraPosition, cameraTarget, 1 - Math.pow(0.9, delta / (1000 / 60)));
       renderer.position = cameraPosition;
@@ -253,13 +267,13 @@ export class GameScreen extends Screen {
       const opacity = invulnerable > 0 && Math.floor(invulnerable / 100) % 2 === 0 ? 0.3 : 1;
       player.object2D!.opacity = eye.object2D!.opacity = opacity;
       eye.visible = player.visible;
-      eye.position = Pnt2.add(player.position, { x: 7 * player.facing, y: -14 });
+      eye.position = Pnt2.add(player.position, { x: 0.07 * player.facing, y: -0.14 });
       // a puff of dust when landing from a jump or a fall
-      if (player.isGrounded && !wasGrounded && fallSpeed > 300) {
-        const feet = Pnt2.add(player.position, { x: 0, y: 36 });
+      if (player.isGrounded && !wasGrounded && fallSpeed > 3) {
+        const feet = Pnt2.add(player.position, { x: 0, y: 0.36 });
         dust.emit(8, (p, ctx) => {
           p.position = feet;
-          p.velocity = { x: ctx.range(-160, 160), y: ctx.range(-40, 0) };
+          p.velocity = { x: ctx.range(-1.6, 1.6), y: ctx.range(-0.4, 0) };
         });
       }
       wasGrounded = player.isGrounded;

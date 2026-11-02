@@ -238,7 +238,7 @@ describe('PlayerCharacterController2d', () => {
       await controller.onSpawned({ gamepadInput } as any);
       controller.setGamepad({ jump: 'b3' });
       expect(controller.options.gamepad!.jump).toBe('b3');
-      expect(controller.options.gamepad!.run).toBe('b2');
+      expect(controller.options.gamepad!.run).toBe('b10');
       pads.set({ buttons: { 0: true } });
       gamepadInput.poll();
       expect(character.jump).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe('PlayerCharacterController2d', () => {
       expect(character.jump).toHaveBeenCalledTimes(1);
 
       controller.setGamepad(null);
-      pads.set({ axes: [-1, 0], buttons: { 2: true } });
+      pads.set({ axes: [-1, 0], buttons: { 10: true } });
       gamepadInput.poll();
       expect(character.moveDirection).toBe(0);
       expect(character.isRunning).toBe(false);
@@ -259,7 +259,7 @@ describe('PlayerCharacterController2d', () => {
       expect(character.isRunning).toBe(false);
       pads.set({ axes: [-1, 0] });
       gamepadInput.poll();
-      pads.set({ axes: [-1, 0], buttons: { 2: true } });
+      pads.set({ axes: [-1, 0], buttons: { 10: true } });
       gamepadInput.poll();
       expect(character.isRunning).toBe(true);
     });
@@ -267,7 +267,7 @@ describe('PlayerCharacterController2d', () => {
     it('moves by the left stick or d-pad and acts by the buttons', async () => {
       const { controller, character } = setup();
       await controller.onSpawned({ gamepadInput } as any);
-      pads.set({ axes: [-1, 0], buttons: { 0: true, 2: true } });
+      pads.set({ axes: [-1, 0], buttons: { 0: true, 10: true } });
       gamepadInput.poll();
       expect(character.moveDirection).toBe(-1);
       expect(character.jump).toHaveBeenCalledTimes(1);

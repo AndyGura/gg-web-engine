@@ -96,15 +96,15 @@ describe('MatterCharacterControllerComponent', () => {
     expect(character.position.x).toBeLessThan(2 - CHAR_OPTIONS.radius + 0.01);
   });
 
-  it('marches a long move in steps of half its radius, whatever the world units', () => {
-    // a pixel-scale capsule: the step follows its size, not a fixed length in world units
+  it('marches a long move in steps of half its radius, whatever its size', () => {
+    // a large capsule: the step follows its size, not a fixed length in meters
     const character = factory.createCharacterController(
-      { radius: 20, centersDistance: 40 },
-      { position: { x: 0, y: -1000 } },
+      { radius: 2, centersDistance: 4 },
+      { position: { x: 0, y: -100 } },
     );
     character.addToWorld({ physicsWorld: world } as any);
     const spy = jest.spyOn(Query, 'collides');
-    character.move({ x: 100, y: 0 });
+    character.move({ x: 10, y: 0 });
     expect(spy.mock.calls.length).toBeLessThan(40);
     spy.mockRestore();
   });

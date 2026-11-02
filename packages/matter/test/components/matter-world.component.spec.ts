@@ -352,7 +352,7 @@ describe('MatterWorldComponent', () => {
       // obstruct a raycast - a world-enclosing trigger (a map-bounds kill volume) would otherwise
       // be "hit" at ~0 distance by every ray cast anywhere inside it. raycast() excludes sensor
       // bodies from its candidate set outright (see its own doc).
-      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 100, y: 100 } });
+      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 20, y: 20 } });
       trigger.addToWorld({ physicsWorld: world } as any);
       world.simulate(1);
 

@@ -19,28 +19,37 @@ plain scalar rotation instead of `Vector3`/`Quaternion`, otherwise the same meth
 each found on one specific side first; sections that genuinely don't apply to the other dimension say
 so explicitly.
 
-## Units: 2D works in pixels, so Rapier needs `lengthUnit` and mass on the colliders
+## Units: both packages work in meters, kilograms and seconds, and mass goes on the colliders
 
-`packages/rapier2d` simulates in pixels (100 per meter): positions, velocities and shape sizes go to
-Rapier unscaled, and only gravity is multiplied by `unitScale` (100) on the way in and divided on the
-way out. Two Rapier defaults assume meters and both bite in pixels:
+`packages/rapier2d` is as meter-native as `packages/rapier3d`: positions, velocities, shape sizes
+and `gravity` (plain m/s², default `{x: 0, y: 9.82}` - `+y` is down on screen) go to Rapier
+unscaled, and `Rapier2dWorldComponent` leaves `IntegrationParameters` (including `lengthUnit`) at
+Rapier's defaults. Those defaults are tuned for meter-sized scenes, so build scenes that way, in
+tests too:
 
-- **`IntegrationParameters.lengthUnit`** (default 1) scales Rapier's tolerances and its hard speed
-  limit of 400 length units per second. Left at 1, every 2D body was capped at 400 px/s (4 m/s)
-  without any error, sleep thresholds were 0.1 px/s and contact tolerances sub-pixel.
-  `Rapier2dWorldComponent.init()` sets it to `unitScale`, which makes those the same physical
-  values as in a meter-based 3D world: bodies under about 10 px/s fall asleep, and allowed
-  penetration is about half a pixel. A test scene built at meter-like sizes (1 px radius, 1 px/s)
-  falls asleep at once under that; size test scenes in pixels.
+- **Rapier's hard speed cap is 400 m/s** per body (`lengthUnit` × 400), applied silently - a body
+  given 500 m/s reads back 400 after the first step.
+- **A body at or below 0.1 m/s counts as resting** and falls asleep after Rapier's own sleep timer
+  (measured on `0.20.0`: 0.1 m/s sleeps within 5 s in zero gravity, 0.2 m/s never does), and a
+  sleeping body's island is skipped by `step()` entirely (see the sleep sections below). A scene
+  that moves things at centimeters per second sleeps them: set `canSleep: false` on a body that
+  legitimately creeps, or move it faster, don't scale the scene.
+- **Contact tolerances are centimeter-scale** (`normalizedAllowedLinearError` 5 mm,
+  `normalizedPredictionDistance` 2 cm at `lengthUnit` 1), so colliders should be at least several
+  centimeters across; the specs use 0.1-1 m shapes.
 - **Mass goes on the colliders (`ColliderDesc.setMass`), not `RigidBodyDesc.mass`.** The body
-  field is extra mass on top of what each collider derives from its area at density 1, and a 20 px
-  circle alone weighs about 1257 that way, so `mass: 4` produced a ~1261 kg body and impulses barely
-  moved it. `Rapier2dFactory.createRigidBodyDescr` splits `mass` across the colliders, and
-  `bodyOptions.mass` sums them, as `packages/rapier3d` does (see its comment on why `RigidBodyDesc.mass`
-  also gave the wrong inertia).
+  field is *extra* mass on top of what each collider derives from its area at density 1, and adds
+  no rotational inertia: a 1 m-radius circle alone weighs π kg that way, so `mass: 2` would make a
+  5.14 kg body with the inertia of a 3.14 kg disc. `Rapier2dFactory.createRigidBodyDescr` takes the
+  body's `ColliderDesc[]` and calls `setMass(mass / colliderDescr.length)` on each (an even split
+  over a `COMPOUND`'s sub-colliders) and never touches `RigidBodyDesc.mass`;
+  `Rapier2dRigidBodyComponent.bodyOptions.mass` sums them back. A dynamic body's
+  `nativeBody.mass()` therefore equals the requested `mass` exactly, which
+  `rapier-2d-rigid-body-forces.spec.ts` asserts alongside its `F / m` checks.
 
-The shared contract suite (`packages/core/test/contract/physics-2d.contract.ts`) checks both: an
-impulse changes velocity by `impulse / mass`, and a body keeps a velocity of 600 px/s.
+The shared contract suite (`packages/core/test/contract/physics-2d.contract.ts`) covers the whole
+unit system in SI: an impulse changes velocity by `impulse / mass`, a force every step accelerates
+by `force / mass`, and a body given 6 m/s keeps it.
 
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
@@ -453,9 +462,12 @@ touching this again:
   `ColliderDesc`'s `activeEvents`/`activeCollisionTypes`/`isSensor`: without them a clone reports no
   collisions. A test has to collide two clones, because Rapier reports a contact when either collider
   asks for events (`rapier-3d-rigid-body-clone.spec.ts`). `Rapier2dRigidBodyComponent
-  .factoryProps` doesn't have this problem - it returns the *same* `RigidBodyDesc` instance rather
-  than reconstructing one, so nothing needs copying there; don't assume the two packages' `clone()`
-  work identically just because their public shape matches.
+  .factoryProps` rebuilds fresh descriptors the same way (`rapier-2d-rigid-body-clone.spec.ts`),
+  and both `clone()`s copy `collisionGroups` onto the copy. Handing the copy the *same*
+  `RigidBodyDesc`/`ColliderDesc[]` instances is not an option in either package: `removeFromWorld`
+  writes the live pose and velocity into `_bodyDescr`, so an original and a clone sharing it would
+  overwrite each other's stored pose on every removal (the "keeps its own pose" test in the 2D
+  clone spec).
 
 ## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
 
@@ -508,11 +520,27 @@ note).
 ## `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (2D, implemented in `packages/rapier2d`): draining must be centralized in the world component, not left to each trigger
 
 `Rapier2dWorldComponent.simulate()` drains the world's single `EventQueue` itself, right after
-`world.step(eventQueue)`, and routes every `(collider1Handle, collider2Handle, started)` transition to
-whichever component(s) it involves - a sensor-overlap transition (either side a
-`Rapier2dTriggerComponent`) goes to that trigger's own `handleOverlapEvent` (backing
-`onEntityEntered`/`onEntityLeft`), a real contact transition between two plain rigid bodies goes to
-both sides' `handleCollisionStart`/`handleCollisionEnd` (backing `onCollisionStart`/`onCollisionEnd`).
+`world.step(eventQueue)` (`collectCollisionEvents(out)`), and routes every `(collider1Handle,
+collider2Handle, started)` transition to whichever component(s) it involves - a sensor-overlap
+transition (either side a `Rapier2dTriggerComponent`) goes to that trigger's own
+`handleOverlapEvent` (backing `onEntityEntered`/`onEntityLeft`), a real contact transition between
+two plain rigid bodies goes to both sides' `notifyCollisionStart`/`notifyCollisionEnd` (backing
+`onCollisionStart`/`onCollisionEnd`). Nothing is dispatched from inside the drain: each event is
+resolved to its components and pushed to `out` as a notification closure that `simulate()` runs
+once the drain is done. Every closure captures both native body handles and checks, through
+`current()`, that each component's `nativeBody?.handle` still matches - an earlier notification's
+subscriber may have removed (or removed and re-added) either side, and `removeFromWorld` already
+accounted for that body's contacts. A real-contact closure checks once up front, then does the
+bookkeeping for *both* sides before emitting to either (`trackCollisionStart`/`trackCollisionEnd`
+return whether an emission is due, `emitCollisionStart`/`emitCollisionEnd` do it) and re-checks
+`current()` right before each side's emission. The order matters: if A's `onCollisionStart`
+subscriber removes B, B's `collidingWith` already holds A, so B's `removeFromWorld` emits
+`onCollisionEnd(null)` on A and clears A's entry, and B's own start is skipped. Counting B only
+after A's emission would leave A with a stale entry and no end event. A sensor closure re-checks
+`current()` before each trigger's `handleOverlapEvent` the same way. `notifyCollisionStart`/
+`notifyCollisionEnd` remain the one-call form (track, then emit) `removeFromWorld` (with `null`)
+and tests use. Regression: "delivers collision events after the step, so a subscriber may remove
+the other body" in both packages' `*-rigid-body-collision.spec.ts`.
 
 The world must be the only drainer: `drainCollisionEvents` drains and clears the *entire* shared
 queue in one call, and the world has exactly one `EventQueue` for every collider in it, so a second
@@ -548,12 +576,16 @@ resolved collider's own `handle` equals the reported one. Removal is never left 
 `removeFromWorld` notifies contact partners itself, and triggers purge the body on `removed$` (see
 "Sensor intersections are per collider" in the 3D section).
 
-**`onCollisionStart`/`onCollisionEnd` are per collider pair in 2D.** `Rapier2dRigidBodyComponent
-.activeContacts` is a plain `Set` and `handleCollisionStart`/`handleCollisionEnd` emit on every native
-event, so a `COMPOUND` body (one collider per part) touching another body with two parts at once
-gets two `onCollisionStart`s, and an `onCollisionEnd` as soon as one part separates while the other
-still touches. The 3D package counts collider pairs per partner instead (see its section below);
-porting that count is the fix if this is ever needed in 2D.
+**Collision events are per collider, `onCollisionStart`/`onCollisionEnd` per body pair (both
+packages).** A `COMPOUND` body is one collider per part, so one touching another body with two parts
+at once gets two native starts, and a native stop as soon as one part separates while the other
+still touches. `Rapier2dRigidBodyComponent.collidingWith` is a `Map<body, number>` of touching
+collider pairs per partner: `trackCollisionStart` reports a due `onCollisionStart` only on 0 -> 1,
+`trackCollisionEnd` a due `onCollisionEnd` only on -> 0 (and never for a partner with no count). A native start is therefore never dropped
+even when `computeContactGeometry` finds no manifold (`fallbackContactGeometry` fills in midpoint /
+direction between the bodies / `impulse: 0`), or the count would end up one short of the stops to
+come. Regression: the 2D contract suite's "fires onCollisionStart once per body pair, for a compound
+body landing on several parts".
 
 **Both plain-rigid-body colliders and trigger colliders need `ActiveEvents.COLLISION_EVENTS`** for a
 pair between two *plain* rigid bodies to generate any event at all - before this change, only
@@ -587,13 +619,13 @@ observed to trigger in practice across the package's own test suite.
 
 **`removeFromWorld`'s `onCollisionEnd(null)` notification must never fire on the removed body's own
 stream, only on each surviving partner's.** `Rapier2dRigidBodyComponent.removeFromWorld` walks its
-own `activeContacts` set and calls `other.handleCollisionEnd(null)` for each partner still touching
-it - that's correct and required (see `gg-engine-physics-adapter`'s "Collision events" section), but
-an earlier version of this loop *also* called `this.onCollisionEnd$.next(other)` on the body being
-removed itself, firing a spurious event on the vanishing body's own stream for every partner it was
-still touching. Fixed by dropping that extra `next()` call - only `other.handleCollisionEnd(null)`
-should run. `packages/rapier3d`'s equivalent (`notifyCollisionEnd`, walked via `collidingWith`) never
-had this bug; use it as the reference when checking a similar loop in a new adapter.
+own `collidingWith` map, drops itself from each partner's map and calls `other.notifyCollisionEnd(null)`
+for each partner still touching it - that's correct and required (see `gg-engine-physics-adapter`'s
+"Collision events" section), but an earlier version of this loop *also* called
+`this.onCollisionEnd$.next(other)` on the body being removed itself, firing a spurious event on the
+vanishing body's own stream for every partner it was still touching. Fixed by dropping that extra
+`next()` call - only `other.notifyCollisionEnd(null)` should run. `packages/rapier3d`'s loop is
+identical; use either as the reference when checking a similar loop in a new adapter.
 
 **Self-collision guard**: `Rapier2dWorldComponent.dispatchCollisionEvents` resolves both collider
 handles in a pair to components and skips the pair if resolution failed - but originally didn't also
@@ -634,13 +666,19 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
 `CONTACT_FORCE_EVENTS` force-times-`dt` estimate). Four points worth calling out specifically for the
 3D package:
 
-- **Naming differs, behavior doesn't**: this package's dispatch methods are
-  `Rapier3dTriggerComponent.notifyOverlap(otherBody, started)` (sensor pairs) and
-  `Rapier3dRigidBodyComponent.notifyCollisionStart(event)`/`notifyCollisionEnd(otherBody | null)` (real
-  pairs) - the 2D package calls its equivalents `handleOverlapEvent`/`handleCollisionStart`/
-  `handleCollisionEnd`. Not unified across the two packages since they're independent classes with no
-  shared base; if you're comparing the two implementations side by side, this is purely a naming
-  choice, not a behavioral difference.
+- **`factoryProps` (what `clone()` builds from) reads the live native body when there is one.**
+  `_bodyDescr` holds the live pose and velocities only while the body is out of the world
+  (`removeFromWorld` stores them, `addToWorld` rebuilds from them); in the world the native body is
+  the source, so the copy of the descriptor takes translation/rotation/linvel/angvel from
+  `_nativeBody` when set, else from `_bodyDescr`. Both packages, same shape. Regression: "copies
+  the live pose and velocity of an original that is in the world" in each `*-rigid-body-clone.spec.ts`.
+- **Naming**: both packages' rigid bodies dispatch through `trackCollisionStart`/`emitCollisionStart`
+  and `trackCollisionEnd`/`emitCollisionEnd` (with `notifyCollisionStart(event)`/
+  `notifyCollisionEnd(otherBody | null)` as the one-call form) and the world through `collectCollisionEvents(out)`/
+  `computeContactGeometry`/`fallbackContactGeometry`; only the trigger side differs -
+  `Rapier3dTriggerComponent.notifyOverlap(otherBody, started)` is `Rapier2dTriggerComponent
+  .handleOverlapEvent(other, started)` in 2D. The two are independent classes with no shared base,
+  so keep the structure parallel by hand when changing one.
 - **`World.getCollider(handle)` returns `null` for a handle whose arena slot is free - it does not
   throw - but a handle whose slot has been reused resolves to the new occupant**; see "A removed
   collider's stale handle" in the 2D section above for why `collectCollisionEvents` compares
@@ -660,8 +698,9 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   per part, so a two-box body landing flat on a floor gets two native starts, and a native stop
   whenever one box bounces off while the other still rests. `collidingWith` is therefore a
   `Map<Rapier3dRigidBodyComponent, number>` of touching collider pairs per partner:
-  `notifyCollisionStart` emits only when a partner's count goes from 0 to 1, `notifyCollisionEnd`
-  only when it drops back to 0 (and ignores a stop for a partner with no count). `collectCollisionEvents`
+  `trackCollisionStart` reports a due `onCollisionStart` only when a partner's count goes from 0 to
+  1, `trackCollisionEnd` a due `onCollisionEnd` only when it drops back to 0 (and never for a partner
+  with no count); the world counts both sides of a pair before emitting to either, as in 2D. `collectCollisionEvents`
   never drops a native start - when `computeContactGeometry` finds no manifold it falls back to
   `fallbackContactGeometry` (midpoint, direction between the bodies, no impulse) - since a skipped
   start would leave the count one short of the stops to come. Regression: the 3D contract suite's
@@ -789,11 +828,8 @@ step (2D) and clears the set. Resetting per substep instead would drop the force
 substep on. `applyImpulse`/`applyTorqueImpulse` map to Rapier's calls of the same name (and the
 `AtPoint` variants) with `wakeUp: true`; all four return early unless `nativeBody.isDynamic()`.
 
-`packages/rapier2d`'s factory sets `RigidBodyDesc.mass` and leaves the collider's default density
-(1), so a dynamic body's native mass is the requested mass plus the shape's area - a 2 kg unit
-circle weighs 5.14 kg, and `F / m` comes out accordingly. `rapier-2d-rigid-body-forces.spec.ts`
-measures against `nativeBody.mass()` for that reason; `packages/rapier3d` sets the mass on the
-colliders (see below) and has no such offset.
+Both factories put the requested mass on the colliders (see "Units" above and the vehicle notes
+below), so `nativeBody.mass()` is the requested `mass` and `F / m` comes out in plain SI.
 
 ## `IRaycastVehicleComponent` (3D, implemented in `packages/rapier3d`)
 
@@ -896,8 +932,9 @@ the substeps, and both broke tests until they were:
   when it runs: an earlier notification's subscriber can remove that body (a pickup removing what
   it caught), and a body touching two parts of a `COMPOUND` trigger queues two starts. Without the
   check the second start re-enters the removed body, its stop is dropped as a stale handle, and the
-  trigger stays activated with `onEntityLeft` never firing. rapier2d dispatches while draining and
-  resolves each event live, so it has no queue to go stale. Regression: `rapier-3d-trigger.component.spec.ts`'s
+  trigger stays activated with `onEntityLeft` never firing. rapier2d queues and re-checks the same
+  way (one step per `simulate()`, but a subscriber of an earlier notification can still remove a
+  body before a later one runs). Regression: both packages' `rapier-*-trigger.component.spec.ts`,
   "a body removed by an enter subscriber ..." test.
 - **`kinematic_pos` targets.** A `kinematic_pos` body's `position`/`rotation` setters call
   `setNextKinematicTranslation`/`Rotation` once per tick; Rapier reaches that target in the next

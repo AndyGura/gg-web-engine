@@ -30,6 +30,7 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+
 - core: `KeyboardInput.externalFocusOwnKeys`, elements (CSS selectors) that use only some keys while
   focused, and `KeyboardInput.focusUsesKey(code, element?)`, whether the focused element uses a key
   itself. By default buttons (`<button>`, `<input>` of type button, submit, reset, image and
@@ -47,8 +48,60 @@ where one exists.
   tells whether the gamepad has motors the browser can play. Effects the browser refuses or
   preempts are ignored. Rumble only: steering wheels' force feedback has no web API. New type
   `GamepadRumble`.
+- core: 2D `"Camera"` level class and `Camera2dEntity`, the counterparts of the 3D ones: a level
+  JSON positions a camera (`config: { zoom?, origin? }`) wrapped in an entity parented under the
+  level, whose `.camera` the app hands to `world.addRenderer`.
+
+### Changed
+
+- core: `PlayerCharacterController2d`'s default gamepad run button is the left stick's click
+  (`b10`), as in 3D, instead of X (`b2`).
+- **2D worlds measure in meters, like 3D.** Positions, sizes, velocities, forces and
+  `physicsWorld.gravity` (default `{x: 0, y: 9.82}`, screen Y down) of a `Gg2dWorld` are meters,
+  m/s, N and m/s², replacing the pixel scale of 100 px per meter: `rapier2d` is meter-native
+  (no `lengthUnit`, no gravity scaling), `matter` converts to matter-js's own units privately,
+  `Network2dController`'s `unitScale` is 1, and the dev console's 2D `spawn`/`player_spawn`
+  commands build meter-sized shapes (a 0.4 m / 1 m player capsule, as in 3D). pixi's
+  `PixiSceneComponent` takes `{ pixelsPerMeter }` (default 100): at camera `zoom` 1 a texture is
+  drawn at one texel per screen pixel and sized as texels / pixelsPerMeter meters, so sprite art and
+  `scale` values keep their numbers while world coordinates shrink by 100. A HUD world laid out in
+  canvas pixels creates its scene with `pixelsPerMeter: 1`. Migration: divide every 2D world-space
+  number (level coordinates, shape sizes, speeds, particle sizes and gravity, parallax offsets,
+  `lookAheadDistance`) by 100, drop per-character `gravity` overrides that compensated for the
+  pixel scale, and keep texel sizes, stroke widths and font sizes as they are.
+- matter: `angularVelocity` is rad/s (it was matter-js's per-step angle), and `linearVelocity`
+  goes through matter's frame-rate-normalised `Body.getVelocity`/`setVelocity`.
+- matter: `onCollisionStart`/`onCollisionEnd` are delivered after the step, not from inside
+  matter-js's `Engine.update`, so a subscriber may remove or re-add bodies (as in the rapier
+  adapters).
+- pixi: `PixiCameraComponent.pixelsPerMeter` is writable and kept equal to the scene's by the
+  renderer drawing through the camera, so `worldToScreen`/`screenToWorld` match what is drawn
+  whatever factory built the camera.
 
 ### Fixed
+
+- matter: a dynamic body's rotational inertia follows its `mass` (matter-js keeps the inertia of
+  the default-density mass when `mass` is passed to `Body.create`, so a 1 kg and a 7 kg disc spun
+  the same under a torque) and a compound body's inertia includes its parts' offsets; a dynamic
+  body without `mass` weighs 1 kg, as in every other adapter.
+- rapier2d, matter: a `COMPOUND` body fires `onCollisionStart`/`onCollisionEnd` once per body
+  pair, not once per touching part (matter never reported a compound body's collisions at all: it
+  looked up the part instead of its parent body). rapier2d delivers collision and trigger events
+  after the step, skipping any whose body a previous subscriber removed, as rapier3d does.
+- rapier2d: `clone()` copies the body's descriptors and collision groups instead of sharing them,
+  so an original and its clone no longer overwrite each other's stored pose.
+- rapier2d, rapier3d: `clone()` of a body that is in the world copies its current pose and
+  velocities (it copied the spawn pose, at rest).
+- matter, rapier2d, rapier3d: when an `onCollisionStart`/`onCollisionEnd` subscriber removes the
+  other body, the surviving body gets `onCollisionEnd(null)` and the removed body's own event is
+  not emitted (the survivor kept a stale contact and never heard the end).
+- pixi: `getBoundings()` is in meters once a renderer has drawn (it returned canvas pixels offset
+  by the camera, the renderer's transform of the world container included).
+- core: `CharacterController2dEntity` follows `physicsWorld.gravity` at the right scale. It
+  integrated the 2D world's meter-scale gravity against pixel positions, so a character fell at a
+  hundredth of a rigid body's acceleration, every 2D app had to override `gravity` per character,
+  and the dev console's `gravity` command never reached the character; with every 2D unit in
+  meters the two agree.
 - core: a focused button no longer swallows every key down: `KeyboardInput` skips only the keys it
   clicks on (Enter, NumpadEnter, Space), so a DOM menu whose button has focus (a pause menu focusing
   Resume) still gets Escape and every other bound key. Text fields and selects still skip every key.
@@ -59,6 +112,7 @@ where one exists.
 ## [0.0.89] - 2026-10-28
 
 ### Added
+
 - core: `Gg3dWorld.frame` (with `frame$` and a `frame` constructor option), the global placement of
   a 3D world's local origin - a translation plus a yaw about `+Z` - for open worlds made of
   sections each simulated near its own origin. Identity by default. `toGlobalPoint`/`toLocalPoint`,
@@ -99,7 +153,7 @@ where one exists.
   world's frame as it is then. Peers whose worlds have different frames share entities at the same
   global pose.
 - core, three: a shader-drawn sky, `ProceduralSky3dOpts` (`{ type: 'PROCEDURAL', timeOfDay, haze,
-  clouds: { coverage, density, scale, wind }, stars, moon, ... }`), accepted by
+clouds: { coverage, density, scale, wind }, stars, moon, ... }`), accepted by
   `setEnvironment({ background, environmentMap })` and the `"Environment"` level class. Every
   setting can change at any time; `clouds.coverage: 1` gives a full overcast, and an optional
   `cirrus: { coverage, density, scale, wind }` layer adds high streaks above the clouds. `mode: 'DYNAMIC'`
@@ -130,6 +184,7 @@ where one exists.
   body whenever their bounding boxes overlap, since Bullet cannot test two concave shapes.
 
 ### Changed
+
 - core, multiplayer: network state is quantised: `RigidBodyCorrection.capture`/`MoverCorrection.capture`
   round positions to 1 mm, velocities to 1 mm/s and quaternion components to 5 decimals, and the
   correction helpers normalize the received rotation. Heartbeat positions and spawn descriptors'
@@ -141,6 +196,7 @@ where one exists.
   input, on a key or press that leaves it as it was, or on a stop with nothing resolved.
 
 ### Fixed
+
 - mobile-controls: the car layout's accelerate/brake and steering buttons, and the 2D character
   layout's move buttons, hold their direction instead of pushing an analog one, so both held
   follow the controller's `oppositeKeys` the way the keys do - with `{ upDown: 'down' }` the pedal
@@ -183,6 +239,7 @@ where one exists.
 ## [0.0.88] - 2026-10-25
 
 ### Added
+
 - Examples: a prompt-to-level demo (`examples/3d/prompt-to-level`). It plays an obstacle course an
   agent wrote as level JSON from the prompt shown beside it, lists the one fix the draft needed,
   and loads any level JSON pasted into the page.
@@ -194,16 +251,18 @@ where one exists.
   that overrides the throttle. Keys only: gamepad and on-screen directions are summed as before.
 
 ### Fixed
+
 - pixi: a renderer no longer draws while its WebGL context is lost (`render()` returns early, a
   WebGPU renderer keeps drawing). Drawing then compiled pixi's shader programs without uniforms
   ("Could not retrieve shader source (WebGL context may be lost)"), and once the context came back
   the uniform sync functions pixi keeps across the restore threw on every frame (`Cannot read
-  properties of undefined (reading 'value')` / `(reading 'location')`), seen on Opera Mobile for
+properties of undefined (reading 'value')` / `(reading 'location')`), seen on Opera Mobile for
   Android.
 
 ## [0.0.87] - 2026-10-22
 
 ### Added
+
 - audio: an audio scene can run on an existing `AudioContext`:
   `new WebAudioScene3dComponent({ context })` (and `WebAudioScene2dComponent`) builds the scene's
   graph on it without owning it (`ownsContext` is `false`). Scenes on one context leave each other
@@ -219,6 +278,7 @@ where one exists.
   first one's audio there.
 
 ### Fixed
+
 - audio: a voice budget (`maxVoices`, also set by `applyMobileAudioDefaults` on touch devices) now
   works on a scene no world updates, such as a menu scene with `MusicPlayer` and `playOneShot`.
   Such a scene never re-ranked its voices, so once more sources played than the budget allowed,
@@ -243,8 +303,8 @@ where one exists.
 
 ## [0.0.86] - 2026-10-22
 
-
 ### Added
+
 - 2D cameras have an `origin` (`Camera2dOrigin`: `'center'`, the default, or `'top-left'`).
   With `'top-left'` the camera's `position` is the view's top-left corner, and the view zooms and
   rotates around it, so a camera at `{ x: 0, y: 0 }` makes world coordinates canvas pixels (y
@@ -382,6 +442,7 @@ where one exists.
   `FirebaseSignaling` and `FirebaseLobbyBackend`; App Check is initialized once per Firebase app.
 
 ### Changed
+
 - **Breaking** (custom 2D visual adapters only): `ICamera2dComponent` has a new required `origin`
   property, which the adapter's renderer must honor. Apps using `@gg-web-engine/pixi` need no
   change.
@@ -419,6 +480,7 @@ where one exists.
   page (pixi still releases its WebGL context); only a canvas pixi created itself is removed.
 
 ### Fixed
+
 - Pixi: a number `forceResolution` other than 1 no longer changes the canvas's size on the page;
   the canvas keeps the renderer's CSS size at any resolution (`autoDensity` is always on, as it was
   without `forceResolution`).
@@ -438,6 +500,7 @@ where one exists.
 ## [0.0.85] - 2026-10-21
 
 ### Added
+
 - `IRaycastVehicleComponent.getWheelContact(wheelIndex)`: where and how a wheel touches the ground
   after the last physics step, as a `WheelContact` with the contact point, ground normal, steered
   axle, the chassis velocity at the contact point and its sideways part (`sideSlipSpeed`, m/s), the
@@ -457,6 +520,7 @@ where one exists.
   audio adapters.
 
 ### Changed
+
 - **Breaking** (custom physics adapters only): `IRaycastVehicleComponent` has a new required
   method, `getWheelContact(wheelIndex)`. A third-party adapter implementing the interface no
   longer compiles until it adds one; build the result with `buildWheelContact` so its derived
@@ -478,6 +542,7 @@ where one exists.
   local -Z needs that rotation changed.
 
 ### Fixed
+
 - Rapier: a raycast vehicle's wheels (`getWheelTransform`) were drawn where the chassis was before
   the last physics substep, behind the car by its speed × the substep length (up to 0.3 m at
   30 m/s).
@@ -520,6 +585,7 @@ where one exists.
 ## [0.0.84] - 2026-10-19
 
 ### Added
+
 - `MapGraph3dEntity.prepareChunk(node, loaded, entities, signal)`: an overridable hook awaited
   after a chunk's GLB loads and before the chunk is added to the world, for per-chunk work such as
   shared materials or loading props. The extra entities it returns are added with the chunk and
@@ -563,6 +629,7 @@ where one exists.
   `KeyboardInput.isHeldBy(code, holder)` tells whether an emulated hold is still in place.
 
 ### Changed
+
 - With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` keeps reading the gamepad
   in use (a button pressed or an axis moved on it) while it stays connected, so a gamepad listed
   later doesn't take over mid-game. Before that it reads the first gamepad with a button pressed,
@@ -579,6 +646,7 @@ where one exists.
   the cursor moves).
 
 ### Fixed
+
 - `GamepadInput.controlPushed$` no longer reports the controls already held on a gamepad it
   switched to (another choice) as pushed, so a controls menu capturing a control doesn't take
   them. A gamepad read after none was (the first ever, or one plugged back in) still reports
@@ -595,6 +663,7 @@ where one exists.
 ## [0.0.83] - 2026-10-17
 
 ### Added
+
 - Gamepad input. Every world has a `gamepadInput` (`GamepadInput`, started and stopped with
   `inputEnabled`) that polls the Gamepad API on every frame, also while the world is paused, and
   reports controls by index (`'b7'`, `'a0-'`): `value$`/`pressed$`/`direction$`, `connected$`,
@@ -654,6 +723,7 @@ where one exists.
   `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
+
 - `FreeCameraController`: with a camera that has no field of view (an orthographic one), the boost
   key (`ShiftLeft`) zoomed instead of boosting and never boosted - the key was read from the slot
   of the zoom keys, which are only bound for a camera with a fov.
@@ -696,6 +766,7 @@ where one exists.
   the value last set.
 
 ### Changed
+
 - `KeyboardInput`: a key held through `emulateKeyDown` stays down across a real `keyup` of the same
   key, until `emulateKeyUp` (or `resetAllKeys`), so an on-screen or gamepad button holding a key is
   not let go of by a tap on the keyboard - and a key held on the physical keyboard stays down across
@@ -707,6 +778,7 @@ where one exists.
 ## [0.0.82] - 2026-10-10
 
 ### Added
+
 - Particle systems (3D). `world.addParticleSystem(renderOptions, options)` (or
   `new ParticleSystem3dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
   adds camera-facing sprites drawn in one draw call per system. The simulation runs in core
@@ -745,6 +817,7 @@ where one exists.
 ## [0.0.81] - 2026-10-09
 
 ### Added
+
 - Forces and impulses on rigid bodies. `IRigidBodyComponent` gained `applyForce(force, worldPoint?)`,
   `applyImpulse(impulse, worldPoint?)`, `applyTorque(torque)` and `applyTorqueImpulse(torqueImpulse)`
   (Newtons, N·s, N·m, N·m·s; a torque is a `Point3` in 3D and a signed scalar in 2D). A force or
@@ -772,6 +845,7 @@ where one exists.
   choice), `applyResistance(delta)` (chassis forces) and `engineBrakingForce(rpm)`.
 
 ### Changed
+
 - **Breaking**: `GgCarEntity`'s drive force is now the whole car's, not per driven wheel.
   `tractionForce` (engine torque through the drivetrain over the wheel radius) is split between the
   axles by `tractionBias` and then equally over each axle's wheels, so a four-wheel car is pushed by
@@ -786,6 +860,7 @@ where one exists.
 ## [0.0.80] - 2026-10-09
 
 ### Added
+
 - Audio voice budget. `world.audioScene.maxVoices` (default `Infinity`, so nothing changes until
   an app sets it) bounds how many playing sources are rendered at once. Beyond it the lowest-ranked
   sources go virtual: faded out, stopped and disconnected (no audio processing), their playback
@@ -813,6 +888,7 @@ where one exists.
   of `IAudioSource3dComponent`/`IAudioScene3dComponent`.
 
 ### Fixed
+
 - `@gg-web-engine/audio`: a paused source resumes where it was paused when its `playbackRate` is not
   `1` or it loops a region (`loopStart`/`loopEnd`); its position was taken as elapsed time from the
   clip's start.
@@ -828,12 +904,13 @@ where one exists.
 ## [0.0.79] - 2026-10-08
 
 ### Added
+
 - `@gg-web-engine/core`: an engine-provided loading screen. `DefaultLoadingView` is now an opaque
   backdrop with an animated CSS 3D cube and "Loading" (a progress bar and percentage join it once
   a load reports progress), used by `ScreenManager` as before. `LoadingScreen.show()` puts it (or
   an app's own `LoadingView`) over the page until `hide()`, typically around `init()` and a level
   load; `setProgress` feeds it a loader's progress. `LoadingScreen.setDefaultView(() => new
-  MyLoadingView())` makes a game's own view the default for every `show()` and for `ScreenManager`.
+MyLoadingView())` makes a game's own view the default for every `show()` and for `ScreenManager`.
   Every example that opens straight into a level uses it.
 - Every visual scene, physics world and audio scene names its backend: `backendName` (`'three'`,
   `'pixi'`, `'ammo'`, `'rapier3d'`, `'rapier2d'`, `'matter'`, `'webaudio'`). A required member of
@@ -879,6 +956,7 @@ where one exists.
   generic physics interface and never `null`, without naming a physics adapter.
 
 ### Changed
+
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
   and `false` when a later operation cancelled it (they used to report success either way).
   An operation cancels exactly the not-yet-shown screens it removes, judged by the stack the
@@ -947,9 +1025,10 @@ where one exists.
   `@gg-web-engine/*` packages; one that imports the library itself should pin the same version.
 
 ### Fixed
+
 - `@gg-web-engine/rapier3d`: a cloned body reports collisions and trigger overlaps again; `clone()`
   dropped the collider's event flags.
-- `@gg-web-engine/ammo`: a trigger's `onEntityLeft` reports a body removed *and disposed* while
+- `@gg-web-engine/ammo`: a trigger's `onEntityLeft` reports a body removed _and disposed_ while
   inside as that body, as every other adapter does, instead of `null`.
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
   `PlayerCharacterController`/`FreeCameraController` without an on-screen look area) was far slower
@@ -1006,6 +1085,7 @@ where one exists.
 ## [0.0.78] - 2026-10-05
 
 ### Added
+
 - New package `@gg-web-engine/mobile-controls`: an overlay of on-screen touch controls.
   `world.addEntity(new MobileControls())` shows sticks and buttons matching whichever of the car,
   character (3D/2D) and free camera controllers is active, on touch devices only. Layouts have
@@ -1067,6 +1147,7 @@ where one exists.
   the first frame) and, for pixi, `disposeTexture`.
 
 ### Changed
+
 - Examples: one example per feature under `examples/2d` and `examples/3d` instead of one copy per
   renderer/physics combination. Each example picks its physics backend at startup from a
   `?physics=` query parameter (`backends.ts`, loading only the chosen adapter), and the gallery at
@@ -1100,6 +1181,7 @@ where one exists.
   `Failed to load "<url>": <status>`.
 
 ### Fixed
+
 - `@gg-web-engine/core`: `MouseInput.isTouchDevice()` did not recognize an iPad (which reports a
   desktop user agent) or any other device whose primary pointer is coarse, so the controllers'
   "unless pointer locked" options blocked touch input there.
@@ -1123,14 +1205,15 @@ where one exists.
 ## [0.0.77] - 2026-10-05
 
 ### Added
+
 - `@gg-web-engine/core`, `@gg-web-engine/three`: library-agnostic lights. `factory.createLight(descriptor)`
   builds an `AMBIENT`, `HEMISPHERE`, `DIRECTIONAL`, `POINT` or `SPOT` light (`Light3dDescriptor`:
   color, intensity, distance/decay/angle/penumbra, `castShadow` and `shadow: { mapSize, area, near,
-  far, bias, normalBias }`) as an `ILight3dComponent`; `Gg3dWorld.addLight(descriptor, position?,
-  target?)` wraps it in a new `Light3dEntity` (with `lookAt(target)`). Directional and spot lights
+far, bias, normalBias }`) as an `ILight3dComponent`; `Gg3dWorld.addLight(descriptor, position?,
+target?)` wraps it in a new `Light3dEntity` (with `lookAt(target)`). Directional and spot lights
   shine along their local `-Z`, like a camera.
 - `@gg-web-engine/core`, `@gg-web-engine/three`: scene environment. `visualScene.setEnvironment({
-  background, environmentMap, fog })` sets a background color or sky texture, image-based lighting
+background, environmentMap, fog })` sets a background color or sky texture, image-based lighting
   and linear/exponential fog; `visualScene.environment` reads it back. The 3D loader gained
   `loadTexture(url, { mapping })` (`.hdr` supported) and `loadCubeTexture({ px, nx, py, ny, pz, nz })`,
   whose faces are named by world direction (`pz` overhead), and `disposeTexture(texture)`; sky
@@ -1162,6 +1245,7 @@ where one exists.
   gear or reverse themselves, so it drives without the gear keys.
 
 ### Changed
+
 - `@gg-web-engine/core`: `VisualTypeDocRepo3D` has a new `light` member, and
   `IDisplayObject3dComponentFactory`, `IVisualScene3dComponent` and `IDisplayObject3dComponentLoader`
   have new required members (`createLight`; `environment`/`setEnvironment`;
@@ -1181,6 +1265,7 @@ where one exists.
   peer out of view. Nothing changes for a transport without zoning.
 
 ### Fixed
+
 - `@gg-web-engine/multiplayer`: `WebRtcMeshTransport` reports a peer on `peerLeft$` when it leaves the
   room after its connection aged out of the zoning connect ring, so what it owned is taken over.
 - `@gg-web-engine/core`: `GgCarEntity` and both character controller entities ran their per-tick
@@ -1189,6 +1274,7 @@ where one exists.
 ## [0.0.76] - 2026-10-04
 
 ### Added
+
 - `@gg-web-engine/multiplayer`: `NetworkControllerOptions.clockSyncBurstCount` (default 5) and
   `clockSyncBurstIntervalMs` (default 150): a link that just opened (or reopened) gets a burst of
   clock-sync pings before falling back to `clockSyncIntervalMs`. `ClockSync` gained `ready`,
@@ -1221,11 +1307,12 @@ where one exists.
 
 - `@gg-web-engine/core`: `RigidBodyCorrection.targetPosition`/`MoverCorrection.targetPosition` (the
   point a replica is steered to for a snapshot of a given age) and `extrapolateNetPosition(state,
-  ageMs, tuning)`, the same for a state of unknown class; `isNetStateCoasting(sinceReceivedMs,
-  tuning)`. `NetworkApplyContext.sinceReceivedMs` (optional): how long ago the state arrived on this
+ageMs, tuning)`, the same for a state of unknown class; `isNetStateCoasting(sinceReceivedMs,
+tuning)`. `NetworkApplyContext.sinceReceivedMs` (optional): how long ago the state arrived on this
   peer, which unlike `ageMs` doesn't include the link's latency.
 
 ### Changed
+
 - `@gg-web-engine/core`: replicas coast through a stalled state stream. A snapshot older than
   `extrapolateMaxMs` used to pin the replica to the point extrapolation stopped at, so a moving
   replica was snapped back to it every `snapDistance` until the stream resumed. Now, once no newer
@@ -1247,6 +1334,7 @@ where one exists.
   (`channelOf` reports it), so a lost one is a missing sample instead of a retransmitted, late one.
 
 ### Fixed
+
 - `@gg-web-engine/multiplayer`: replicas of a fast entity lunged or teleported every few seconds on
   a real internet link, at constant speed on a straight path: one late clock-sync sample (a
   retransmitted ping, a main thread busy loading when the link opened) shifted the peer's clock
@@ -1255,15 +1343,18 @@ where one exists.
 ## [0.0.75] - 2026-10-03
 
 ### Added
+
 - `@gg-web-engine/multiplayer`: `NetworkControllerOptions.takeoverPossessed` (default `true`). With
   `false`, the entities a departed or away peer possesses are never taken over: they stay owned and
   possessed by that peer (with neutral input on the others) until it is back; the Free entities it
   owned are still taken over.
 
 ### Changed
+
 - `@gg-web-engine/pixi`: upgraded `pixi.js` to `8.22.0`.
 
 ### Fixed
+
 - `@gg-web-engine/multiplayer`: a stall of the local peer (frozen main thread, throttled timers) no
   longer makes `NetworkController` declare every other peer departed and take over their entities:
   after a gap of over two heartbeat intervals without a world tick or heartbeat timer, every peer and
@@ -1272,6 +1363,7 @@ where one exists.
 ## [0.0.74] - 2026-10-02
 
 ### Added
+
 - `LevelLoader.createEntity` now applies an `EntityJson`'s `events` bindings (an optional third
   `blueprints` argument supplies named graphs a binding may reference), parenting the resulting
   binding under the created entity itself so it's torn down whenever that entity is.
@@ -1311,6 +1403,7 @@ where one exists.
   `coin-run-pixi-rapier2d` example.
 
 ### Fixed
+
 - `ammo`: several `AmmoWorldComponent`s in one page share one Ammo module instance - initializing a
   second world used to re-instantiate the WASM heap under the first, whose new bodies then silently
   stopped simulating.
@@ -1332,12 +1425,14 @@ where one exists.
   was a type error since those two options were added to `GgWorld` alone.
 
 ### Changed
+
 - Upgraded `three` (`0.186.0` → `0.186.1`) and `@dimforge/rapier2d-compat`/
   `@dimforge/rapier3d-compat` (`0.20.0` → `0.21.0`) dependencies.
 
 ## [0.0.73] - 2026-09-30
 
 ### Added
+
 - Stable entity naming: every entity class declares `static readonly entityTypeName`, giving
   instances a readable auto-generated default name (`ClassName_0`) that survives minification (#46).
 - Player model, and the 3D trigger implementation gaps needed for characters to interact with
@@ -1352,6 +1447,7 @@ where one exists.
   audio.
 
 ### Fixed
+
 - Trigger vs character-controller interaction (#47).
 - Bug fixes across the `ammo` character controller, triggers, raycast vehicle and world
   component, `MapGraph3dEntity`, the 3D loaders, and `GgWorld` entity handling (#53).
@@ -1359,6 +1455,7 @@ where one exists.
 ## [0.0.72] - 2026-09-20
 
 ### Fixed
+
 - `@gg-web-engine/three` build: `0.0.71` was published without its `dist/` output. The release
   script now checks every build step's exit status individually instead of relying on `&&` chains.
 - Example `package-lock.json` files refreshed.
@@ -1366,20 +1463,24 @@ where one exists.
 ## [0.0.71] - 2026-09-20
 
 ### Added
+
 - Continuous collision detection (`ccd`) flag and kinematic rigid-body types, with richer
   physics body-type options (#44).
 - Elliptical cylinder shapes in 3D physics and rendering components.
 
 ### Changed
+
 - Upgraded `pixi.js` and `three` dependencies (#45).
 
 ## [0.0.70] - 2026-09-14
 
 ### Added
+
 - New `@gg-web-engine/audio` package: a Web Audio API adapter with 2D/3D audio source entities.
 - Collision events on physics bodies.
 
 ### Fixed
+
 - Grabbable objects when using the `rapier3d` physics backend.
 - Third-person view disabled in the portal example.
 - Framework example dependencies bumped.
@@ -1389,45 +1490,54 @@ where one exists.
 ## [0.0.66] - 2026-09-10
 
 ### Added
+
 - Source-engine-style grabbable objects (`Grabbable3dEntity`) (#43).
 
 ## [0.0.65] - 2026-09-08
 
 ### Added
+
 - Character entity and player character controller (#42).
 
 ### Fixed
+
 - Build of the fly-city example.
 
 ## [0.0.63] - 2026-08-31
 
 ### Added
+
 - Speed-sensitive maximum steering angle for `GgCarEntity` (#41).
 
 ## [0.0.62] - 2026-08-31
 
 ### Fixed
+
 - `ammo` package build. CI moved to Node 24.
 
 ## [0.0.61] - 2026-08-31
 
 ### Fixed
+
 - Blender add-on deployment to GitHub Pages.
 
 ## [0.0.60] - 2026-08-31
 
 ### Added
+
 - Blender export add-on (`blender-addon/`) producing `.glb` + `.meta` for the 3D loader, published
   as a self-hosted Blender extensions repository on every release, with an end-to-end round-trip
   test under `e2e/blender-export` (#38).
 - Dev console extension: apps can register their own console commands (#40).
 
 ### Changed
+
 - Dependency upgrades across packages (#39).
 
 ## [0.0.59] - 2026-08-28
 
 ### Added
+
 - Level JSON: `LevelLoader` base class with `Gg2dLevelLoader`/`Gg3dLevelLoader`, built-in
   `Primitive`/`Trigger`/`Camera`/`Glb` classes, app-registered classes, and blueprint graphs wired
   to entity events (#36).
@@ -1436,156 +1546,188 @@ where one exists.
 - Claude Code skill files under `.claude/skills/` documenting how to work on each package.
 
 ### Changed
+
 - Local development flow: `packages/*` became an npm workspace with a root `tsc -b --watch`, and
   examples link to local builds via `etc/switch_example_to_local_gg.sh` (#37).
 
 ## [0.0.58] - 2025-05-17
 
 ### Added
+
 - Raycasting API on physics worlds (#34).
 - Spherical interpolation functions for vectors.
 
 ### Changed
+
 - Filled gaps in the physics integrations so every adapter implements the same surface (#33).
 - Typing improvements across the public API (#32).
 
 ### Fixed
+
 - Precision error in `Pnt3.angle`.
 
 ## [0.0.57] - 2025-02-21
 
 ### Added
+
 - Surface-following collider entity (#31).
 
 ### Changed
+
 - Debug view improvements (#30).
 - Collision groups improvements (#29).
 
 ## [0.0.56] - 2024-12-12
 
 ### Added
+
 - Clock enhancements (#25).
 - Dev console improvements (#26).
 - Dev tools improvements (#23).
 
 ### Changed
+
 - Camera controllers adjustments (#27) and a follow-up hotfix.
 - Entity constructor arguments updated (#21).
 - Improved FPS (#22).
 - CI improvements (#24); framework examples upgraded.
 
 ### Fixed
+
 - Loader regression; import fixes; three.js example dependencies (#20).
 
 ## [0.0.49] - 2024-11-14
 
 ### Changed
+
 - Camera controllers improvements and bug fixes (#19).
 
 ## [0.0.48] - 2024-08-16
 
 ### Added
+
 - Automated release pipeline on GitHub Actions, triggered by a `[pre-release] [X.Y.Z]` commit.
 - Composer renderer component in the `three` package.
 - `paused$` event on clock and world.
 - `Qtrn.fromMatrix3` convenience function.
 
 ### Changed
+
 - Dependency upgrades (#18).
 - Reduced frame-rate impact of `MapGraph3dEntity`.
 - GLTF export script updated for newer Blender.
 
 ### Fixed
+
 - Renderer native options bug; workaround for a three.js regression in the fly-city example.
 - `three` hotfix.
 
 ## [0.0.40] - 2024-05-18
 
 ### Added
+
 - Native renderer options can be passed through to pixi.js / three.js.
 - Per-entity performance distribution stats (#17).
 - Tick-rate limiter on the clock (#16).
 
 ### Changed
+
 - Dependency upgrades.
 
 ### Fixed
+
 - Tick-rate limit clock bug.
 
 ## [0.0.39] - 2024-05-06
 
 ### Added
+
 - New physics debugger view (#14).
 - Dev tools improvements (#15).
 - Clock improvements (#13).
 
 ### Fixed
+
 - Car handling inputs emitting events while inactive.
 
 ## [0.0.38] - 2024-04-08
 
 ### Added
+
 - Convenience functions for vectors.
 
 ### Fixed
+
 - `pixi` integration after the library upgrade.
 - `ammo` vehicle reset feature; random crash when resetting an `ammo` object's motion properties.
 - Brake behavior of RWD and AWD cars; RxJS subscription leak in map graph.
 
 ### Changed
+
 - Minor entity API adjustments.
 
 ## [0.0.37] - 2023-12-27
 
 ### Added
+
 - Self-built ammo.js binary; raycast vehicle now works with collision groups (#9).
 - CI on pull requests (#11).
 
 ### Changed
+
 - three.js upgrade; GLTF loader baked into the `three` package (#10).
 - Free camera controller constructor arguments.
 
 ### Fixed
+
 - Imports from three.js; `ammo` build; local workspace script.
 
 ## [0.0.30] - 2023-12-18
 
 ### Added
+
 - Collision groups.
 - Plane shape.
 - Collision groups examples for `ammo` and `rapier3d`.
 
 ### Changed
+
 - New typing.
 
 ### Fixed
+
 - ammo.js module usage.
 
 ## [0.0.28] - 2023-12-11
 
 ### Added
+
 - Rapier integration: new `@gg-web-engine/rapier2d` and `@gg-web-engine/rapier3d` packages (#4).
 - Vehicle improvements (#8).
 - Dev tools refinement (#7).
 
 ### Changed
+
 - Better examples (#6).
 
 ## [0.0.24] - 2023-10-27
 
 ### Changed
+
 - New component-based architecture: entities compose visual and physics components instead of
   subclassing per backend (#5).
 
 ## [0.0.20] - 2023-05-28
 
 ### Added
+
 - Raycast car brake enhancements; handbrake.
 - Orbit camera controller properties can be changed from the outside.
 - Renderable entity mixin; `parent` field on entities; basis-vector constants.
 - `avg` convenience functions for vectors.
 
 ### Fixed
+
 - Input controllers freezing when removed from and re-added to the world; input start/stop made
   synchronous.
 - `three`: crash when re-using a canvas after destroying the renderer; static renderer size.
@@ -1594,63 +1736,76 @@ where one exists.
 ## [0.0.18] - 2023-04-29
 
 ### Added
+
 - Orbit camera controller; new mouse input; improved free camera.
 - Support for canvases of different sizes.
 
 ### Removed
+
 - `gg-viewport` and the outdated viewport manager.
 
 ### Fixed
+
 - Mobile rendering issues; canvas scaling.
 - `pixi` ticks still running in the background.
 
 ## [0.0.16] - 2023-04-15
 
 ### Changed
+
 - Upgraded `rxjs`, `three`, `pixi.js`, and `matter-js`.
 
 ## [0.0.15] - 2023-04-13
 
 ### Changed
+
 - Migrated to ES modules; resolved import issues when installed from npm.
 
 ## [0.0.05] - 2023-04-13
 
 ### Added
+
 - three.js `GLTFLoader` included in the `three` package.
 - Closed graph from array; default names for entities; angle-between-vectors math.
 
 ### Fixed
+
 - World disposal; RxJS error when disposing a world with sub-entities.
 
 ## [0.0.04] - 2023-04-10
 
 ### Changed
+
 - All world entities are tick listeners (`ITickListener` removed); entities have an active state.
 - Controllers refactored into inputs; world clock API.
 - `onRemoved` called on each entity when the world is disposed.
 
 ### Removed
+
 - `fs-web` and `path-browserify` dependencies from `ammo`.
 
 ## [0.0.03] - 2023-04-03
 
 ### Added
+
 - New clock architecture; pause support.
 - Entity animations and camera animation controller.
 - Convenience rigid-body factory on the world; `Qtrn.rotAround`.
 
 ### Changed
+
 - Point fields declared readonly.
 - Improved transform bindings for 2D and 3D entities.
 
 ### Fixed
+
 - Broken rotations caused by quaternion clone logic; resume-world functionality; motion
   controller tick order vs physics binding.
 
 ## [0.0.02] - 2023-03-25
 
 ### Fixed
+
 - Package manager issues; `pixi` integration installation docs.
 
 ## [0.0.01] - 2023-03-24

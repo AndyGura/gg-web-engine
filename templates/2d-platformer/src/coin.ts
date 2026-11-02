@@ -11,6 +11,7 @@ import { Observable, Subject } from 'rxjs';
 
 export interface CoinSettings {
   position?: Point2;
+  /** in meters; default 0.12 */
   radius?: number;
 }
 
@@ -36,7 +37,7 @@ export class Coin extends Trigger2dEntity {
 
   constructor(world: Gg2dWorld, settings: CoinSettings) {
     const position = settings.position ?? { x: 0, y: 0 };
-    const radius = settings.radius ?? 12;
+    const radius = settings.radius ?? 0.12;
     if (!world.physicsWorld || !world.visualScene) {
       throw new Error('Coin needs a world with both a physics world and a visual scene');
     }
@@ -52,8 +53,8 @@ export class Coin extends Trigger2dEntity {
     sprite.position = position;
     sprite.tick$.subscribe(([elapsed]) => {
       // "spin" by squashing horizontally, and bob up and down a little
-      disc.scale = { x: Math.cos(elapsed / 300 + position.x / 50), y: 1 };
-      sprite.position = { x: position.x, y: position.y + Math.sin(elapsed / 400 + position.x / 80) * 3 };
+      disc.scale = { x: Math.cos(elapsed / 300 + position.x * 2), y: 1 };
+      sprite.position = { x: position.x, y: position.y + Math.sin(elapsed / 400 + position.x * 1.25) * 0.03 };
     });
     // a child entity: removed and disposed together with the coin
     this.addChildren(sprite);

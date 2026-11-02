@@ -467,8 +467,8 @@ visual-3d.contract.ts` and `visual-2d.contract.ts` export `describeVisual3dContr
 `describeVisual2dContract`, called from `test/contract/<lib>-contract.spec.ts` with a function that
 returns the adapter's factory (`() => new ThreeFactory()`), plus `{ unsupportedShapes }` for a
 primitive the renderer can't draw (three: `CONVEX_HULL`). It needs no GPU: it builds every
-primitive and checks its size through `getBoundings()` (meters with Z up in 3D, so a cylinder's
-height runs along Z; pixels in 2D, a capsule standing along Y), that a fresh primitive reads
+primitive and checks its size through `getBoundings()` (meters in both; Z up in 3D, so a cylinder's
+height runs along Z; a capsule standing along Y in 2D), that a fresh primitive reads
 `scale` 1, that transforms read back as set, clones are independent and keep their transform, and
 `addChild`/`popChild`/`removeChild` nest by `name`. It needs the real rendering library to load
 under jest (above), not a mock.

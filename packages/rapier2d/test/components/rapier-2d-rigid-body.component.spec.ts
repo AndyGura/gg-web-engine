@@ -19,7 +19,7 @@ describe('Rapier2dRigidBodyComponent.bodyOptions', () => {
     world.dispose();
   });
 
-  it('reads back a dynamic body\'s mass/friction/restitution/ccd exactly as created', () => {
+  it("reads back a dynamic body's mass/friction/restitution/ccd exactly as created", () => {
     const body = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },

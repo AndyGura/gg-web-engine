@@ -179,10 +179,24 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   protected readonly onCollisionEnd$: Subject<Rapier2dRigidBodyComponent | null> =
     new Subject<Rapier2dRigidBodyComponent | null>();
 
-  /** other rigid bodies this body is currently in real (non-sensor) contact with - used to dedupe
-   * against Rapier's own start/stop transition events and to notify still-alive contacts when
-   * this body is removed from the world mid-contact (see `removeFromWorld`). */
-  protected readonly activeContacts: Set<Rapier2dRigidBodyComponent> = new Set<Rapier2dRigidBodyComponent>();
+  /**
+   * Other rigid-body components this one is currently touching via a real (non-sensor) contact -
+   * mirrors `Rapier2dTriggerComponent.overlaps`, but symmetric: both sides of an ordinary collision
+   * get notified, so both sides track it. Populated/drained by `Rapier2dWorldComponent`'s centralized
+   * collision-event dispatch (see `notifyCollisionStart`/`notifyCollisionEnd` below), and consulted by
+   * `removeFromWorld` to emit `onCollisionEnd(null)` to any partner still touching this body at the
+   * moment it's removed (per `CollisionEvent`'s "null when the other body was removed from the world
+   * while still in contact" convention) - the native stop Rapier reports for a collider deleted
+   * mid-contact arrives under a handle that no longer resolves to this body (see the world's
+   * event dispatch), so the partner would otherwise never hear that the contact ended.
+   *
+   * Each partner maps to how many collider pairs of the two bodies touch right now. Rapier reports
+   * contacts per collider, so a `COMPOUND` body (one collider per part) touching another body with
+   * two parts gets two native starts, and a stop whenever one part lets go while the other still
+   * touches. `onCollisionStart` fires only when the count goes from 0 to 1 and `onCollisionEnd`
+   * only when it returns to 0: one start and one end per body pair, as the contract says.
+   */
+  public readonly collidingWith: Map<Rapier2dRigidBodyComponent, number> = new Map();
 
   get onCollisionStart(): Observable<CollisionEvent<Point2, Rapier2dRigidBodyComponent>> {
     return this.onCollisionStart$.asObservable();
@@ -192,22 +206,67 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     return this.onCollisionEnd$.asObservable();
   }
 
-  /** @internal invoked by `Rapier2dWorldComponent` when this body begins touching another rigid
-   * body via a real contact (not a trigger/sensor overlap - see `Rapier2dTriggerComponent.
-   * handleOverlapEvent` for that). */
-  handleCollisionStart(event: CollisionEvent<Point2, Rapier2dRigidBodyComponent>): void {
-    this.activeContacts.add(event.otherBody);
+  /**
+   * Called by `Rapier2dWorldComponent`'s centralized collision-event dispatch (see
+   * `Rapier2dWorldComponent.simulate`) - not meant to be called by app code directly. Kept `public`
+   * (rather than some cross-class-accessible `protected`) purely because the dispatching class isn't
+   * a subclass of this one; there's nothing else in this package it's meant to be called from.
+   */
+  public notifyCollisionStart(event: CollisionEvent<Point2, Rapier2dRigidBodyComponent>): void {
+    if (this.trackCollisionStart(event.otherBody)) {
+      this.emitCollisionStart(event);
+    }
+  }
+
+  /**
+   * First half of `notifyCollisionStart`, the bookkeeping: counts one more touching pair with
+   * `otherBody` and tells whether that was the first (an `onCollisionStart` is due). The world's
+   * dispatch counts both sides of a pair before it emits to either, so a subscriber of the first
+   * side that removes the second finds the second's own `collidingWith` already holding the first
+   * and `removeFromWorld` tells the first that the contact ended.
+   */
+  public trackCollisionStart(otherBody: Rapier2dRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody) ?? 0;
+    this.collidingWith.set(otherBody, touching + 1);
+    return touching === 0;
+  }
+
+  /** Second half of `notifyCollisionStart`: emits `onCollisionStart`, after `trackCollisionStart` said to. */
+  public emitCollisionStart(event: CollisionEvent<Point2, Rapier2dRigidBodyComponent>): void {
     this.onCollisionStart$.next(event);
   }
 
-  /** @internal invoked by `Rapier2dWorldComponent` when this body stops touching `other` (a real
-   * contact separating), or with `null` when `other` was removed from the world while still in
-   * contact with this body (see `removeFromWorld`). */
-  handleCollisionEnd(other: Rapier2dRigidBodyComponent | null): void {
-    if (other) {
-      this.activeContacts.delete(other);
+  /** See `notifyCollisionStart`'s doc. `otherBody: null` signals the partner was removed from the
+   *  world while still in contact, per `onCollisionEnd`'s doc. A stop of one collider pair while
+   *  another pair of the same two bodies still touches emits nothing (see `collidingWith`). */
+  public notifyCollisionEnd(otherBody: Rapier2dRigidBodyComponent | null): void {
+    if (!otherBody || this.trackCollisionEnd(otherBody)) {
+      this.emitCollisionEnd(otherBody);
     }
-    this.onCollisionEnd$.next(other);
+  }
+
+  /**
+   * First half of `notifyCollisionEnd` for a partner still in the world, the bookkeeping: one fewer
+   * touching pair with `otherBody`; tells whether that was the last (an `onCollisionEnd` is due).
+   * `false` as well for a partner with no count (no start was reported for the pair - it began
+   * before a re-add, say).
+   */
+  public trackCollisionEnd(otherBody: Rapier2dRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody);
+    if (touching === undefined) {
+      return false;
+    }
+    if (touching > 1) {
+      this.collidingWith.set(otherBody, touching - 1);
+      return false;
+    }
+    this.collidingWith.delete(otherBody);
+    return true;
+  }
+
+  /** Second half of `notifyCollisionEnd`: emits `onCollisionEnd` (`null` for a removed partner). */
+  public emitCollisionEnd(otherBody: Rapier2dRigidBodyComponent | null): void {
+    this.onCollisionEnd$.next(otherBody);
   }
 
   public get factoryProps(): [
@@ -216,7 +275,52 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     RigidBodyDesc,
     Omit<Omit<Body2DOptions, 'bodyType'>, 'mass'>,
   ] {
-    return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
+    const colliderDescr = this._colliderDescr.map(cd => {
+      const d = new ColliderDesc(cd.shape);
+      d.setTranslation(cd.translation.x, cd.translation.y);
+      d.setRotation(cd.rotation);
+      // `cd.mass`/`centerOfMass`/`principalAngularInertia` only carry a meaningful value once
+      // `setMassProperties` (`MassPropsMode.MassProps`) or `setMass` (`MassPropsMode.Mass`) switched
+      // `cd` out of the default `MassPropsMode.Density` mode, where they're zeroed placeholders and
+      // Rapier derives mass and inertia from the shape and `cd.density` instead. Copying the
+      // placeholders through `setMassProperties` would hand the copy an explicit zero inertia, so
+      // the copy only takes over what the original's own mode actually uses.
+      if (cd.massPropsMode === MassPropsMode.MassProps) {
+        d.setMassProperties(cd.mass, cd.centerOfMass, cd.principalAngularInertia);
+      } else if (cd.massPropsMode === MassPropsMode.Mass) {
+        d.setMass(cd.mass);
+      } else {
+        d.setDensity(cd.density);
+      }
+      d.setFriction(cd.friction);
+      d.setEnabled(cd.enabled);
+      d.setRestitution(cd.restitution);
+      // the factory turns on collision events (and sensors set `isSensor`); a clone must keep them,
+      // or it never reports collisions or trigger overlaps
+      d.setActiveEvents(cd.activeEvents);
+      d.setActiveCollisionTypes(cd.activeCollisionTypes);
+      d.setSensor(cd.isSensor);
+      return d;
+    });
+    const bd = new RigidBodyDesc(this._bodyDescr.status);
+    bd.mass = this._bodyDescr.mass;
+    // `ccdEnabled`/`canSleep` are plain fields on `RigidBodyDesc` (not copied by the constructor
+    // above) - carry them over explicitly so `clone()` doesn't silently drop them off the copy.
+    bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
+    bd.setCanSleep(this._bodyDescr.canSleep);
+    // The copy starts where the original is right now, moving as it moves. `_bodyDescr` only holds
+    // the live pose and velocities while the body is out of the world (`removeFromWorld` stores
+    // them there, `addToWorld` rebuilds from them); while it is in the world the native body is
+    // the one source of its state, so a clone of an in-world body reads it, or it would spawn at
+    // the original's spawn pose, at rest.
+    const native = this._nativeBody;
+    const t = native ? native.translation() : this._bodyDescr.translation;
+    const lv = native ? native.linvel() : this._bodyDescr.linvel;
+    bd.setTranslation(t.x, t.y);
+    bd.setRotation(native ? native.rotation() : this._bodyDescr.rotation);
+    bd.setLinvel(lv.x, lv.y);
+    bd.setAngvel(native ? native.angvel() : this._bodyDescr.angvel);
+    return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 
   readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
@@ -311,8 +415,9 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   clone(): Rapier2dRigidBodyComponent {
-    // TODO probably need to clone factory props to not share the same reference?
-    return new Rapier2dRigidBodyComponent(this.world, ...this.factoryProps);
+    const comp = new Rapier2dRigidBodyComponent(this.world, ...this.factoryProps);
+    comp.collisionGroups = this.collisionGroups;
+    return comp;
   }
 
   addToWorld(world: Rapier2dGgWorld): void {
@@ -347,17 +452,17 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
           'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
       );
     }
+    // notify every body still touching this one that the contact ended because *this* body vanished
+    // (not because they physically separated) - see `collidingWith`'s doc.
+    for (const other of this.collidingWith.keys()) {
+      other.collidingWith.delete(this);
+      other.notifyCollisionEnd(null);
+    }
+    this.collidingWith.clear();
     if (this._nativeBody) {
-      // this body is vanishing while still touching others - the still-alive side of each pair
-      // never gets a `started === false` event from Rapier for a collider that was just removed,
-      // so notify it directly (with `null`, per `onCollisionEnd`'s documented convention for this
-      // case) rather than leaving it thinking the contact is still ongoing.
-      for (const other of this.activeContacts) {
-        other.activeContacts.delete(this);
-        other.handleCollisionEnd(null);
-      }
-      this.activeContacts.clear();
-      // see `Rapier3dRigidBodyComponent.removeFromWorld`: `addToWorld` rebuilds from `_bodyDescr`
+      // `addToWorld` rebuilds the native body from `_bodyDescr`, and the getters fall back to it
+      // while the body is out of the world: carry the live state over, or a body re-added later
+      // (an entity reparented, or hidden by a network layer) would reappear at its spawn pose.
       const t = this._nativeBody.translation();
       const lv = this._nativeBody.linvel();
       this._bodyDescr.setTranslation(t.x, t.y);

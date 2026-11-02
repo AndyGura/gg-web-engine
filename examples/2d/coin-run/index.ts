@@ -48,10 +48,11 @@ const COINS_TO_WIN = 6;
 const COUNTDOWN_MS = 3000;
 const ROUND_MS = 60000;
 const RESULTS_MS = 5000;
-const COIN_RADIUS = 12;
-const ROOM_WIDTH = 900;
-const ROOM_HEIGHT = 600;
-const WALL = 40;
+// the arena, in meters (the 2D world's unit, y down): 9 x 6 m
+const COIN_RADIUS = 0.12;
+const ROOM_WIDTH = 9;
+const ROOM_HEIGHT = 6;
+const WALL = 0.4;
 
 GgStatic.instance.devConsoleEnabled = true;
 
@@ -71,12 +72,12 @@ const arena: LevelJson = {
     box('Ceiling', 0, -(ROOM_HEIGHT / 2 - WALL / 2), ROOM_WIDTH, WALL, 0x22223b),
     box('WallLeft', -(ROOM_WIDTH / 2 - WALL / 2), 0, WALL, ROOM_HEIGHT, 0x22223b),
     box('WallRight', ROOM_WIDTH / 2 - WALL / 2, 0, WALL, ROOM_HEIGHT, 0x22223b),
-    box('LedgeLowLeft', -300, 150, 160, 24, 0x9a8c98),
-    box('LedgeLowRight', 300, 150, 160, 24, 0x9a8c98),
-    box('Bridge', 0, 40, 220, 24, 0x9a8c98),
-    box('LedgeHighLeft', -260, -70, 140, 24, 0x9a8c98),
-    box('LedgeHighRight', 260, -70, 140, 24, 0x9a8c98),
-    box('Summit', 0, -150, 120, 24, 0xc9ada7),
+    box('LedgeLowLeft', -3, 1.5, 1.6, 0.24, 0x9a8c98),
+    box('LedgeLowRight', 3, 1.5, 1.6, 0.24, 0x9a8c98),
+    box('Bridge', 0, 0.4, 2.2, 0.24, 0x9a8c98),
+    box('LedgeHighLeft', -2.6, -0.7, 1.4, 0.24, 0x9a8c98),
+    box('LedgeHighRight', 2.6, -0.7, 1.4, 0.24, 0x9a8c98),
+    box('Summit', 0, -1.5, 1.2, 0.24, 0xc9ada7),
   ],
 };
 
@@ -85,26 +86,26 @@ const arena: LevelJson = {
 // blocking this round's coin at the same spot.
 const COIN_SPOTS: Point2[] = [
   // floor
-  { x: -370, y: 232 },
-  { x: -150, y: 232 },
-  { x: 0, y: 232 },
-  { x: 150, y: 232 },
-  { x: 370, y: 232 },
+  { x: -3.7, y: 2.32 },
+  { x: -1.5, y: 2.32 },
+  { x: 0, y: 2.32 },
+  { x: 1.5, y: 2.32 },
+  { x: 3.7, y: 2.32 },
   // low ledges
-  { x: -340, y: 110 },
-  { x: -260, y: 110 },
-  { x: 260, y: 110 },
-  { x: 340, y: 110 },
+  { x: -3.4, y: 1.1 },
+  { x: -2.6, y: 1.1 },
+  { x: 2.6, y: 1.1 },
+  { x: 3.4, y: 1.1 },
   // bridge
-  { x: -60, y: 0 },
-  { x: 60, y: 0 },
+  { x: -0.6, y: 0 },
+  { x: 0.6, y: 0 },
   // high ledges
-  { x: -290, y: -110 },
-  { x: -230, y: -110 },
-  { x: 230, y: -110 },
-  { x: 290, y: -110 },
+  { x: -2.9, y: -1.1 },
+  { x: -2.3, y: -1.1 },
+  { x: 2.3, y: -1.1 },
+  { x: 2.9, y: -1.1 },
   // summit - the lonely one at the top
-  { x: 0, y: -190 },
+  { x: 0, y: -1.9 },
 ];
 const coinsLevel: LevelJson = { entities: COIN_SPOTS.map(position => ({ class: 'Coin', position })) };
 
@@ -247,7 +248,7 @@ class NameTag extends Label {
         const peer = peerOf(target);
         this.text.setStyle({ color: peer ? colorOf(peer) : 0xffffff });
       }
-      this.position = { x: target.position.x, y: target.position.y - 50 };
+      this.position = { x: target.position.x, y: target.position.y - 0.5 };
     });
   }
 }
@@ -264,7 +265,7 @@ class PopText extends Label {
     this.tick$.subscribe(([, delta]) => {
       age += delta;
       const t = Math.min(age / 800, 1);
-      this.position = { x: from.x, y: from.y - 50 * t };
+      this.position = { x: from.x, y: from.y - 0.5 * t };
       this.text.opacity = 1 - t * t;
       if (t === 1 && this.world) {
         // not mid-tick: removing an entity while the world iterates its tick listeners skips one
@@ -303,11 +304,16 @@ world.init().then(async () => {
   world.addEntity(new MobileControls());
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
-    renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);
+    // the whole arena (plus a 1 m margin) stays in view
+    const ppm = world.visualScene.pixelsPerMeter;
+    renderer.camera.zoom = Math.min(newSize.x / ((ROOM_WIDTH + 1) * ppm), newSize.y / ((ROOM_HEIGHT + 1) * ppm), 1);
   });
+  // a snappier fall than the default 9.82 m/s²; every peer sets the same, so everyone simulates alike
+  world.physicsWorld.gravity = { x: 0, y: 20 };
 
   // --- backdrop: a screen-fixed sky, and two rows of hills scrolling slower than the arena as the
-  // camera follows the player (lower parallax reads as farther away). Purely local decoration.
+  // camera follows the player (lower parallax reads as farther away). Purely local decoration; a
+  // texture's own pixels set its size (100 px is 1 m), and `offset` is in meters.
   world.visualScene.setEnvironment({ background: skyTexture() });
   world.addParallaxLayer({
     texture: hillsTexture(
@@ -321,7 +327,7 @@ world.init().then(async () => {
     ),
     parallax: 0.2,
     zIndex: -2,
-    offset: { x: 0, y: -40 },
+    offset: { x: 0, y: -0.4 },
   });
   world.addParallaxLayer({
     texture: hillsTexture(
@@ -335,12 +341,13 @@ world.init().then(async () => {
     ),
     parallax: 0.5,
     zIndex: -1,
-    offset: { x: 0, y: 40 },
+    offset: { x: 0, y: 0.4 },
   });
   // sparks bursting out of a collected coin: additive sprites falling under gravity, fading out
+  // (sizes in meters, speeds in m/s)
   const sparks = world.addParticleSystem(
     { capacity: 200, texture: sparkTexture(), blending: 'additive', zIndex: 5 },
-    { lifetime: [0.3, 0.7], size: 10, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+    { lifetime: [0.3, 0.7], size: 0.1, gravity: { x: 0, y: 9 }, drag: 2, opacityOverLife: [1, 0] },
   );
 
   // --- room: from the URL, or a fresh one put into the URL so the address bar is the invite link
@@ -475,7 +482,7 @@ world.init().then(async () => {
     world.addEntity(new PopText('+1', colorOf(by), at));
     sparks.emit(16, (p, ctx) => {
       p.position = at;
-      p.velocity = Pnt2.rot({ x: ctx.range(150, 400), y: 0 }, ctx.random() * Math.PI * 2);
+      p.velocity = Pnt2.rot({ x: ctx.range(1.5, 4), y: 0 }, ctx.random() * Math.PI * 2);
       p.tint = colorOf(by);
     });
     renderHud();
@@ -496,13 +503,13 @@ world.init().then(async () => {
       color: 0xffd166,
       stroke: { width: 3, color: 0xd99a00 },
     });
-    disc.addChild(w.visualScene!.factory.createBox({ x: 4, y: COIN_RADIUS }, { color: 0xd99a00 }));
+    disc.addChild(w.visualScene!.factory.createBox({ x: 0.04, y: COIN_RADIUS }, { color: 0xd99a00 }));
     const sprite = new Entity2d({ object2D: disc });
     sprite.position = settings.position;
     sprite.tick$.subscribe(([elapsed]) => {
       // spin by squashing horizontally, bob a little - offset by position so coins aren't in sync
-      disc.scale = { x: Math.cos(elapsed / 300 + x / 50), y: 1 };
-      sprite.position = { x, y: y + Math.sin(elapsed / 400 + x / 80) * 3 };
+      disc.scale = { x: Math.cos(elapsed / 300 + x * 2), y: 1 };
+      sprite.position = { x, y: y + Math.sin(elapsed / 400 + x * 1.25) * 0.03 };
     });
     coin.addChildren(sprite);
     coin.onEntityEntered.subscribe(entity => {
@@ -521,7 +528,7 @@ world.init().then(async () => {
   // peer builds every character through this class: the network rebuilds a remote player's
   // character from its serialized config (options, `display` and the mid-jump `state`), so all of
   // that has to go through `settings`.
-  // 'nearest' keeps the pixel-art look crisp when scaled up
+  // 'nearest' keeps the pixel-art look crisp when scaled up; a 48x72 px frame is 0.48x0.72 m
   const atlas = await world.visualScene.factory.loadTexture(characterAtlasUrl, { filter: 'nearest' });
   type RunnerSettings = Partial<ConstructorParameters<typeof CharacterController2dEntity>[0]> & {
     position?: Point2;
@@ -529,7 +536,7 @@ world.init().then(async () => {
     state?: CharacterState2d;
   };
   world.loader.registerClass('Runner', (w: typeof world, settings: RunnerSettings) => {
-    const { position, display, state, radius = 20, centersDistance = 40, ...options } = settings;
+    const { position, display, state, radius = 0.2, centersDistance = 0.4, ...options } = settings;
     const sprite = w.visualScene!.factory.createAnimatedSprite(atlas, {
       frameWidth: 48,
       frameHeight: 72,
@@ -637,23 +644,21 @@ world.init().then(async () => {
     player = (await world.loader.createEntity({
       class: 'Runner',
       name: CHARACTER_PREFIX + me,
-      position: { x: -ROOM_WIDTH / 2 + 100 + Math.random() * (ROOM_WIDTH - 200), y: ROOM_HEIGHT / 2 - WALL - 60 },
+      position: { x: -ROOM_WIDTH / 2 + 1 + Math.random() * (ROOM_WIDTH - 2), y: ROOM_HEIGHT / 2 - WALL - 0.6 },
       config: {
-        radius: 20,
-        centersDistance: 40,
-        maxStepHeight: 12,
-        walkSpeed: 260,
+        radius: 0.2,
+        centersDistance: 0.4,
+        maxStepHeight: 0.12,
+        walkSpeed: 2.6, // m/s
         runSpeedMultiplier: 1.8,
-        jumpSpeed: 780,
-        // pixel-scale fall acceleration (the world's own 9.82 default is meter-scale)
-        gravity: 2000,
+        jumpSpeed: 7.8, // m/s: about 1.5 m up under the world's 20 m/s² gravity
         airControlFactor: 0.4,
         display: { color: colorOf(me) },
       },
     })) as CharacterController2dEntity;
     world.addEntity(player);
     net.possess(player);
-    world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 120 }));
+    world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 1.2 }));
   };
   // back from a hidden tab that long: if the room gave up on us meanwhile, come back in
   net.resynced$.subscribe(() => {

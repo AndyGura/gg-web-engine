@@ -15,6 +15,7 @@ import { Subject } from 'rxjs';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterTriggerComponent } from './matter-trigger.component';
 import { MatterCharacterControllerComponent } from './matter-character-controller.component';
+import { fromMatterLength, fromMatterPoint, MATTER_GRAVITY_SCALE, toMatterPoint } from '../matter-units';
 
 // bodies that get pushed into `children`/`added$`/`removed$`/`handleIdEntityMap` - see
 // MatterWorldComponent's ctor. A character controller's own phantom body is never added to
@@ -26,7 +27,7 @@ type MatterWorldChild = MatterRigidBodyComponent | MatterTriggerComponent | Matt
 
 /**
  * Averages matter-js's collision support points into a single representative contact point for
- * `CollisionEvent.position`. `collision.supports` is *always* a fixed-length-2 array
+ * `CollisionEvent.position` (in meters). `collision.supports` is *always* a fixed-length-2 array
  * (`[null, null]` initially - see `Collision.js`'s `Collision.create`), but `@types/matter-js`
  * 0.20.2 types it as plain `Vector[]` with no way to tell which slots are actually populated -
  * only the first `collision.supportCount` entries are ever real, the rest can be `null` (or stale
@@ -45,7 +46,7 @@ function averageSupports(collision: Collision): Point2 {
   for (const support of supports) {
     sum = Pnt2.add(sum, support);
   }
-  return Pnt2.scalarMult(sum, 1 / supports.length);
+  return fromMatterPoint(Pnt2.scalarMult(sum, 1 / supports.length));
 }
 
 /**
@@ -86,15 +87,15 @@ function bodyPolygons(body: Body): Vector[][] {
   return parts.map(part => part.vertices);
 }
 
-// TODO probably should be configurable in world
-const MATTER_WORLD_SCALE = 0.0001;
-
 /**
  * The 2D physics world backed by matter-js: pass a new one as `physicsWorld` of a `Gg2dWorld`.
- * Works in pixels (100 per meter). Behaves differently from `Rapier2dWorldComponent` behind the
- * same API: no CCD (`ccd` is ignored), no kinematic bodies (they become static), bodies never fall
- * asleep on their own, and the character controller is built by the adapter from overlap queries -
- * retune after switching.
+ * Takes and reports meters, kilograms and seconds like every other physics world (gravity in m/s²,
+ * `{ x: 0, y: 9.82 }` by default); the native `matterEngine`/`matterWorld` and every component's
+ * `nativeBody` are in matter-js's own units, converted at the adapter boundary (see
+ * `matter-units.ts`). Behaves differently from the other 2D physics adapters behind the same API: no CCD
+ * (`ccd` is ignored), no kinematic bodies (they become static), bodies never fall asleep on their
+ * own, and the character controller is built by the adapter from overlap queries - retune after
+ * switching.
  *
  * @example
  * ```ts
@@ -154,6 +155,8 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     return this._gravity;
   }
 
+  /** m/s². The native `gravity.x`/`gravity.y` carry the same numbers; `gravity.scale`
+   * (`MATTER_GRAVITY_SCALE`) is what turns them into matter-js's per-millisecond native units. */
   public set gravity(value: Point2) {
     this._gravity = value;
     if (this.matterEngine) {
@@ -192,17 +195,22 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
    */
   async init(): Promise<void> {
     this.matterEngine_ = Engine.create({
-      gravity: { ...this._gravity, scale: MATTER_WORLD_SCALE },
+      gravity: { ...this._gravity, scale: MATTER_GRAVITY_SCALE },
     });
     Events.on(this.matterEngine_, 'collisionStart', this.handleCollisionStart);
     Events.on(this.matterEngine_, 'collisionEnd', this.handleCollisionEnd);
   }
 
+  /** Resolves a native body reported by a collision pair to its owning rigid-body component.
+   * matter-js pairs *parts*: `Detector.collisions` walks parts `1..n` of a multi-part (`COMPOUND`)
+   * body, so `pair.bodyA`/`pair.bodyB` is a part whose `.parent` is the body `handleIdEntityMap` is
+   * keyed by (a single-part body is its own parent). */
   private findRigidBody(nativeBody: Body): MatterRigidBodyComponent | undefined {
+    const parent = nativeBody.parent ?? nativeBody;
     // a character controller's phantom body is never added to `Composite`/`engine.world` (see its
     // own doc), so it can never actually be `pair.bodyA`/`pair.bodyB` here - this narrows the lookup's
     // type back down since `handleIdEntityMap` itself now also tracks that component class.
-    const comp = this.handleIdEntityMap.get(nativeBody.id);
+    const comp = this.handleIdEntityMap.get(parent.id);
     return comp instanceof MatterRigidBodyComponent ? comp : undefined;
   }
 
@@ -210,6 +218,8 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
    * Wires `IRigidBody2dComponent.onCollisionStart` for every non-sensor pair in the world, off
    * matter-js's own `Matter.Events` 'collisionStart' (fired once per engine, not per-body - see
    * `gg-engine-physics-adapter-matter` for why it's registered here rather than per component).
+   * The event's data (contact point, normal, velocities) is read here, inside the step; the
+   * subscribers run after it, from `simulate()` (see `pendingCollisionEvents`).
    * `pair.isSensor` (true whenever either side is a trigger's underlying body, which always has
    * `isSensor: true` - see `MatterTriggerComponent`'s constructor) is skipped entirely, so a
    * trigger overlapping a rigid body only ever fires the trigger's own `onEntityEntered`, never
@@ -251,17 +261,34 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
       const relativeVelocityForB = Pnt2.neg(relativeVelocityForA);
       const impulse = Pnt2.len(relativeVelocityForA) * Math.min(compA.nativeBody.mass, compB.nativeBody.mass);
       const baseEvent = { position, impulse };
-      compA.notifyCollisionStart({
-        ...baseEvent,
-        otherBody: compB,
-        normal: normalFromA,
-        relativeVelocity: relativeVelocityForA,
-      });
-      compB.notifyCollisionStart({
-        ...baseEvent,
-        otherBody: compA,
-        normal: normalFromB,
-        relativeVelocity: relativeVelocityForB,
+      const bodyA = compA.nativeBody;
+      const bodyB = compB.nativeBody;
+      // delivered by `simulate()` after `Engine.update` returns - see `pendingCollisionEvents`
+      // both sides count the pair before either emits, and each side is re-checked right before
+      // its own emission: A's subscriber may remove B (see `trackCollisionStart`)
+      const current = () => this.isCurrent(compA, bodyA) && this.isCurrent(compB, bodyB);
+      this.pendingCollisionEvents.push(() => {
+        if (!current()) {
+          return;
+        }
+        const firstA = compA.trackCollisionStart(compB);
+        const firstB = compB.trackCollisionStart(compA);
+        if (firstA && current()) {
+          compA.emitCollisionStart({
+            ...baseEvent,
+            otherBody: compB,
+            normal: normalFromA,
+            relativeVelocity: relativeVelocityForA,
+          });
+        }
+        if (firstB && current()) {
+          compB.emitCollisionStart({
+            ...baseEvent,
+            otherBody: compA,
+            normal: normalFromB,
+            relativeVelocity: relativeVelocityForB,
+          });
+        }
       });
     }
   }
@@ -279,8 +306,25 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
       if (!compA || !compB) {
         continue;
       }
-      compA.notifyCollisionEnd(compB);
-      compB.notifyCollisionEnd(compA);
+      const bodyA = compA.nativeBody;
+      const bodyB = compB.nativeBody;
+      // delivered by `simulate()` after `Engine.update` returns - see `pendingCollisionEvents`. A
+      // compound body can touch another on several parts; the components count part pairs per
+      // partner and only emit `onCollisionEnd` once the last one lets go
+      const current = () => this.isCurrent(compA, bodyA) && this.isCurrent(compB, bodyB);
+      this.pendingCollisionEvents.push(() => {
+        if (!current()) {
+          return;
+        }
+        const lastA = compA.trackCollisionEnd(compB);
+        const lastB = compB.trackCollisionEnd(compA);
+        if (lastA && current()) {
+          compA.emitCollisionEnd(compB);
+        }
+        if (lastB && current()) {
+          compB.emitCollisionEnd(compA);
+        }
+      });
     }
   }
 
@@ -302,9 +346,29 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   private lastDelta = 0;
 
+  /**
+   * Notifications collected by the `collisionStart`/`collisionEnd` listeners during `Engine.update`
+   * and delivered by `simulate()` once it has returned: matter-js fires those events from inside
+   * the step, and a subscriber that removes or re-adds a body (a pickup removing what it caught)
+   * would otherwise mutate `engine.world` while the step is still iterating it. Each notification
+   * re-checks that both bodies are still in the world under the same native body right before
+   * each side's own notification (the first side's subscriber may remove the second) - a body a
+   * subscriber removed has already told its partners through `removeFromWorld`.
+   */
+  private readonly pendingCollisionEvents: (() => void)[] = [];
+
   simulate(delta: number): void {
     Engine.update(this.matterEngine!, delta, this.lastDelta > 0 ? delta / this.lastDelta : 1);
     this.lastDelta = delta;
+    const pending = this.pendingCollisionEvents.splice(0);
+    for (const notify of pending) {
+      notify();
+    }
+  }
+
+  /** Whether `comp` is in this world under the native body it was reported with. */
+  private isCurrent(comp: MatterRigidBodyComponent, nativeBody: Body): boolean {
+    return comp.nativeBody === nativeBody && this.handleIdEntityMap.get(nativeBody.id) === comp;
   }
 
   /**
@@ -331,7 +395,10 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
    */
   raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyComponent> {
     const matterWorld = this.matterWorld;
-    const direction = Pnt2.sub(options.to, options.from);
+    // the segment is intersected against native-unit vertices; the hit converts back to meters
+    const from = toMatterPoint(options.from);
+    const to = toMatterPoint(options.to);
+    const direction = Pnt2.sub(to, from);
     const rayLength = Pnt2.len(direction);
     if (!matterWorld || rayLength === 0) {
       return { hasHit: false };
@@ -355,7 +422,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
         for (let i = 0; i < polygon.length; i++) {
           const a = polygon[i];
           const b = polygon[(i + 1) % polygon.length];
-          const hit = segmentIntersection(options.from, options.to, a, b);
+          const hit = segmentIntersection(from, to, a, b);
           if (!hit || hit.t >= closestT) {
             continue;
           }
@@ -364,7 +431,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
           closestBody = body;
           const edge = Pnt2.sub(b, a);
           const normal = Pnt2.norm({ x: -edge.y, y: edge.x });
-          closestNormal = Pnt2.dot(normal, Pnt2.sub(options.from, hit.point)) >= 0 ? normal : Pnt2.neg(normal);
+          closestNormal = Pnt2.dot(normal, Pnt2.sub(from, hit.point)) >= 0 ? normal : Pnt2.neg(normal);
         }
       }
     }
@@ -380,8 +447,8 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     return {
       hasHit: true,
       hitBody: resolved instanceof MatterRigidBodyComponent ? resolved : undefined,
-      hitDistance: closestT * rayLength,
-      hitPoint: closestPoint!,
+      hitDistance: fromMatterLength(closestT * rayLength),
+      hitPoint: fromMatterPoint(closestPoint!),
       hitNormal: closestNormal!,
     };
   }
@@ -389,6 +456,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   dispose(): void {
     Events.off(this.matterEngine!, 'collisionStart', this.handleCollisionStart);
     Events.off(this.matterEngine!, 'collisionEnd', this.handleCollisionEnd);
+    this.pendingCollisionEvents.length = 0;
     Engine.clear(this.matterEngine!);
   }
 }

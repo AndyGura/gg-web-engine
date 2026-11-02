@@ -17,6 +17,7 @@ export * from './components/rendering/i-particle-system-2d.component';
 export * from './entities/controllers/entity-2d-positioning.animator';
 export * from './entities/controllers/character-animation-2d.controller';
 export * from './entities/audio-source-2d.entity';
+export * from './entities/camera-2d.entity';
 export * from './entities/character-controller-2d.entity';
 export * from './entities/entity-2d';
 export * from './entities/environment-2d.entity';

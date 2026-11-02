@@ -12,9 +12,9 @@ const level: LevelJson = {
       class: 'Primitive',
       shape: 'BOX',
       name: 'Floor',
-      position: { x: 0, y: 300 },
+      position: { x: 0, y: 3 },
       config: {
-        dimensions: { x: 800, y: 100 },
+        dimensions: { x: 8, y: 1 },
         body: { bodyType: 'static' },
       },
     },
@@ -23,7 +23,7 @@ const level: LevelJson = {
       name: 'Spawner',
       config: {
         intervalSeconds: 0.5,
-        area: { min: { x: -50, y: -300 }, max: { x: 50, y: -300 } },
+        area: { min: { x: -0.5, y: -3 }, max: { x: 0.5, y: -3 } },
       },
     },
   ],
@@ -41,7 +41,9 @@ world.init().then(async () => {
 
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
-    renderer.camera.zoom = Math.min(newSize.x / 850, newSize.y / 800, 1);
+    // the whole 8 m wide floor (plus a margin) stays in view
+    const ppm = world.visualScene.pixelsPerMeter;
+    renderer.camera.zoom = Math.min(newSize.x / (8.5 * ppm), newSize.y / (8 * ppm), 1);
   });
 
   world.loader.registerClass(

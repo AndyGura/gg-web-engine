@@ -12,12 +12,47 @@ contract every rendering adapter satisfies (which interfaces to implement, the T
 repo) lives in `gg-engine-visual-adapter`; read that first if you're new to the adapter pattern,
 then come here for what is particular to pixi.js v8.
 
+## Meters and `pixelsPerMeter`
+
+The world is in meters; `PixiSceneComponent({ pixelsPerMeter })` (default 100, a positive number,
+readonly `scene.pixelsPerMeter`) is the scene's texel density: the screen pixels a meter covers at
+camera `zoom` 1, and the texels of an image that fit in a meter. Everything that holds it gets it
+from the scene's factory (`PixiFactory.pixelsPerMeter`, a getter reading the scene - the factory is
+a field initializer of the scene, so it can't copy the value at construction; a factory without a
+scene takes it as its second constructor argument, default 100): `createCamera()`,
+`createText(...)`, `createParallaxLayer(...)`, `createParticleSystem(...)` all pass it into the
+component (`PixiCameraComponent`, `PixiTextComponent`, `PixiParallaxLayerComponent`,
+`PixiParticleSystemComponent` each take it as a trailing constructor parameter defaulting to 100,
+and pass it on in `clone()`), and `PixiPhysicsDebugView` reads `world.visualScene.pixelsPerMeter`.
+
+The rule for every native object: **build it in pixel space, give it a base scale of
+`1 / pixelsPerMeter`**. A `Graphics` shape is drawn at meters times `pixelsPerMeter` with the stroke
+width in pixels, then scaled down (in `PixiFactory.paint`); a text is rasterized at its `fontSize`
+pixels and scaled down; an animated sprite's frames are texels and the sprite is scaled down; a
+textured or plain `BOX`/`CIRCLE` sprite is sized in meters outright through `sprite.width/height`
+(its native scale, which comes to the same). Building a `Graphics` straight in meter coordinates
+is wrong: pixi tessellates circles and strokes from the path's own numbers, so a 0.1-radius circle
+comes out as a polygon of a few segments and a 1-wide stroke is a meter wide. `getBoundings()`
+(local bounds through the object's and its ancestors' transforms up to the world container) and
+`getLocalBoundings()` (local bounds times `baseScale`) therefore come back in meters, and `scale`
+stays relative to the built size.
+
+`PixiRendererComponent.render()` scales the world container (and the debug container) by
+`camera.zoom * scene.pixelsPerMeter`. The scene's value is the only source: the renderer writes it
+to `camera.pixelsPerMeter` on construction and before every frame (the camera is a swappable public
+field), so `PixiCameraComponent.worldToScreen`/`screenToWorld` always convert with the factor that
+is drawn; the factory's value the camera is built with only holds until a renderer draws through
+it. A HUD world in canvas pixels is `new PixiSceneComponent({ pixelsPerMeter: 1 })` with a
+`'top-left'` camera.
+
 ## Primitives, materials and text
 
 - An untextured shape is a tinted `Texture.WHITE` sprite when that's enough (cheap), but a
   `stroke: { color, width }` outline can't be drawn that way, so an untextured stroked `BOX` becomes
   a `Graphics` rect. `color` fills an untextured shape and tints a textured one. In a `COMPOUND`
   `opacity` is applied once on the container, not again on every part, or the parts multiply it.
+  A `COMPOUND`'s container has scale 1 and its children sit at their `position` in meters, each
+  carrying its own base scale.
 - `tint` maps to `Container.tint`, `opacity` to `alpha`; both are inherited by children.
 - `createTextureFromCanvas(canvas, options?)` is `Texture.from(canvas)`; the options helper is
   shared with `packages/three` (`utils/texture-options.ts` there). `loadTexture(url, { filter })`
@@ -54,17 +89,28 @@ needs its pixi default label added to that set (grep `label: "` under `pixi.js/l
 ## Scale and bounds
 
 An untextured `BOX` (a tinted `Texture.WHITE` sprite) and a textured `BOX`/`CIRCLE` get their size
-from the native sprite's `scale` (`sprite.width = ...` writes it). `PixiDisplayObjectComponent`
-records that native scale at construction as `baseScale` and reads/writes `scale` relative to it,
-so every primitive starts at `scale = { x: 1, y: 1 }` and `scale = { x: 2, y: 2 }` doubles it, as
-in three. `clone()` passes `baseScale` on, since the cloned native object already carries any scale
-the app set. `getBoundings()` is `Container.getBounds()` (world coordinates, scale and position
-included); `boundsArea` is only a user-set override and is usually `undefined`.
-`getLocalBoundings()` is `Container.getLocalBounds()` multiplied by `baseScale`: pixi's local bounds
-leave out the container's whole own transform, native scale included, which for a sized sprite is
-its built size (a `BOX` would measure 1x1). pixi already skips children with `visible = false` there
-(not the root). A child nested under a sized sprite sits in the sprite's native frame and so is
-magnified by `baseScale` when drawn; multiplying the local bounds by it matches what is drawn.
+in meters from the native sprite's `scale` (`sprite.width = ...` writes it); every other native
+object's scale is `1 / pixelsPerMeter` (see "Meters and `pixelsPerMeter`").
+`PixiDisplayObjectComponent` records that native scale at construction as `baseScale` and
+reads/writes `scale` relative to it, so every primitive starts at `scale = { x: 1, y: 1 }` and
+`scale = { x: 2, y: 2 }` doubles it, as in three. `clone()` passes `baseScale` on, since the cloned
+native object already carries any scale the app set - a subclass with its own `clone()`
+(`PixiAnimatedSpriteComponent`) must do the same, or a scaled source's copy reads `scale` 1;
+`PixiTextComponent.clone()` builds a fresh text (base scale set) and copies the native state over
+it, which comes to the same. `getBoundings()` is **not** `Container.getBounds()`: that goes up to the
+stage, and the world container in between carries the renderer's `zoom * pixelsPerMeter` scale and
+camera pivot once a frame has been drawn (and keeps it), so it would come back in canvas pixels
+offset by the camera - 100x off at the defaults, and invisible to a test without a renderer. It
+takes `getLocalBounds()` through the object's own `localTransform` and every ancestor's, stopping
+at the world container, which `PixiSceneComponent.init()` registers in `utils/world-container.ts`'s
+`WeakSet` (`markWorldContainer`/`isWorldContainer`) so a display object can tell where its world
+frame ends without knowing the scene. `boundsArea` is only a user-set override and is usually
+`undefined`. Regression: `test/pixi-display-object-bounds.spec.ts`. `getLocalBoundings()` is `Container.getLocalBounds()` multiplied by `baseScale`: pixi's
+local bounds leave out the container's whole own transform, native scale included, which for a
+sized sprite is its built size (a `BOX` would measure 1x1) and for a pixel-space drawing its pixel
+size. pixi already skips children with `visible = false` there (not the root). A child nested under
+a sized sprite sits in the sprite's native frame and so is magnified by `baseScale` when drawn;
+multiplying the local bounds by it matches what is drawn.
 
 ## Draw order, backdrops and parallax layers
 
@@ -77,13 +123,16 @@ magnified by `baseScale` when drawn; multiplying the local bounds by it matches 
   such as `backgroundAlpha` passed through the renderer options stay in effect. A background texture
   becomes a `Sprite` at stage index 0, behind the world container.
 - `PixiParallaxLayerComponent` is a `TilingSprite` in the world container (so it sorts by `zIndex`
-  against everything else). The scene tracks its layers in `parallaxLayers`, and each renderer
-  positions every layer for its own camera right before drawing - `PixiRendererComponent.render()`
-  calls `updateView(cameraPosition, halfExtent)` with `halfExtent = hypot(width, height) / 2 / zoom`
-  on both axes so a rotated camera stays covered. Per axis, the texture's world origin is
-  `offset + camera * (1 - parallax)`; a repeating axis spans the whole view with
-  `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin one
-  tile wide.
+  against everything else) with native scale `1 / pixelsPerMeter`. The scene tracks its layers in
+  `parallaxLayers`, and each renderer positions every layer for its own camera right before drawing
+  - `PixiRendererComponent.render()` calls `updateView(cameraPosition, halfExtent)` in meters, with
+  `halfExtent = hypot(width, height) / 2 / (zoom * pixelsPerMeter)` on both axes so a rotated
+  camera stays covered. `updateView` converts the center, half extent and `offset` to pixels and
+  works in the sprite's own pixel space, where a tile is `texture.width * scale` texels: per axis,
+  the texture's origin is `offset + camera * (1 - parallax)`; a repeating axis spans the whole view
+  with `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the
+  origin one tile wide. `TilingSprite.width`/`height` are the tiling area in local (pixel) units,
+  independent of the sprite's scale; only `position` is set back in meters.
 
 ## Particle systems
 
@@ -109,8 +158,11 @@ container upload that attribute only on `update()`. `particleChildren` is filled
   the quad by the anchor before the shader rotates it, so a sprite turns around its anchor. A
   record is reused for a different particle every frame, so the anchor is written every frame too,
   never only at pool creation.
-- **Sprite size is scale**: `scaleX = size.x / texture.orig.width` (the frame's pixel size), so a
-  system without a texture draws `Texture.WHITE` (1x1) scaled to the size in world units.
+- **The container is in pixel space** (native scale `1 / pixelsPerMeter`): `x`/`y` are the
+  particle's position in meters times `pixelsPerMeter`, and sprite size is scale, `scaleX = size.x *
+  pixelsPerMeter / texture.orig.width` (the frame's texel size), so a system without a texture draws
+  `Texture.WHITE` (1x1) scaled to the size. `roundPixels` so rounds to whole texels - whole screen
+  pixels at zoom 1 - and a user-set `boundsArea` is in that pixel space.
 - **The blend mode is the container's `blendMode`** (`'normal'`/`'add'`/`'multiply'`), which is why
   core's 2D option type is limited to those three - `subtract` and the other advanced modes need
   pixi's optional advanced-blend-modes import and a filter pass.
@@ -188,15 +240,21 @@ sync functions then throw on every frame (`Cannot read properties of undefined (
 ## Camera origin
 
 `PixiRendererComponent.render()` places the world container (and the physics debug container)
-with `pivot = camera.position`, `scale = zoom`, `rotation = -camera.rotation` and `position` = the
-screen point the camera's `origin` names: the canvas center for `'center'`, `(0, 0)` for
-`'top-left'` - read every frame, so a camera switched at runtime takes effect on the next one.
-Parallax layers still get `camera.position` as their `updateView` center (it is what their
-`offset + camera * (1 - parallax)` origin is defined against), with `halfExtent` the whole
-diagonal over zoom instead of half of it when the origin is a corner, so a square around that
-corner still covers the view at any rotation. `PixiCameraComponent.worldToScreen`/`screenToWorld`
-are plain `(world - position) * zoom` offsets that ignore rotation and the origin: they match canvas
-pixels only for an unrotated `'top-left'` camera.
+with `pivot = camera.position`, `scale = zoom * scene.pixelsPerMeter`, `rotation =
+-camera.rotation` and `position` = the screen point the camera's `origin` names: the canvas center
+for `'center'`, `(0, 0)` for `'top-left'` - read every frame, so a camera switched at runtime takes
+effect on the next one. Parallax layers still get `camera.position` as their `updateView` center
+(it is what their `offset + camera * (1 - parallax)` origin is defined against), with `halfExtent`
+the whole diagonal over `zoom * pixelsPerMeter` instead of half of it when the origin is a corner,
+so a square around that corner still covers the view at any rotation.
+`PixiCameraComponent.worldToScreen`/`screenToWorld` are plain `(world - position) * zoom *
+pixelsPerMeter` offsets (the renderer keeps `camera.pixelsPerMeter` equal to its scene's) that
+ignore rotation and the origin: they match canvas pixels only for an unrotated `'top-left'` camera.
+
+The physics debug view (`PixiPhysicsDebugView`) draws each body's shape as a `Graphics` built from
+the shape in meters times `pixelsPerMeter`, stroked 1 px wide, scaled by `1 / pixelsPerMeter` and
+placed at the body's position in meters - the same pixel-space rule as the factory, for the same
+reason (stroke width and circle tessellation).
 
 `dispose()` otherwise is `Application.destroy(...)` / `Container.destroy()`; `removeFromWorld(world,
 dispose)` calls it when `dispose` is `true`. The renderer destroys with `{ removeView: !this.canvas }`:
@@ -226,14 +284,21 @@ costs ~20 s on the first run (jest caches it afterwards). jsdom has no canvas ba
 `HTMLCanvasElement.prototype.getContext` to return `null`; nothing in the suite draws.
 
 `test/contract/pixi-contract.spec.ts` runs the shared 2D visual contract (see
-`gg-engine-visual-adapter`) against the real `PixiFactory`. The unit specs under `test/components/`
+`gg-engine-visual-adapter`) against the real `PixiFactory` - meter-sized primitives (a 0.1x0.2 m
+box) with bounds allowed 0.02 m of padding, a pixel or two at the default 100 px/m (its optional
+third argument `{ tolerance }` changes that). The contract only sees the factory, so the
+meters-to-pixels mapping itself (a marker at 1 m sits 100 screen pixels from a top-left camera at
+zoom 1, 200 at zoom 2; a 48x72 px atlas frame measures 0.48x0.72 m; text and clones keep scale 1)
+is checked in `test/pixi-ui-world.spec.ts` with real containers and `Container.toGlobal`, and the
+camera's `worldToScreen` arithmetic in `test/pixi-factory-textures.spec.ts`. The unit specs under `test/components/`
 still replace `pixi.js` with small stand-ins (`jest.mock('pixi.js', () => ({ ... }))`, or a plain
 fake object cast to a type imported with `import type`), because they assert exactly what a
 component writes to its native object. A stand-in needs every field the code under test reads -
 `PixiDisplayObjectComponent`'s constructor reads `scale`, so every fake container has
-`scale: { x: 1, y: 1 }`. A spec that needs the real scene graph and a real `Gg2dWorld` but no GPU
-(`test/pixi-ui-world.spec.ts`: a physics-less world, a top-left camera, raw pixi objects in
-`nativeContainer`) mocks only `Application` over `jest.requireActual('pixi.js')`, with a real
+`scale: { x: 1, y: 1 }`, and the components that set a base scale write `scale.x`/`scale.y` by
+assignment (not `scale.set`), so a plain `{ x, y }` object serves as a fake scale. A spec that needs the real scene graph and a real `Gg2dWorld` but no GPU
+(`test/pixi-ui-world.spec.ts`: a physics-less world at `pixelsPerMeter: 1`, a top-left camera, raw
+pixi objects in `nativeContainer`) mocks only `Application` over `jest.requireActual('pixi.js')`, with a real
 `Container` as `stage`, a `renderer` whose `resize` records `width`/`height`, and an `init` that
 resolves at once; it asserts screen positions with `Container.toGlobal`, which updates transforms
 itself, and drives frames with `world.worldClock.step(ms)` on a started, then paused world.

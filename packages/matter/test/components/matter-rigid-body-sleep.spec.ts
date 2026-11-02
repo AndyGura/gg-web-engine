@@ -21,7 +21,7 @@ describe('MatterRigidBodyComponent sleep API', () => {
 
   it('reports a fresh dynamic body as not sleeping', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -29,9 +29,9 @@ describe('MatterRigidBodyComponent sleep API', () => {
     expect(body.isSleeping).toBe(false);
   });
 
-  it('sleep() forces isSleeping true, wakeUp() flips it back - regardless of the world engine\'s enableSleeping setting', () => {
+  it("sleep() forces isSleeping true, wakeUp() flips it back - regardless of the world engine's enableSleeping setting", () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -45,7 +45,7 @@ describe('MatterRigidBodyComponent sleep API', () => {
 
   it('a position write on a sleeping body does NOT wake it back up - unlike every other adapter', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -79,7 +79,7 @@ describe('MatterRigidBodyComponent sleep API', () => {
 
   it('a canSleep: false body ignores sleep() and keeps that option through clone()', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);

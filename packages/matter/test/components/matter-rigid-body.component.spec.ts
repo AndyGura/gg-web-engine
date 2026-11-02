@@ -21,7 +21,10 @@ describe('MatterRigidBodyComponent.bodyOptions', () => {
 
   it('reads back the mass/friction/restitution a dynamic body was actually created with', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 5, friction: 0.3, restitution: 0.7 } },
+      {
+        shape: { shape: 'CIRCLE', radius: 0.2 },
+        body: { bodyType: 'dynamic', mass: 5, friction: 0.3, restitution: 0.7 },
+      },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -35,7 +38,10 @@ describe('MatterRigidBodyComponent.bodyOptions', () => {
 
   it('echoes the originally-requested bodyType/ccd even though matter-js degrades both', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'kinematic_pos', mass: 1, ccd: true } },
+      {
+        shape: { shape: 'BOX', dimensions: { x: 0.5, y: 0.5 } },
+        body: { bodyType: 'kinematic_pos', mass: 1, ccd: true },
+      },
       { position: { x: 0, y: 0 } },
     );
 
@@ -45,7 +51,7 @@ describe('MatterRigidBodyComponent.bodyOptions', () => {
 
   it('reflects a mutated ownCollisionGroups/interactWithCollisionGroups live', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
 
@@ -77,7 +83,7 @@ describe('MatterRigidBodyComponent.rotation', () => {
 
   it('rotates via Body.setAngle, preserving angular velocity and actually rotating the vertices', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 2, y: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'BOX', dimensions: { x: 0.4, y: 0.2 } }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -88,12 +94,13 @@ describe('MatterRigidBodyComponent.rotation', () => {
     expect(body.rotation).toBeCloseTo(Math.PI / 2);
     expect(body.angularVelocity).toBeCloseTo(0);
 
-    // A 2x1 box rotated 90 degrees should report swapped width/height bounds - proof the
-    // underlying vertices were actually rotated, not just the `.angle` field bumped.
+    // A 0.4x0.2 m box rotated 90 degrees should report swapped width/height bounds - proof the
+    // underlying vertices were actually rotated, not just the `.angle` field bumped. The native
+    // body is in matter-js's own units (100 per meter), so the bounds read 20 by 40.
     const width = body.nativeBody.bounds.max.x - body.nativeBody.bounds.min.x;
     const height = body.nativeBody.bounds.max.y - body.nativeBody.bounds.min.y;
-    expect(width).toBeCloseTo(1);
-    expect(height).toBeCloseTo(2);
+    expect(width).toBeCloseTo(20);
+    expect(height).toBeCloseTo(40);
   });
 });
 
@@ -118,7 +125,7 @@ describe('MatterRigidBodyComponent.clone', () => {
   it('copies shape, transform and body options into an independent native body', () => {
     const body = factory.createRigidBody(
       {
-        shape: { shape: 'BOX', dimensions: { x: 2, y: 1 } },
+        shape: { shape: 'BOX', dimensions: { x: 0.4, y: 0.2 } },
         body: { bodyType: 'dynamic', mass: 5, friction: 0.3, restitution: 0.7, canSleep: false },
       },
       { position: { x: 3, y: 4 }, rotation: 0.5 },
@@ -141,7 +148,7 @@ describe('MatterRigidBodyComponent.clone', () => {
 
   it('clones a body that is already in a world, and the clone can be added too', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -171,8 +178,8 @@ describe('MatterRigidBodyComponent.clone', () => {
         shape: {
           shape: 'COMPOUND',
           children: [
-            { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, position: { x: -1, y: 0 } },
-            { shape: { shape: 'CIRCLE', radius: 0.5 }, position: { x: 1, y: 0 } },
+            { shape: { shape: 'BOX', dimensions: { x: 0.2, y: 0.2 } }, position: { x: -0.2, y: 0 } },
+            { shape: { shape: 'CIRCLE', radius: 0.1 }, position: { x: 0.2, y: 0 } },
           ],
         },
         body: { bodyType: 'dynamic', mass: 2 },
@@ -192,7 +199,10 @@ describe('MatterFactory capsule rigid body', () => {
     const world = new MatterWorldComponent();
     await world.init();
     const capsule = new MatterFactory(world).createRigidBody(
-      { shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 }, body: { bodyType: 'dynamic', mass: 3, friction: 0.2 } },
+      {
+        shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
+        body: { bodyType: 'dynamic', mass: 3, friction: 0.2 },
+      },
       { position: { x: 0, y: 0 } },
     );
 

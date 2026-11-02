@@ -4,13 +4,22 @@ import { PixiGgWorld } from '../types';
 import { Container, Graphics } from 'pixi.js';
 import { tabulateArray } from '../utils/tabulate-array';
 
+/**
+ * Draws every physics body's shape as a one-pixel-wide (at camera `zoom` 1) wireframe in a container
+ * the renderer places like the world container. Each wireframe is built in pixel space (meters
+ * times the scene's `pixelsPerMeter`) and scaled down by that, so the stroke width and the circle
+ * tessellation are those of a pixel-sized drawing, while its position and rotation are the body's
+ * own, in meters.
+ */
 export class PixiPhysicsDebugView {
   public readonly debugContainer: Container;
+  private readonly pixelsPerMeter: number;
 
   initShape(c: IBodyComponent<Point2, number>) {
     const debugSettings: DebugBody2DSettings = c.debugBodySettings;
     const shape: Shape2DDescriptor = debugSettings.shape;
-    let vertices = this.lineSegmentPointsForShape(shape);
+    const ppm = this.pixelsPerMeter;
+    let vertices = this.lineSegmentPointsForShape(shape).map(v => Pnt2.scalarMult(v, ppm));
     let graphics: Graphics = new Graphics();
     let color = debugSettings.color;
     graphics.clear();
@@ -18,6 +27,7 @@ export class PixiPhysicsDebugView {
       graphics.moveTo(...Pnt2.spr(vertices[i])).lineTo(...Pnt2.spr(vertices[i + 1]));
     }
     graphics.stroke({ width: 1, color });
+    graphics.scale.set(1 / ppm);
     if (!debugSettings.ignoreTransform) {
       graphics.position.set(...Pnt2.spr(c.position));
       graphics.rotation = c.rotation;
@@ -30,6 +40,7 @@ export class PixiPhysicsDebugView {
     if (!this.world!.physicsWorld) {
       throw new Error('Cannot create pixi physics debug view for the world without physics');
     }
+    this.pixelsPerMeter = this.world.visualScene.pixelsPerMeter;
     this.debugContainer = new Container();
     for (const c of this.world!.physicsWorld.children) {
       this.initShape(c);
@@ -127,11 +138,12 @@ export class PixiPhysicsDebugView {
       }
       return vertices;
     }
+    // an unknown shape: a 0.2 m cross
     return [
-      { x: -10, y: 0 },
-      { x: 10, y: 0 },
-      { x: 0, y: -10 },
-      { x: 0, y: 10 },
+      { x: -0.1, y: 0 },
+      { x: 0.1, y: 0 },
+      { x: 0, y: -0.1 },
+      { x: 0, y: 0.1 },
     ];
   }
 

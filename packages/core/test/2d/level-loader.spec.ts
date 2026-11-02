@@ -1,4 +1,5 @@
 import {
+  Camera2dEntity,
   AudioSource2dEntity,
   CharacterController2dEntity,
   Entity2d,
@@ -30,6 +31,7 @@ describe('Gg2dLevelLoader', () => {
       visualScene: {
         factory: {
           createCapsule: jest.fn().mockReturnValue(mock2DObject()),
+          createCamera: jest.fn(() => ({ ...mock2DObject(), zoom: 1, origin: 'center' })),
         },
       },
       physicsWorld: {
@@ -410,6 +412,38 @@ describe('Gg2dLevelLoader', () => {
         },
         expect.anything(),
       );
+    });
+
+    it('should load a level with cameras, wrapped ready-to-use in a Camera2dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Camera',
+            position: { x: 1, y: 2 },
+            rotation: 0.5,
+            name: 'TestCamera',
+            config: { zoom: 2, origin: 'top-left' },
+          },
+        ],
+      };
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      expect(world.visualScene?.factory.createCamera).toHaveBeenCalledTimes(1);
+      const cameraEntity = level.getChildEntityByName<Camera2dEntity>('TestCamera');
+      expect(cameraEntity).toBeInstanceOf(Camera2dEntity);
+      expect(cameraEntity.position).toEqual({ x: 1, y: 2 });
+      expect(cameraEntity.rotation).toBe(0.5);
+      expect(cameraEntity.camera.zoom).toBe(2);
+      expect(cameraEntity.camera.origin).toBe('top-left');
+      expect(cameraEntity.camera.position).toEqual({ x: 1, y: 2 });
+    });
+
+    it('builds no camera entity without a visual scene', async () => {
+      (world as any).visualScene = undefined;
+      const level = await levelLoader.loadLevel(
+        { entities: [{ class: 'Camera', position: { x: 0, y: 0 }, name: 'NoCamera' }] },
+        'TestLevel',
+      );
+      expect(level.children.length).toBe(0);
     });
 
     it('should load a level with sounds, wrapped ready-to-use in an AudioSource2dEntity parented under the level', async () => {

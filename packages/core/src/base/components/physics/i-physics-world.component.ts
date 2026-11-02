@@ -29,7 +29,10 @@ export interface IPhysicsWorldComponent<
   readonly factory: PTypeDoc['factory'];
 
   /**
-   * The gravity vector affecting the physics world.
+   * The gravity vector affecting the physics world, in m/s² - 2D and 3D worlds alike measure in
+   * meters. Default `{x: 0, y: 9.82}` in 2D (screen Y points down), `{x: 0, y: 0, z: -9.82}` in 3D
+   * (Z up). Everything that integrates gravity itself (`CharacterController(2d|3d)Entity`) reads
+   * it live, so one setting moves rigid bodies and characters alike.
    */
   gravity: D;
 

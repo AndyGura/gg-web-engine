@@ -135,8 +135,9 @@ export type Gg2dWorldWithPhysics<W extends Gg2dWorld<any, any>> =
 
 /**
  * The root object of a 2D game: a world clock plus one visual scene, one physics world and an
- * optional audio scene, all 2D. Positions are `{x, y}` in pixels (the 2D physics adapters work at
- * 100 px per meter) and rotations are angles in radians. Either scene may be left out for a
+ * optional audio scene, all 2D. Positions are `{x, y}` in meters, exactly as in 3D (screen Y
+ * points down; the visual adapter decides how many screen pixels a meter covers, see
+ * `ICamera2dComponent.zoom`), and rotations are angles in radians. Either scene may be left out for a
  * rendering-only or physics-only world. Switching the physics adapter keeps the code compiling and
  * running, but each library simulates in its own way (Matter.js has no CCD and no kinematic bodies,
  * for one), so expect to retune after a switch.
@@ -191,17 +192,17 @@ export class Gg2dWorld<
    * `Entity2d` and adds it to the world. A missing visual scene or physics world leaves that half
    * out.
    * @param descr - The shape and its body options (`mass`, `bodyType`, friction, ...)
-   * @param position - Initial position in pixels, the origin by default
+   * @param position - Initial position in meters, the origin by default
    * @param rotation - Initial angle in radians, 0 by default
    * @param material - Color, texture, stroke and opacity of the display object
    * @returns The entity, already added to the world
    *
    * @example
    * ```ts
-   * // a 1 kg crate, 30 px wide, spawned 200 px above the origin (screen Y points down)
+   * // a 1 kg crate, 0.3 m wide, spawned 2 m above the origin (screen Y points down)
    * const crate = world.addPrimitiveRigidBody(
-   *   { shape: { shape: 'BOX', dimensions: { x: 30, y: 30 } }, body: { mass: 1 } },
-   *   { x: 0, y: -200 },
+   *   { shape: { shape: 'BOX', dimensions: { x: 0.3, y: 0.3 } }, body: { mass: 1 } },
+   *   { x: 0, y: -2 },
    *   0,
    *   { color: 0x996633, stroke: { color: 0x000000, width: 2 } },
    * );
@@ -251,15 +252,15 @@ export class Gg2dWorld<
    *
    * @example
    * ```ts
-   * // sparks bursting out of a collected coin (2D worlds are in pixels, +Y points down)
+   * // sparks bursting out of a collected coin (2D worlds are in meters, +Y points down)
    * const sparks = world.addParticleSystem(
    *   { capacity: 200, blending: 'additive', zIndex: 5 },
-   *   { lifetime: [0.3, 0.7], size: 10, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+   *   { lifetime: [0.3, 0.7], size: 0.1, gravity: { x: 0, y: 9 }, drag: 2, opacityOverLife: [1, 0] },
    * );
    * sparks.position = coin.position;
    * sparks.emit(12, (p, ctx) => {
    *   const angle = ctx.range(0, Math.PI * 2);
-   *   p.velocity = { x: Math.cos(angle) * 300, y: Math.sin(angle) * 300 };
+   *   p.velocity = { x: Math.cos(angle) * 3, y: Math.sin(angle) * 3 };
    * });
    * ```
    */
@@ -300,7 +301,8 @@ export class Gg2dWorld<
    *   document.getElementById('gg') as HTMLCanvasElement,
    *   { background: 0x87ceeb },
    * );
-   * // fit an 800x600 px playfield into whatever size the canvas gets
+   * // fit an 8x6 m playfield (800x600 px at zoom 1 with pixi's default 100 px per meter) into
+   * // whatever size the canvas gets
    * renderer.rendererSize$.subscribe(size => {
    *   if (size) renderer.camera.zoom = Math.min(size.x / 800, size.y / 600);
    * });
@@ -390,30 +392,27 @@ export class Gg2dWorld<
         } else if (bodyTypeArg === '3') {
           bodyType = 'kinematic_vel';
         }
-        // Sized in pixels, matching the scale `examples/2d/primitives`'s shape-spawner uses -
-        // 2D worlds have no fixed "1 unit" convention the way 3D's meter-scaled shapes do, so a
-        // 3D-style unit-scale default (radius 0.5, dimensions 1x1) would spawn shapes too tiny to
-        // see/interact with with a typical pixel-scale camera/renderer setup.
+        // meter-sized, the same scale as the 3D world's own `spawn` defaults
         let shape: BodyShape2DDescriptor['shape'];
         switch ((shapeArg || '').toUpperCase()) {
           case 'BOX':
-            shape = { shape: 'BOX', dimensions: { x: 25, y: 25 } };
+            shape = { shape: 'BOX', dimensions: { x: 1, y: 1 } };
             break;
           case 'CIRCLE':
-            shape = { shape: 'CIRCLE', radius: 13 };
+            shape = { shape: 'CIRCLE', radius: 0.5 };
             break;
           case 'CAPSULE':
-            shape = { shape: 'CAPSULE', radius: 10, centersDistance: 15 };
+            shape = { shape: 'CAPSULE', radius: 0.4, centersDistance: 0.6 };
             break;
           case 'CONVEX_HULL':
             shape = {
               shape: 'CONVEX_HULL',
               vertices: [
-                { x: 0, y: -15 },
-                { x: 13, y: 10 },
+                { x: 0, y: -0.6 },
+                { x: 0.5, y: 0.4 },
                 { x: 0, y: 0 },
-                { x: -13, y: 10 },
-                { x: 5, y: -5 },
+                { x: -0.5, y: 0.4 },
+                { x: 0.2, y: -0.2 },
               ],
             };
             break;
@@ -422,12 +421,12 @@ export class Gg2dWorld<
               // non-convex L-shape, to demonstrate POLYGON isn't reduced to its convex hull
               shape: 'POLYGON',
               vertices: [
-                { x: -15, y: -15 },
-                { x: 0, y: -15 },
+                { x: -0.6, y: -0.6 },
+                { x: 0, y: -0.6 },
                 { x: 0, y: 0 },
-                { x: 15, y: 0 },
-                { x: 15, y: 15 },
-                { x: -15, y: 15 },
+                { x: 0.6, y: 0 },
+                { x: 0.6, y: 0.6 },
+                { x: -0.6, y: 0.6 },
               ],
             };
             break;
@@ -478,12 +477,12 @@ export class Gg2dWorld<
             throw new Error('Cannot spawn a player without a renderer - call addRenderer first');
           }
           const characterController = this.physicsWorld!.factory.createCharacterController(
-            { radius: 20, centersDistance: 40 },
+            { radius: 0.4, centersDistance: 1 },
             { position: { x: +x, y: +y } },
           );
           const character = new CharacterController2dEntity<TypeDoc>(
-            { radius: 20, centersDistance: 40 },
-            this.visualScene?.factory.createCapsule(20, 40) ?? null,
+            { radius: 0.4, centersDistance: 1 },
+            this.visualScene?.factory.createCapsule(0.4, 1) ?? null,
             characterController,
           );
           this.addEntity(character);
@@ -493,7 +492,7 @@ export class Gg2dWorld<
         },
         'usage: player_spawn X Y; Spawn a default player character (capsule body, left/right/' +
           "jump/run keys) at world-space position X Y and control the first renderer's camera " +
-          'with it. Sized in pixels, matching the "spawn" command\'s own default-shape scale.',
+          'with it. The same 0.4 m radius / 1 m centersDistance capsule as the 3D command spawns.',
         true,
       );
     }

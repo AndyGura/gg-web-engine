@@ -23,7 +23,7 @@ describe('MatterRigidBodyComponent force API', () => {
 
   const circle = (mass = 2) => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass } },
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);
@@ -82,20 +82,74 @@ describe('MatterRigidBodyComponent force API', () => {
     expect(spun.angularVelocity).toBeCloseTo(kicked.angularVelocity, 2);
   });
 
+  it('a torque impulse spins the body by L / I, with I the physical inertia in kg·m²', () => {
+    // a 1 kg disc of radius 0.2 m has I = m·r² / 2 = 0.02 kg·m² (matter-js approximates the circle
+    // by a polygon, whose inertia is a little under the disc's)
+    const body = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    body.addToWorld({ physicsWorld: world } as any);
+    body.applyTorqueImpulse(0.1);
+    expect(body.angularVelocity).toBeGreaterThan(4.5);
+    expect(body.angularVelocity).toBeLessThan(5.5);
+  });
+
+  it("inertia follows the requested mass and, for a compound body, the parts' distance from the centre", () => {
+    // matter-js computes a body's inertia for its default-density mass before applying a `mass`
+    // option, and sums a compound's part inertias without the parallel-axis term - the adapter sets
+    // both itself. Two 0.2 m boxes of 1 kg each at ±0.1 m: I = 2 · (1 · 0.08 / 12 + 1 · 0.1²) = 1/30
+    const heavy = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 2 } },
+      { position: { x: 0, y: 0 } },
+    );
+    heavy.addToWorld({ physicsWorld: world } as any);
+    heavy.applyTorqueImpulse(0.2);
+    expect(heavy.angularVelocity).toBeGreaterThan(4.5);
+    expect(heavy.angularVelocity).toBeLessThan(5.5);
+
+    const compound = factory.createRigidBody(
+      {
+        shape: {
+          shape: 'COMPOUND',
+          children: [
+            { position: { x: -0.1, y: 0 }, shape: { shape: 'BOX', dimensions: { x: 0.2, y: 0.2 } } },
+            { position: { x: 0.1, y: 0 }, shape: { shape: 'BOX', dimensions: { x: 0.2, y: 0.2 } } },
+          ],
+        },
+        body: { bodyType: 'dynamic', mass: 2 },
+      },
+      { position: { x: 0, y: 0 } },
+    );
+    compound.addToWorld({ physicsWorld: world } as any);
+    compound.applyTorqueImpulse(0.1);
+    expect(compound.angularVelocity).toBeCloseTo(3, 3);
+  });
+
+  it('angularVelocity is in rad/s: a body set spinning turns by that much per second', () => {
+    const body = circle(1);
+    body.angularVelocity = 2;
+    expect(body.angularVelocity).toBeCloseTo(2, 6);
+    for (let i = 0; i < 30; i++) {
+      world.simulate(STEP);
+    }
+    expect(body.rotation).toBeCloseTo(1, 1);
+  });
+
   it('a force at a point off the centre of mass also spins the body', () => {
     const body = circle(2);
-    body.applyForce({ x: 0, y: 10 }, { x: 1, y: 0 });
+    body.applyForce({ x: 0, y: 10 }, { x: 0.2, y: 0 });
     world.simulate(STEP);
     expect(body.linearVelocity.y).toBeGreaterThan(0);
     expect(body.angularVelocity).toBeGreaterThan(0);
     const kicked = circle(2);
-    kicked.applyImpulse({ x: 0, y: 1 }, { x: 1, y: 0 });
+    kicked.applyImpulse({ x: 0, y: 1 }, { x: 0.2, y: 0 });
     expect(kicked.angularVelocity).toBeGreaterThan(0);
   });
 
   it('a static body ignores forces and impulses', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 0.5, y: 0.5 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     body.addToWorld({ physicsWorld: world } as any);

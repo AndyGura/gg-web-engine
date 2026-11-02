@@ -1,4 +1,4 @@
-import { Pnt3 } from '@gg-web-engine/core';
+import { Pnt3, Qtrn } from '@gg-web-engine/core';
 import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
 
 describe('Rapier3dRigidBodyComponent clone', () => {
@@ -53,5 +53,26 @@ describe('Rapier3dRigidBodyComponent clone', () => {
       world.simulate(16);
     }
     expect(collided).toBe(true);
+  });
+
+  it('copies the live pose and velocity of an original that is in the world', () => {
+    const ggWorld = { physicsWorld: world } as any;
+    world.gravity = Pnt3.O;
+    const original = factory.createRigidBody({ shape: box, body: { bodyType: 'dynamic', mass: 1 } });
+    original.addToWorld(ggWorld);
+    original.position = { x: 5, y: -3, z: 2 };
+    original.rotation = Qtrn.fromAngle(Pnt3.Z, 0.7);
+    original.linearVelocity = { x: 3, y: 0, z: 0 };
+    original.angularVelocity = { x: 0, y: 0, z: 2 };
+    const copy = original.clone();
+    copy.addToWorld(ggWorld);
+    expect(copy.position.x).toBeCloseTo(5, 5);
+    expect(copy.position.y).toBeCloseTo(-3, 5);
+    expect(copy.position.z).toBeCloseTo(2, 5);
+    const q = copy.rotation;
+    const o = original.rotation;
+    expect(Math.abs(q.x * o.x + q.y * o.y + q.z * o.z + q.w * o.w)).toBeCloseTo(1, 5);
+    expect(copy.linearVelocity.x).toBeCloseTo(3, 5);
+    expect(copy.angularVelocity.z).toBeCloseTo(2, 5);
   });
 });

@@ -355,8 +355,8 @@ Status
   rendering (`describeVisual3dContract`/`describeVisual2dContract`), and every adapter runs its
   dimension's suite from `test/contract/` in CI: ammo, rapier3d, matter, rapier2d, three and pixi
   (pixi.js now loads under jest through a babel transform). They check that the same calls
-  succeed, the same events fire, and units and axes match (Z-up in 3D, pixels at 100 per meter in
-  2D), never identical trajectories. Shapes a backend can't build are declared per adapter and
+  succeed, the same events fire, and units and axes match (meters in both; Z-up in 3D, screen Y
+  down in 2D), never identical trajectories. Shapes a backend can't build are declared per adapter and
   must throw: `PLANE` on rapier3d, `CONVEX_HULL` on three. The first run found and fixed a 400 px/s
   speed cap and wrong masses in rapier2d, and broken `getBoundings`/`popChild`/`scale` in pixi.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's

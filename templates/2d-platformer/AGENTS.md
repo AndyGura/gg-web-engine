@@ -30,7 +30,8 @@ API reference: https://andygura.github.io/gg-web-engine/
 
 ## Conventions
 
-- The 2D world is y-down: a smaller `y` is higher up. Sizes, speeds and gravity are in pixels. Use the `Pnt2`
+- The 2D world is y-down: a smaller `y` is higher up. Sizes are in meters, speeds in m/s and gravity in m/s²
+  (at camera zoom 1, 1 m is 100 screen px; stroke widths and font sizes stay in pixels). Use the `Pnt2`
   constants (`Pnt2.O`, `Pnt2.X`, `Pnt2.nY`, ...) where an axis or the origin is meant.
 - Describe level content as data in `src/level.ts`; register new level classes with `world.loader.registerClass`.
 - Import engine code only from `@gg-web-engine/*`. Do not import `pixi.js` or `@dimforge/*` directly, and do not use

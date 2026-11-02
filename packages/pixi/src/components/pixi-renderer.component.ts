@@ -80,6 +80,8 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     options: Partial<RendererOptions & ApplicationOptions> = {},
   ) {
     super(scene, canvas, options);
+    // the camera's screen conversions and this renderer's drawing share the scene's one value
+    camera.pixelsPerMeter = scene.pixelsPerMeter;
     this.application = new Application();
     this.application
       .init({
@@ -180,9 +182,13 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       const originY = topLeft ? 0 : height / 2;
 
       this.applyBackground(width, height);
-      // a square around the camera position covering the whole view at any rotation: from the
-      // view's center that is half its diagonal, from a corner the whole diagonal
-      const halfExtent = Math.hypot(width, height) / (topLeft ? 1 : 2) / this.camera.zoom;
+      // screen pixels per meter of the world for this frame; the camera (possibly swapped in since
+      // construction) converts with the same value
+      this.camera.pixelsPerMeter = this.scene.pixelsPerMeter;
+      const scale = this.camera.zoom * this.scene.pixelsPerMeter;
+      // a square (in meters) around the camera position covering the whole view at any rotation:
+      // from the view's center that is half its diagonal, from a corner the whole diagonal
+      const halfExtent = Math.hypot(width, height) / (topLeft ? 1 : 2) / scale;
       for (const layer of this.scene.parallaxLayers) {
         layer.updateView(this.camera.position, { x: halfExtent, y: halfExtent });
       }
@@ -191,8 +197,8 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       for (const container of containers) {
         container.pivot.x = 0;
         container.pivot.y = 0;
-        container.scale.x = this.camera.zoom;
-        container.scale.y = this.camera.zoom;
+        container.scale.x = scale;
+        container.scale.y = scale;
         container.pivot.x = this.camera.position.x;
         container.pivot.y = this.camera.position.y;
         container.rotation = -this.camera.rotation;

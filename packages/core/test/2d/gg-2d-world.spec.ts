@@ -163,11 +163,11 @@ describe('Gg2dWorld', () => {
 
         expect(result).toMatch(/^spawned ".+" \(BOX\) at \{"x":1,"y":2\}$/);
         expect(visualScene.factory.createPrimitive).toHaveBeenCalledWith(
-          { shape: 'BOX', dimensions: { x: 25, y: 25 } },
+          { shape: 'BOX', dimensions: { x: 1, y: 1 } },
           {},
         );
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
-          shape: { shape: 'BOX', dimensions: { x: 25, y: 25 } },
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } },
           body: { bodyType: 'dynamic' },
         });
       });
@@ -177,7 +177,7 @@ describe('Gg2dWorld', () => {
         await commands.get('spawn')!('CIRCLE', '0', '0', '0');
 
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
-          shape: { shape: 'CIRCLE', radius: 13 },
+          shape: { shape: 'CIRCLE', radius: 0.5 },
           body: { bodyType: 'static' },
         });
       });
@@ -213,7 +213,7 @@ describe('Gg2dWorld', () => {
         const result = await commands.get('player_spawn')!('1', '2');
 
         expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledWith(
-          expect.objectContaining({ radius: 20, centersDistance: 40 }),
+          expect.objectContaining({ radius: 0.4, centersDistance: 1 }),
           { position: { x: 1, y: 2 } },
         );
         expect(result).toMatch(/^spawned ".+" at \{"x":1,"y":2\}, controlled by ".+"$/);

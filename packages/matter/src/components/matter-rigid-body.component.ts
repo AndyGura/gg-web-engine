@@ -11,30 +11,34 @@ import {
   Point2,
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
-import { Body, Composite, Sleeping, Vector } from 'matter-js';
+import { Body, Composite, Sleeping } from 'matter-js';
 import { buildMatterRigidBody } from '../matter-rigid-body-builder';
 import { Observable, Subject } from 'rxjs';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
-
-// FIXME why this needs to be introduced? investigate units in matter.js
-const MATTER_VELOCITY_SCALE = 0.0166667;
+import {
+  fromMatterPoint,
+  MATTER_ANGULAR_VELOCITY_SCALE,
+  MATTER_FORCE_SCALE,
+  MATTER_INERTIA_TO_SI,
+  MATTER_TORQUE_SCALE,
+  MATTER_VELOCITY_SCALE,
+  toMatterPoint,
+} from '../matter-units';
 
 /**
- * matter-js integrates `velocity += force / mass * dt²` with `dt` in milliseconds and `velocity`
- * in units per update, so a force in Newtons (units·mass/s²) becomes a matter force by `1 / 1000²`:
- * then one update of `dt` ms changes the velocity by `F / m * dt` seconds' worth, as it should.
+ * A rigid body backed by a matter-js `Body`. Every member of the engine's API is in meters,
+ * kilograms and seconds; `nativeBody` is in matter-js's native units (see `matter-units.ts` for the
+ * conversion every getter/setter here applies).
  */
-const MATTER_FORCE_SCALE = 1e-6;
-
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   private addedToWorld: boolean = false;
 
   public get position(): Point2 {
-    return Pnt2.clone(this.nativeBody.position);
+    return fromMatterPoint(this.nativeBody.position);
   }
 
   public set position(value: Point2) {
-    Body.setPosition(this.nativeBody, Vector.create(value.x, value.y));
+    Body.setPosition(this.nativeBody, toMatterPoint(value));
   }
 
   public get rotation(): number {
@@ -45,12 +49,17 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     Body.setAngle(this.nativeBody, value);
   }
 
+  /**
+   * `Body.getVelocity`/`Body.setVelocity` rather than the raw `nativeBody.velocity` field: the
+   * field holds the last step's displacement (per that step's own `dt`), the accessors normalise
+   * to matter's base step, so the m/s conversion holds at any frame rate.
+   */
   get linearVelocity(): Point2 {
-    return Pnt2.scalarMult(this.nativeBody.velocity, 1 / MATTER_VELOCITY_SCALE);
+    return Pnt2.scalarMult(Body.getVelocity(this.nativeBody), 1 / MATTER_VELOCITY_SCALE);
   }
 
   set linearVelocity(value: Point2) {
-    Body.setVelocity(this.nativeBody, Vector.create(value.x * MATTER_VELOCITY_SCALE, value.y * MATTER_VELOCITY_SCALE));
+    Body.setVelocity(this.nativeBody, Pnt2.scalarMult(value, MATTER_VELOCITY_SCALE));
   }
 
   /**
@@ -60,16 +69,20 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
    * `Engine.update` only clears the accumulators of bodies in its composite, so a body outside the
    * world ignores the call (per the contract) rather than banking every tick's force to fire at
    * once after `addToWorld`.
+   *
+   * The lever-arm torque of a `worldPoint` is added through `applyTorque` (in N·m, computed in
+   * meters) rather than by passing the point to `Body.applyForce`: force and torque convert to
+   * native units by different factors (`MATTER_FORCE_SCALE` vs `MATTER_TORQUE_SCALE`).
    */
   applyForce(force: Point2, worldPoint?: Point2): void {
     if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
-    Body.applyForce(
-      this.nativeBody,
-      worldPoint ? Vector.create(worldPoint.x, worldPoint.y) : this.nativeBody.position,
-      Vector.create(force.x * MATTER_FORCE_SCALE, force.y * MATTER_FORCE_SCALE),
-    );
+    Body.applyForce(this.nativeBody, this.nativeBody.position, Pnt2.scalarMult(force, MATTER_FORCE_SCALE));
+    if (worldPoint) {
+      const r = Pnt2.sub(worldPoint, this.position);
+      this.nativeBody.torque += (r.x * force.y - r.y * force.x) * MATTER_TORQUE_SCALE;
+    }
     this.wakeUp();
   }
 
@@ -81,7 +94,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     const mass = this.nativeBody.mass;
     this.linearVelocity = Pnt2.add(this.linearVelocity, Pnt2.scalarMult(impulse, 1 / mass));
     if (worldPoint) {
-      const r = Pnt2.sub(worldPoint, this.nativeBody.position);
+      const r = Pnt2.sub(worldPoint, this.position);
       this.applyTorqueImpulse(r.x * impulse.y - r.y * impulse.x);
     }
     this.wakeUp();
@@ -91,25 +104,31 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
-    this.nativeBody.torque += torque * MATTER_FORCE_SCALE;
+    this.nativeBody.torque += torque * MATTER_TORQUE_SCALE;
     this.wakeUp();
   }
 
-  /** Same unit convention as `linearVelocity`: an angular velocity change of `torqueImpulse / inertia` per second. */
+  /** The physical moment of inertia of this body, in kg·m². */
+  private get inertia(): number {
+    return this.nativeBody.inertia * MATTER_INERTIA_TO_SI;
+  }
+
+  /** matter-js has no impulse: the angular velocity change `torqueImpulse / inertia` (rad/s) is written directly. */
   applyTorqueImpulse(torqueImpulse: number): void {
     if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
-    this.angularVelocity = this.angularVelocity + (torqueImpulse / this.nativeBody.inertia) * MATTER_VELOCITY_SCALE;
+    this.angularVelocity = this.angularVelocity + torqueImpulse / this.inertia;
     this.wakeUp();
   }
 
+  /** rad/s; see `linearVelocity` for why the accessors, not the raw field, are used. */
   get angularVelocity(): number {
-    return this.nativeBody.angularVelocity;
+    return Body.getAngularVelocity(this.nativeBody) / MATTER_ANGULAR_VELOCITY_SCALE;
   }
 
   set angularVelocity(value: number) {
-    Body.setAngularVelocity(this.nativeBody, value);
+    Body.setAngularVelocity(this.nativeBody, value * MATTER_ANGULAR_VELOCITY_SCALE);
   }
 
   public name: string = '';
@@ -170,12 +189,17 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   protected readonly onCollisionEnd$: Subject<MatterRigidBodyComponent | null> =
     new Subject<MatterRigidBodyComponent | null>();
 
-  /** Other rigid bodies this body is currently touching (non-sensor contact only), tracked so
-   * `removeFromWorld` can tell them apart to emit `onCollisionEnd(null)` per that member's
-   * documented "other body removed while still in contact" case. Maintained exclusively via
-   * `notifyCollisionStart`/`notifyCollisionEnd`, called by `MatterWorldComponent`'s single
-   * world-wide `collisionStart`/`collisionEnd` listener - not touched directly by anything else. */
-  protected readonly currentContacts: Set<MatterRigidBodyComponent> = new Set();
+  /** Other rigid bodies this body is currently touching (non-sensor contact only), each mapped to
+   * how many native part pairs of the two bodies touch right now. matter-js pairs *parts*, so a
+   * `COMPOUND` body touching another on two parts gets two native `collisionStart`s, and a
+   * `collisionEnd` whenever one part lets go while the other still touches. `onCollisionStart`
+   * fires only when the count goes from 0 to 1 and `onCollisionEnd` only when it returns to 0: one
+   * start and one end per body pair, as the contract says. Also what lets `removeFromWorld` emit
+   * `onCollisionEnd(null)` on every partner per that member's documented "other body removed while
+   * still in contact" case. Maintained exclusively via `notifyCollisionStart`/`notifyCollisionEnd`,
+   * called by `MatterWorldComponent`'s single world-wide `collisionStart`/`collisionEnd` listener -
+   * not touched directly by anything else. */
+  protected readonly collidingWith: Map<MatterRigidBodyComponent, number> = new Map();
 
   constructor(
     public nativeBody: Body,
@@ -195,16 +219,58 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   /** @internal called by `MatterWorldComponent`'s global `collisionStart` listener - not part of
    * this component's public API surface. */
   notifyCollisionStart(collisionEvent: CollisionEvent<Point2, MatterRigidBodyComponent>): void {
-    this.currentContacts.add(collisionEvent.otherBody);
-    this.onCollisionStart$.next(collisionEvent);
+    if (this.trackCollisionStart(collisionEvent.otherBody)) {
+      this.emitCollisionStart(collisionEvent);
+    }
+  }
+
+  /**
+   * First half of `notifyCollisionStart`, the bookkeeping: counts one more touching pair with
+   * `otherBody` and tells whether that was the first (an `onCollisionStart` is due). The world's
+   * dispatch counts both sides of a pair before it emits to either, so a subscriber of the first
+   * side that removes the second finds the second's own `collidingWith` already holding the first
+   * and `removeFromWorld` tells the first that the contact ended.
+   */
+  public trackCollisionStart(otherBody: MatterRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody) ?? 0;
+    this.collidingWith.set(otherBody, touching + 1);
+    return touching === 0;
+  }
+
+  /** Second half of `notifyCollisionStart`: emits `onCollisionStart`, after `trackCollisionStart` said to. */
+  public emitCollisionStart(event: CollisionEvent<Point2, MatterRigidBodyComponent>): void {
+    this.onCollisionStart$.next(event);
   }
 
   /** @internal called by `MatterWorldComponent`'s global `collisionEnd` listener - not part of
    * this component's public API surface. */
   notifyCollisionEnd(otherBody: MatterRigidBodyComponent | null): void {
-    if (otherBody) {
-      this.currentContacts.delete(otherBody);
+    if (!otherBody || this.trackCollisionEnd(otherBody)) {
+      this.emitCollisionEnd(otherBody);
     }
+  }
+
+  /**
+   * First half of `notifyCollisionEnd` for a partner still in the world, the bookkeeping: one fewer
+   * touching pair with `otherBody`; tells whether that was the last (an `onCollisionEnd` is due).
+   * `false` as well for a partner with no count (no start was reported for the pair - it began
+   * before a re-add, say).
+   */
+  public trackCollisionEnd(otherBody: MatterRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody);
+    if (touching === undefined) {
+      return false;
+    }
+    if (touching > 1) {
+      this.collidingWith.set(otherBody, touching - 1);
+      return false;
+    }
+    this.collidingWith.delete(otherBody);
+    return true;
+  }
+
+  /** Second half of `notifyCollisionEnd`: emits `onCollisionEnd` (`null` for a removed partner). */
+  public emitCollisionEnd(otherBody: MatterRigidBodyComponent | null): void {
     this.onCollisionEnd$.next(otherBody);
   }
 
@@ -278,11 +344,11 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     // this body is leaving the world while still touching others - per `onCollisionEnd`'s own
     // contract, each of those bodies sees `null` (no further contact geometry is available), not a
     // dangling reference to a body no longer in the world.
-    for (const other of this.currentContacts) {
+    for (const other of this.collidingWith.keys()) {
+      other.collidingWith.delete(this);
       other.notifyCollisionEnd(null);
-      other.currentContacts.delete(this);
     }
-    this.currentContacts.clear();
+    this.collidingWith.clear();
     if (dispose) {
       this.dispose();
     }

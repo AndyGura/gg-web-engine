@@ -182,8 +182,8 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
     } else {
       bodyDesc = RigidBodyDesc.dynamic();
       // Mass goes on the collider(s), not `RigidBodyDesc.mass`: that field is extra mass added on
-      // top of what the colliders derive from their area at density 1 (a 20 px circle alone weighs
-      // ~1257 then), and it adds no rotational inertia. `ColliderDesc.setMass` makes the body weigh
+      // top of what the colliders derive from their area at density 1 (a 1 m circle alone weighs
+      // π kg then), and it adds no rotational inertia. `ColliderDesc.setMass` makes the body weigh
       // exactly `mass`, with inertia derived from the shape at that mass. Split evenly across the
       // sub-colliders of a `COMPOUND` shape so the total is `mass`.
       const mass = options.mass || 1;

@@ -269,29 +269,59 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
    * a subclass of this one; there's nothing else in this package it's meant to be called from.
    */
   public notifyCollisionStart(event: CollisionEvent<Point3, Rapier3dRigidBodyComponent>): void {
-    const touching = this.collidingWith.get(event.otherBody) ?? 0;
-    this.collidingWith.set(event.otherBody, touching + 1);
-    if (touching === 0) {
-      this.onCollisionStart$.next(event);
+    if (this.trackCollisionStart(event.otherBody)) {
+      this.emitCollisionStart(event);
     }
+  }
+
+  /**
+   * First half of `notifyCollisionStart`, the bookkeeping: counts one more touching pair with
+   * `otherBody` and tells whether that was the first (an `onCollisionStart` is due). The world's
+   * dispatch counts both sides of a pair before it emits to either, so a subscriber of the first
+   * side that removes the second finds the second's own `collidingWith` already holding the first
+   * and `removeFromWorld` tells the first that the contact ended.
+   */
+  public trackCollisionStart(otherBody: Rapier3dRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody) ?? 0;
+    this.collidingWith.set(otherBody, touching + 1);
+    return touching === 0;
+  }
+
+  /** Second half of `notifyCollisionStart`: emits `onCollisionStart`, after `trackCollisionStart` said to. */
+  public emitCollisionStart(event: CollisionEvent<Point3, Rapier3dRigidBodyComponent>): void {
+    this.onCollisionStart$.next(event);
   }
 
   /** See `notifyCollisionStart`'s doc. `otherBody: null` signals the partner was removed from the
    *  world while still in contact, per `onCollisionEnd`'s doc. A stop of one collider pair while
    *  another pair of the same two bodies still touches emits nothing (see `collidingWith`). */
   public notifyCollisionEnd(otherBody: Rapier3dRigidBodyComponent | null): void {
-    if (otherBody) {
-      const touching = this.collidingWith.get(otherBody);
-      if (touching === undefined) {
-        // no start was reported for this pair (it began before a re-add, say)
-        return;
-      }
-      if (touching > 1) {
-        this.collidingWith.set(otherBody, touching - 1);
-        return;
-      }
-      this.collidingWith.delete(otherBody);
+    if (!otherBody || this.trackCollisionEnd(otherBody)) {
+      this.emitCollisionEnd(otherBody);
     }
+  }
+
+  /**
+   * First half of `notifyCollisionEnd` for a partner still in the world, the bookkeeping: one fewer
+   * touching pair with `otherBody`; tells whether that was the last (an `onCollisionEnd` is due).
+   * `false` as well for a partner with no count (no start was reported for the pair - it began
+   * before a re-add, say).
+   */
+  public trackCollisionEnd(otherBody: Rapier3dRigidBodyComponent): boolean {
+    const touching = this.collidingWith.get(otherBody);
+    if (touching === undefined) {
+      return false;
+    }
+    if (touching > 1) {
+      this.collidingWith.set(otherBody, touching - 1);
+      return false;
+    }
+    this.collidingWith.delete(otherBody);
+    return true;
+  }
+
+  /** Second half of `notifyCollisionEnd`: emits `onCollisionEnd` (`null` for a removed partner). */
+  public emitCollisionEnd(otherBody: Rapier3dRigidBodyComponent | null): void {
     this.onCollisionEnd$.next(otherBody);
   }
 
@@ -344,18 +374,25 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     });
     const bd = new RigidBodyDesc(this._bodyDescr.status);
     bd.mass = this._bodyDescr.mass;
-    bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
-    bd.setRotation({ ...this._bodyDescr.rotation });
     // `ccdEnabled` is a plain field on `RigidBodyDesc` (not copied by the constructor above), not
     // just a constructor-only `setCcdEnabled` call - carry it over explicitly so `clone()` doesn't
     // silently drop CCD off the copy.
     bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
     bd.setCanSleep(this._bodyDescr.canSleep);
-    // `removeFromWorld` stores the live velocities on `_bodyDescr` so a re-added body resumes its
-    // motion; a copy built from an out-of-world body must start with the same velocities, or the
-    // clone would spawn at rest where the original re-adds in motion.
-    bd.setLinvel(this._bodyDescr.linvel.x, this._bodyDescr.linvel.y, this._bodyDescr.linvel.z);
-    bd.setAngvel(new Vector3(this._bodyDescr.angvel.x, this._bodyDescr.angvel.y, this._bodyDescr.angvel.z));
+    // The copy starts where the original is right now, moving as it moves. `_bodyDescr` only holds
+    // the live pose and velocities while the body is out of the world (`removeFromWorld` stores
+    // them there, `addToWorld` rebuilds from them); while it is in the world the native body is
+    // the one source of its state, so a clone of an in-world body reads it, or it would spawn at
+    // the original's spawn pose, at rest.
+    const native = this._nativeBody;
+    const t = native ? native.translation() : this._bodyDescr.translation;
+    const r = native ? native.rotation() : this._bodyDescr.rotation;
+    const lv = native ? native.linvel() : this._bodyDescr.linvel;
+    const av = native ? native.angvel() : this._bodyDescr.angvel;
+    bd.setTranslation(t.x, t.y, t.z);
+    bd.setRotation(new Quaternion(r.x, r.y, r.z, r.w));
+    bd.setLinvel(lv.x, lv.y, lv.z);
+    bd.setAngvel(new Vector3(av.x, av.y, av.z));
     return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 

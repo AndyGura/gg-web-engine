@@ -141,8 +141,8 @@ await lobby.writeResult(round, racerPeerId, { time }); // first write wins
 
 ### Units
 Distances in the defaults (correction deadzone/snap distance, the 10 m ownership floor, the contact
-impulse threshold) are scaled by `unitScale`, world units per meter: 1 for `Network3dController`,
-100 for `Network2dController` (2D physics adapters work in pixels).
+impulse threshold) are scaled by `unitScale`, world units per meter: 1 by default, right for every
+2D and 3D world of this engine (both measure in meters).
 
 ### Transports
 - `WebRtcMeshTransport` - one `RTCPeerConnection` per pair, a reliable ordered and an unreliable

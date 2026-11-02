@@ -1,4 +1,4 @@
-import { IAnimatedDisplayObject2dComponent, PlayAnimation2dOptions, warnOnce } from '@gg-web-engine/core';
+import { IAnimatedDisplayObject2dComponent, PlayAnimation2dOptions, Point2, warnOnce } from '@gg-web-engine/core';
 import { AnimatedSprite, Ticker } from 'pixi.js';
 import { PixiDisplayObjectComponent } from './pixi-display-object.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
@@ -37,11 +37,19 @@ export class PixiAnimatedSpriteComponent
     return this.nativeSprite as AnimatedSprite;
   }
 
+  /**
+   * @param sprite - The native sprite, its scale the base scale (one over the scene's
+   * `pixelsPerMeter`, so a frame's natural size is its texels over that)
+   * @param clips - The named clips
+   * @param baseScale - The base scale `scale` is relative to, when `sprite`'s own scale already
+   * carries a `scale` set on the source (a clone); the sprite's current scale otherwise
+   */
   constructor(
     sprite: AnimatedSprite,
     private readonly clips: Record<string, PixiAnimationClip>,
+    baseScale?: Point2,
   ) {
-    super(sprite);
+    super(sprite, undefined, baseScale);
     this.animationNames = Object.keys(clips);
   }
 
@@ -80,6 +88,6 @@ export class PixiAnimatedSpriteComponent
   }
 
   clone(): PixiAnimatedSpriteComponent {
-    return new PixiAnimatedSpriteComponent(cloneContainer(this.animatedSprite), this.clips);
+    return new PixiAnimatedSpriteComponent(cloneContainer(this.animatedSprite), this.clips, this.baseScale);
   }
 }

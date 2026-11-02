@@ -13,7 +13,9 @@ import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
  * pixi.js implementation of `IParallaxLayer2dComponent`: a `TilingSprite` living in the scene's
  * world container (so it sorts by `zIndex` against everything else), resized and re-offset by each
  * renderer, right before it draws, to cover that renderer's view. The engine never moves it through
- * `position`; use `offset` instead.
+ * `position`; use `offset` instead (meters). The sprite is laid out in pixel space and carries a
+ * base scale of one over the scene's `pixelsPerMeter`, so the texture's natural size is its texels
+ * over that, multiplied by the options' `scale`.
  */
 export class PixiParallaxLayerComponent
   extends PixiDisplayObjectComponent
@@ -22,9 +24,15 @@ export class PixiParallaxLayerComponent
   public readonly nativeSprite!: TilingSprite;
   private readonly options: ResolvedParallaxLayer2dOpts<Texture>;
 
-  constructor(options: ParallaxLayer2dOpts<Texture>) {
+  /** @param pixelsPerMeter - The scene's texel density, see `PixiSceneComponent.pixelsPerMeter`. */
+  constructor(
+    options: ParallaxLayer2dOpts<Texture>,
+    public readonly pixelsPerMeter: number = 100,
+  ) {
     const resolved = resolveParallaxLayer2dOpts(options);
-    super(new TilingSprite({ texture: resolved.texture }));
+    const sprite = new TilingSprite({ texture: resolved.texture });
+    sprite.scale.x = sprite.scale.y = 1 / pixelsPerMeter;
+    super(sprite);
     this.options = resolved;
     this.nativeSprite.zIndex = resolved.zIndex;
     this.nativeSprite.tileScale.set(resolved.scale.x, resolved.scale.y);
@@ -51,12 +59,15 @@ export class PixiParallaxLayerComponent
   }
 
   /**
-   * Places the layer for one view: `center` is the camera position, `halfExtent` half the size of
-   * the world-space area the view can show (already accounting for zoom and rotation).
+   * Places the layer for one view: `center` is the camera position and `halfExtent` half the size
+   * of the world-space area the view can show (already accounting for zoom and rotation), both in
+   * meters. The tiling itself is computed in the sprite's pixel space, where a tile is the
+   * texture's size in texels times the options' `scale`.
    */
   public updateView(center: Point2, halfExtent: Point2): void {
     const { parallax, offset, scale, repeat } = this.options;
     const texture = this.nativeSprite.texture;
+    const ppm = this.pixelsPerMeter;
     const axis = (c: number, half: number, p: number, o: number, tileSize: number, repeats: boolean) => {
       // where the texture's origin sits in the world for this camera position
       const origin = o + c * (1 - p);
@@ -68,22 +79,23 @@ export class PixiParallaxLayerComponent
       return { start, size: half * 2, tile };
     };
     const x = axis(
-      center.x,
-      halfExtent.x,
+      center.x * ppm,
+      halfExtent.x * ppm,
       parallax.x,
-      offset.x,
+      offset.x * ppm,
       texture.width * scale.x,
       repeat === 'x' || repeat === 'both',
     );
     const y = axis(
-      center.y,
-      halfExtent.y,
+      center.y * ppm,
+      halfExtent.y * ppm,
       parallax.y,
-      offset.y,
+      offset.y * ppm,
       texture.height * scale.y,
       repeat === 'y' || repeat === 'both',
     );
-    this.nativeSprite.position.set(x.start, y.start);
+    // the sprite sits in the world container (meters), its content in its own pixel space
+    this.nativeSprite.position.set(x.start / ppm, y.start / ppm);
     this.nativeSprite.width = x.size;
     this.nativeSprite.height = y.size;
     this.nativeSprite.tilePosition.set(x.tile, y.tile);
@@ -100,7 +112,7 @@ export class PixiParallaxLayerComponent
   }
 
   clone(): PixiParallaxLayerComponent {
-    return new PixiParallaxLayerComponent(this.layerOptions);
+    return new PixiParallaxLayerComponent(this.layerOptions, this.pixelsPerMeter);
   }
 
   dispose(): void {

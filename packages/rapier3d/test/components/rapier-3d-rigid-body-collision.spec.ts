@@ -182,4 +182,46 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
     expect(startCompleted).toBe(true);
     expect(endCompleted).toBe(true);
   });
+
+  it('delivers collision events after the step, so a subscriber may remove the other body', () => {
+    const ggWorld = { physicsWorld: world } as any;
+    world.gravity = { x: 0, y: 0, z: 0 };
+    const floor = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 5, y: 5, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
+      { position: { x: 0, y: 0, z: 0 } },
+    );
+    floor.addToWorld(ggWorld);
+    const ball = factory.createRigidBody(
+      { shape: { shape: 'SPHERE', radius: 0.1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0, z: 2 } },
+    );
+    ball.addToWorld(ggWorld);
+    ball.linearVelocity = { x: 0, y: 0, z: -1 };
+
+    let ballStarts = 0;
+    const floorStarts: Rapier3dRigidBodyComponent[] = [];
+    const floorEnds: (Rapier3dRigidBodyComponent | null)[] = [];
+    // a pickup: the floor removes whatever lands on it, from inside the event
+    floor.onCollisionStart.subscribe(e => {
+      floorStarts.push(e.otherBody);
+      e.otherBody.removeFromWorld(ggWorld);
+    });
+    floor.onCollisionEnd.subscribe(other => floorEnds.push(other));
+    ball.onCollisionStart.subscribe(() => ballStarts++);
+
+    for (let i = 0; i < 300 && floorStarts.length === 0; i++) {
+      world.simulate(16);
+    }
+    expect(floorStarts).toEqual([ball]);
+    // the ball's own start is dropped: it left the world before its turn
+    expect(ballStarts).toBe(0);
+    // the partner heard the contact end through `removeFromWorld`, exactly once, with `null`
+    expect(floorEnds).toEqual([null]);
+    expect(ball.nativeBody).toBeNull();
+    for (let i = 0; i < 10; i++) {
+      world.simulate(16);
+    }
+    expect(floorStarts.length).toBe(1);
+    expect(floorEnds.length).toBe(1);
+  });
 });

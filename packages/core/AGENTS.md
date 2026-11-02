@@ -620,7 +620,7 @@ following; a path fixed in space is written in global coordinates and mapped wit
   replace on `m.vertexShader`, whose text is not a stable API.
 - **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
   returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
-  3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
+  3D, on `Point2` vectors: sizes, speeds and `gravity` in meters (`{ x: 0, y: 9 }` pulls down
   in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
   `attachTo` any 2D entity, `anchor` as in 3D (the image's top edge towards `-y`). Blend modes are `normal`, `additive` and `multiply` only; the entity's
   component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
@@ -927,9 +927,11 @@ class GameScreen extends Screen {
 
 A HUD or menu drawn with pixi over a 3D (or another 2D) game is a world of its own: a `Gg2dWorld`
 with the pixi scene and no physics world (physics is optional), a renderer with `transparent: true`
-on a second canvas stacked over the game's, and a camera whose `origin` is `'top-left'`, so world
-coordinates are canvas pixels with `(0, 0)` at the top-left corner and y down. It runs on its own
-clock, so pausing the game world leaves the UI running.
+on a second canvas stacked over the game's, a scene created with `pixelsPerMeter: 1` (one world
+unit per screen pixel at zoom 1, instead of the default 100 that sizes game sprites), and a camera
+whose `origin` is `'top-left'`, so world coordinates are canvas pixels with `(0, 0)` at the
+top-left corner and y down. It runs on its own clock, so pausing the game world leaves the UI
+running.
 
 ```typescript
 import { Entity2d, Gg2dWorld } from '@gg-web-engine/core';
@@ -937,7 +939,7 @@ import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Container, Sprite } from 'pixi.js';
 import { firstValueFrom } from 'rxjs';
 
-const ui: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent() });
+const ui: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent({ pixelsPerMeter: 1 }) });
 await ui.init();
 const camera = ui.visualScene.factory.createCamera();
 camera.origin = 'top-left';
@@ -1069,7 +1071,7 @@ Rules of thumb:
   Quantise what you send (`quantizeNetPosition`/`quantizeNetVelocity`/`quantizeNetRotation`).
   With the default identity frame (and in 2D) local is global, so this costs nothing until a frame
   is set.
-- In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
+- 2D worlds are meters too, so `Network2dController` uses the same defaults as 3D (`unitScale` 1).
 
 ## Framework integration
 
@@ -1177,7 +1179,9 @@ entity commands that need no game-rules knowledge**:
 argument *shape* differs by dimension (mirroring how `addPrimitiveRigidBody` and its position/
 rotation args already differ) — same command names, different parsing:
 
-- `gravity` — 3D takes a `z` scalar or a full `x y z` vector; 2D takes a `y` scalar or `x y`.
+- `gravity` — 3D takes a `z` scalar or a full `x y z` vector (default `0 0 -9.82`); 2D takes a `y`
+  scalar or `x y` (default `0 9.82`, screen Y down); m/s² in both. Rigid bodies and
+  `CharacterController(2d|3d)Entity` characters without a `gravity` option follow the new value at once.
 - `set_position NAME X Y [Z]` — teleport any named entity that has a `.position` (3D takes
   `X Y Z`, 2D takes `X Y`). This is the generic "teleport" command — it works on *any* named
   entity, not just a "player", since it goes through the same `Entity3d`/`Entity2d` position
@@ -1194,15 +1198,17 @@ rotation args already differ) — same command names, different parsing:
   to spawn one. `bodyType` defaults to `dynamic` (falls under gravity);
   numeric shorthand: `0`=static, `2`=kinematic_pos, `3`=kinematic_vel.
 
-3D worlds also register two commands for a default controllable character, gated on a physics
-world and at least one renderer already being present:
+Both worlds also register `player_spawn` for a default controllable character, gated on a physics
+world and at least one renderer already being present; 3D adds `player_mode`:
 
-- `player_spawn X Y Z` — spawn a default player character (capsule body, WASD/arrows movement,
-  mouse-look) at world-space position `X Y Z` (Z-up, so `Z` is height off the ground), controlling
-  the first renderer's camera. Prints the spawned controller entity's name (the "controlled by"
-  part of the output) — that name is what `player_mode` below needs.
-- `player_mode NAME first-person|third-person` — switch the named `PlayerCharacterController`
-  entity (`NAME` from `player_spawn`'s output) between first- and third-person view.
+- `player_spawn X Y Z` (3D) / `player_spawn X Y` (2D) — spawn a default player character (a 0.4 m
+  radius / 1 m centersDistance capsule, WASD/arrows movement, mouse-look in 3D) at that world-space
+  position (Z-up in 3D, so `Z` is height off the ground), controlling the first renderer's camera.
+  Prints the spawned controller entity's name (the "controlled by" part of the output) — that name
+  is what `player_mode` below needs.
+- `player_mode NAME first-person|third-person` (3D only) — switch the named
+  `PlayerCharacterController` entity (`NAME` from `player_spawn`'s output) between first- and
+  third-person view.
 
 Pausing is already covered by `timescale 0` (and the underlying `world.pauseWorld()`/
 `resumeWorld()` methods) — there's no separate `pause`/`resume` command. `timescale 0` + `step`

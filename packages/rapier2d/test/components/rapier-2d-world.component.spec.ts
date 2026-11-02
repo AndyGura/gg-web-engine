@@ -21,41 +21,41 @@ describe('Rapier2dWorldComponent', () => {
     it('should simulate inertial motion of rigid body', () => {
       const circle = world.factory.createRigidBody(
         {
-          shape: { shape: 'CIRCLE', radius: 100 },
+          shape: { shape: 'CIRCLE', radius: 1 },
           body: { bodyType: 'dynamic', mass: 5 },
         },
-        { position: { x: -500, y: 0 } },
+        { position: { x: -5, y: 0 } },
       );
       circle.addToWorld({ physicsWorld: world } as any);
-      circle.linearVelocity = { x: 100, y: 0 };
+      circle.linearVelocity = { x: 1, y: 0 };
 
       // simulate for 6 seconds
       for (let i = 0; i < 100; i++) {
         world.simulate(60);
       }
-      expect(circle.position.x).toBeCloseTo(100, 0);
+      expect(circle.position.x).toBeCloseTo(1, 1);
     });
 
     it('should simulate collision of two rigid bodies', () => {
       const circle0 = world.factory.createRigidBody(
         {
-          shape: { shape: 'CIRCLE', radius: 100 },
+          shape: { shape: 'CIRCLE', radius: 1 },
           body: { bodyType: 'dynamic', mass: 5 },
         },
-        { position: { x: -500, y: 0 } },
+        { position: { x: -5, y: 0 } },
       );
       circle0.addToWorld({ physicsWorld: world } as any);
-      circle0.linearVelocity = { x: 100, y: 0 };
+      circle0.linearVelocity = { x: 1, y: 0 };
 
       const circle1 = world.factory.createRigidBody(
         {
-          shape: { shape: 'CIRCLE', radius: 100 },
+          shape: { shape: 'CIRCLE', radius: 1 },
           body: { bodyType: 'dynamic', mass: 5 },
         },
-        { position: { x: 500, y: 0 } },
+        { position: { x: 5, y: 0 } },
       );
       circle1.addToWorld({ physicsWorld: world } as any);
-      circle1.linearVelocity = { x: -100, y: 0 };
+      circle1.linearVelocity = { x: -1, y: 0 };
 
       // simulate for 6 seconds
       for (let i = 0; i < 100; i++) {
@@ -69,33 +69,33 @@ describe('Rapier2dWorldComponent', () => {
       const cg0 = world.registerCollisionGroup();
       const circle0 = world.factory.createRigidBody(
         {
-          shape: { shape: 'CIRCLE', radius: 100 },
+          shape: { shape: 'CIRCLE', radius: 1 },
           body: { bodyType: 'dynamic', mass: 5 },
         },
-        { position: { x: -500, y: 0 } },
+        { position: { x: -5, y: 0 } },
       );
       circle0.addToWorld({ physicsWorld: world } as any);
-      circle0.linearVelocity = { x: 100, y: 0 };
+      circle0.linearVelocity = { x: 1, y: 0 };
       circle0.ownCollisionGroups = circle0.interactWithCollisionGroups = [cg0];
 
       const cg1 = world.registerCollisionGroup();
       const circle1 = world.factory.createRigidBody(
         {
-          shape: { shape: 'CIRCLE', radius: 100 },
+          shape: { shape: 'CIRCLE', radius: 1 },
           body: { bodyType: 'dynamic', mass: 5 },
         },
-        { position: { x: 500, y: 0 } },
+        { position: { x: 5, y: 0 } },
       );
       circle1.addToWorld({ physicsWorld: world } as any);
-      circle1.linearVelocity = { x: -100, y: 0 };
+      circle1.linearVelocity = { x: -1, y: 0 };
       circle1.ownCollisionGroups = circle1.interactWithCollisionGroups = [cg1];
 
       // simulate for 6 seconds
       for (let i = 0; i < 100; i++) {
         world.simulate(60);
       }
-      expect(circle0.position.x).toBeCloseTo(100, 0);
-      expect(circle1.position.x).toBeCloseTo(-100, 0);
+      expect(circle0.position.x).toBeCloseTo(1, 1);
+      expect(circle1.position.x).toBeCloseTo(-1, 1);
     });
   });
 
@@ -106,7 +106,7 @@ describe('Rapier2dWorldComponent', () => {
         'transform/velocity write passing wakeUp=false was silently never simulated)',
       () => {
         const circle = world.factory.createRigidBody(
-          { shape: { shape: 'CIRCLE', radius: 100 }, body: { bodyType: 'dynamic', mass: 5 } },
+          { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 5 } },
           { position: { x: 0, y: 0 } },
         );
         circle.addToWorld({ physicsWorld: world } as any);
@@ -118,11 +118,11 @@ describe('Rapier2dWorldComponent', () => {
         }
         expect((circle as any).nativeBody.isSleeping()).toBe(true);
 
-        circle.linearVelocity = { x: 100, y: 0 };
+        circle.linearVelocity = { x: 1, y: 0 };
         for (let i = 0; i < 60; i++) {
           world.simulate(60);
         }
-        expect(circle.position.x).toBeGreaterThan(50);
+        expect(circle.position.x).toBeGreaterThan(0.5);
       },
     );
   });
@@ -361,7 +361,7 @@ describe('Rapier2dWorldComponent', () => {
       // obstruct a raycast - a world-enclosing trigger (a map-bounds kill volume) would otherwise
       // be "hit" at ~0 distance by every ray cast anywhere inside it. raycast() passes
       // QueryFilterFlags.EXCLUDE_SENSORS to castRay for exactly this (see its own doc).
-      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 100, y: 100 } });
+      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
       trigger.addToWorld({ physicsWorld: world } as any);
       // a freshly-created collider only enters the broad-phase once the world has stepped
       world.simulate(1);

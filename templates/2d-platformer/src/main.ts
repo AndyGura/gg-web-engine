@@ -28,12 +28,16 @@ const world: TypedGg2dWorld<PixiGgWorld, Rapier2dGgWorld> = new Gg2dWorld({
   physicsWorld: new Rapier2dWorldComponent(),
 });
 await world.init();
+// A snappier fall than the default 9.82 m/s²: the player, and anything else that falls, follows the
+// world's gravity (meters and seconds, as in 3D).
+world.physicsWorld.gravity = { x: 0, y: 20 };
 
-// 2. A camera rendering into the page's canvas, zoomed so about 700 px of the level fit vertically.
+// 2. A camera rendering into the page's canvas, zoomed so about 7 m of the level fit vertically
+//    (`visualScene.pixelsPerMeter` screen pixels are one meter at zoom 1).
 const canvas = document.getElementById('gg') as HTMLCanvasElement;
 const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
 renderer.rendererSize$.subscribe(size => {
-  if (size) renderer.camera.zoom = size.y / 700;
+  if (size) renderer.camera.zoom = size.y / (7 * world.visualScene.pixelsPerMeter);
 });
 
 // 3. The level (src/level.ts). App-defined classes it uses must be registered first.
@@ -42,7 +46,7 @@ const levelEntity = await world.loader.loadLevel(level, 'Level', { onProgress: p
 
 // 4. The player: the level built the character; attach keyboard control and a following camera.
 const player = levelEntity.getChildEntityByName<CharacterController2dEntity>('Player');
-world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 120 }));
+world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 1.2 }));
 world.addEntity(new MobileControls()); // on-screen buttons on touch devices; nothing on desktop
 
 // 5. Falling into the kill zone puts the player back at the start.

@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 
 export interface ShapeSpawnerSettings {
   intervalSeconds?: number;
+  /** where new shapes appear, in meters (the 2D world's unit, y down) */
   area: { min: Point2; max: Point2 };
 }
 
@@ -22,14 +23,14 @@ export class ShapeSpawner extends IEntity {
       const r = Math.random();
       if (r < 1 / 6) {
         item = world.addPrimitiveRigidBody({
-          shape: { shape: 'BOX', dimensions: { x: 25, y: 25 } },
+          shape: { shape: 'BOX', dimensions: { x: 0.25, y: 0.25 } },
           body: { mass: 1 },
         });
       } else if (r < 2 / 6) {
-        item = world.addPrimitiveRigidBody({ shape: { shape: 'CIRCLE', radius: 13 }, body: { mass: 1 } });
+        item = world.addPrimitiveRigidBody({ shape: { shape: 'CIRCLE', radius: 0.13 }, body: { mass: 1 } });
       } else if (r < 3 / 6) {
         item = world.addPrimitiveRigidBody({
-          shape: { shape: 'CAPSULE', radius: 10, centersDistance: 15 },
+          shape: { shape: 'CAPSULE', radius: 0.1, centersDistance: 0.15 },
           body: { mass: 1 },
         });
       } else if (r < 4 / 6) {
@@ -37,11 +38,11 @@ export class ShapeSpawner extends IEntity {
           shape: {
             shape: 'CONVEX_HULL',
             vertices: [
-              { x: 0, y: -15 },
-              { x: 13, y: 10 },
+              { x: 0, y: -0.15 },
+              { x: 0.13, y: 0.1 },
               { x: 0, y: 0 },
-              { x: -13, y: 10 },
-              { x: 5, y: -5 },
+              { x: -0.13, y: 0.1 },
+              { x: 0.05, y: -0.05 },
             ],
           },
           body: { mass: 1 },
@@ -53,12 +54,12 @@ export class ShapeSpawner extends IEntity {
             // reduced to their convex hull
             shape: 'POLYGON',
             vertices: [
-              { x: -15, y: -15 },
-              { x: 0, y: -15 },
+              { x: -0.15, y: -0.15 },
+              { x: 0, y: -0.15 },
               { x: 0, y: 0 },
-              { x: 15, y: 0 },
-              { x: 15, y: 15 },
-              { x: -15, y: 15 },
+              { x: 0.15, y: 0 },
+              { x: 0.15, y: 0.15 },
+              { x: -0.15, y: 0.15 },
             ],
           },
           body: { mass: 1 },
@@ -70,9 +71,9 @@ export class ShapeSpawner extends IEntity {
             // from several offset child shapes behaves as one solid piece
             shape: 'COMPOUND',
             children: [
-              { position: { x: -15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
-              { position: { x: 15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
-              { shape: { shape: 'BOX', dimensions: { x: 30, y: 4 } } },
+              { position: { x: -0.15, y: 0 }, shape: { shape: 'CIRCLE', radius: 0.08 } },
+              { position: { x: 0.15, y: 0 }, shape: { shape: 'CIRCLE', radius: 0.08 } },
+              { shape: { shape: 'BOX', dimensions: { x: 0.3, y: 0.04 } } },
             ],
           },
           body: { mass: 1 },

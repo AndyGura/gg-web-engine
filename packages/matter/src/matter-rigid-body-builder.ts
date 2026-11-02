@@ -7,9 +7,10 @@ import {
   Shape2DDescriptor,
   warnOnce,
 } from '@gg-web-engine/core';
-import { Bodies, Body, Common, IChamferableBodyDefinition, Vector } from 'matter-js';
+import { Bodies, Body, Common, IChamferableBodyDefinition, Vector, Vertices } from 'matter-js';
 import * as decomp from 'poly-decomp';
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
+import { MATTER_INERTIA_SCALE, toMatterLength, toMatterPoint } from './matter-units';
 
 /**
  * `Bodies.fromVertices` (used for the `POLYGON` shape below) only actually decomposes a concave
@@ -48,54 +49,9 @@ export function buildMatterRigidBody(
     rotation?: number;
   },
 ): MatterRigidBodyComponent {
-  let nativeBody: Body | null = null;
-  switch (descriptor.shape.shape) {
-    case 'BOX':
-      nativeBody = Bodies.rectangle(
-        0,
-        0,
-        descriptor.shape.dimensions.x,
-        descriptor.shape.dimensions.y,
-        transformOptions(descriptor.body),
-      );
-      break;
-    case 'CIRCLE':
-      nativeBody = Bodies.circle(0, 0, descriptor.shape.radius, transformOptions(descriptor.body));
-      break;
-    case 'CAPSULE':
-      nativeBody = Bodies.rectangle(
-        0,
-        0,
-        descriptor.shape.radius * 2,
-        descriptor.shape.centersDistance + descriptor.shape.radius * 2,
-        {
-          ...transformOptions(descriptor.body),
-          chamfer: {
-            radius: descriptor.shape.radius,
-          },
-        },
-      );
-      break;
-    case 'CONVEX_HULL':
-      nativeBody = Bodies.fromVertices(
-        0,
-        0,
-        [Pnt2.hull(descriptor.shape.vertices).map(v => Vector.create(v.x, v.y))],
-        transformOptions(descriptor.body),
-      );
-      break;
-    case 'POLYGON':
-      nativeBody = Bodies.fromVertices(
-        0,
-        0,
-        [descriptor.shape.vertices.map(v => Vector.create(v.x, v.y))],
-        transformOptions(descriptor.body),
-      );
-      break;
-    case 'COMPOUND':
-      nativeBody = createShapeBody(descriptor.shape, transformOptions(descriptor.body));
-      break;
-  }
+  // every shape goes through `createShapeParts`, which converts the descriptor's meters into
+  // matter-js's native units (see `matter-units.ts`); a single-part shape is used as the body itself
+  const nativeBody: Body | null = createShapeBody(descriptor.shape, transformOptions(descriptor.body));
   if (!nativeBody) {
     throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
   }
@@ -107,9 +63,12 @@ export function buildMatterRigidBody(
   // later raw field write changes what `.position` *reports* without moving the real collision
   // geometry at all, permanently desyncing the two until something else (ordinary simulation,
   // which this character-controller-adjacent code path can't rely on) happens to correct it.
-  Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
-  Body.setAngle(nativeBody, transform?.rotation || 0);
   const bodyType: BodyType = descriptor.body.bodyType ?? (descriptor.body.mass ? 'dynamic' : 'static');
+  if (bodyType === 'dynamic') {
+    applyMass(nativeBody, descriptor.body.mass || 1);
+  }
+  Body.setPosition(nativeBody, toMatterPoint(transform?.position ?? Pnt2.O));
+  Body.setAngle(nativeBody, transform?.rotation || 0);
   const component = new MatterRigidBodyComponent(
     nativeBody,
     descriptor.shape,
@@ -132,23 +91,58 @@ export function buildMatterRigidBody(
   return component;
 }
 
+/**
+ * Sets a dynamic body's mass (kg) and the moment of inertia that goes with it, after the body was
+ * built at the origin and before it is moved to its transform. Not `mass` in the `Body.create`
+ * options: `Body.create` computes the inertia for the default-density mass first and then applies
+ * the `mass` option in the same `Body.set` call as an `inertia` override captured before the mass
+ * change, so a body built that way keeps the default-density inertia whatever mass was asked for.
+ * `Body.setMass` after creation scales the inertia with the mass, but a compound body's native
+ * inertia is the plain sum of its parts' own (`Body.setParts` has no parallel-axis term), so the
+ * inertia is recomputed here from every part's vertices about the body's centre of mass, with the
+ * mass shared between parts by area, and matter-js's own `_inertiaScale` on top (see
+ * `MATTER_INERTIA_SCALE`).
+ */
+function applyMass(body: Body, mass: number): void {
+  const parts = body.parts.length === 1 ? [body] : body.parts.slice(1);
+  const partsMass = parts.reduce((sum, part) => sum + part.mass, 0);
+  let inertia = 0;
+  for (const part of parts) {
+    const aboutCentre = part.vertices.map(v => Vector.sub(v, body.position));
+    inertia += Vertices.inertia(aboutCentre, (mass * part.mass) / partsMass);
+  }
+  Body.setMass(body, mass);
+  Body.setInertia(body, MATTER_INERTIA_SCALE * inertia);
+}
+
+/**
+ * The leaf part bodies of `shape`, each built at the local origin in matter-js's native units
+ * (every length of the descriptor is meters, converted here - see `matter-units.ts`). A `COMPOUND`
+ * is flattened recursively into its leaf parts, each re-homed by its level's `position`/`rotation`.
+ */
 function createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[] {
   switch (shape.shape) {
     case 'BOX':
-      return [Bodies.rectangle(0, 0, shape.dimensions.x, shape.dimensions.y, options)];
+      return [Bodies.rectangle(0, 0, toMatterLength(shape.dimensions.x), toMatterLength(shape.dimensions.y), options)];
     case 'CIRCLE':
-      return [Bodies.circle(0, 0, shape.radius, options)];
+      return [Bodies.circle(0, 0, toMatterLength(shape.radius), options)];
     case 'CAPSULE':
       return [
-        Bodies.rectangle(0, 0, shape.radius * 2, shape.centersDistance + shape.radius * 2, {
-          ...options,
-          chamfer: { radius: shape.radius },
-        }),
+        Bodies.rectangle(
+          0,
+          0,
+          toMatterLength(shape.radius * 2),
+          toMatterLength(shape.centersDistance + shape.radius * 2),
+          {
+            ...options,
+            chamfer: { radius: toMatterLength(shape.radius) },
+          },
+        ),
       ];
     case 'CONVEX_HULL':
-      return [Bodies.fromVertices(0, 0, [Pnt2.hull(shape.vertices).map(v => Vector.create(v.x, v.y))], options)];
+      return [Bodies.fromVertices(0, 0, [Pnt2.hull(shape.vertices).map(toMatterPoint)], options)];
     case 'POLYGON':
-      return [Bodies.fromVertices(0, 0, [shape.vertices.map(v => Vector.create(v.x, v.y))], options)];
+      return [Bodies.fromVertices(0, 0, [shape.vertices.map(toMatterPoint)], options)];
     case 'COMPOUND': {
       const parts: Body[] = [];
       for (const { position, rotation, shape: childShape } of shape.children) {
@@ -156,7 +150,7 @@ function createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDef
         for (const part of childParts) {
           Body.setPosition(
             part,
-            Vector.add(Vector.rotate(part.position, rotation || 0), Vector.create(position?.x || 0, position?.y || 0)),
+            Vector.add(Vector.rotate(part.position, rotation || 0), toMatterPoint(position ?? Pnt2.O)),
           );
           Body.setAngle(part, part.angle + (rotation || 0));
         }
@@ -167,7 +161,11 @@ function createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDef
   }
 }
 
+/** One native body for `shape`: the single part itself, or `Body.create({ parts })` of a `COMPOUND`'s leaves. */
 export function createShapeBody(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body {
+  if (shape.shape !== 'COMPOUND') {
+    return createShapeParts(shape, options)[0];
+  }
   return Body.create({ parts: createShapeParts(shape, options), ...options });
 }
 
@@ -182,11 +180,10 @@ export function buildMatterTriggerBody(
     rotation?: number;
   },
 ): Body {
-  const options: IChamferableBodyDefinition = { isSensor: true };
-  const nativeBody = shape.shape === 'COMPOUND' ? createShapeBody(shape, options) : createShapeParts(shape, options)[0];
+  const nativeBody = createShapeBody(shape, { isSensor: true });
   // `Body.setPosition`/`Body.setAngle` rather than raw field writes, for the same reason as in
   // `buildMatterRigidBody` above
-  Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
+  Body.setPosition(nativeBody, toMatterPoint(transform?.position ?? Pnt2.O));
   Body.setAngle(nativeBody, transform?.rotation || 0);
   return nativeBody;
 }
@@ -219,9 +216,9 @@ function transformOptions(options: Partial<Body2DOptions>): IChamferableBodyDefi
         "Body2DOptions.ccd's doc.",
     );
   }
+  // `mass` is applied after creation by `applyMass`, never here - see its doc
   const res: IChamferableBodyDefinition = {
     isStatic: options.bodyType !== undefined ? options.bodyType != 'dynamic' : !options.mass,
-    mass: options.mass,
     restitution: options.restitution,
     friction: options.friction,
   };

@@ -12,7 +12,8 @@ import { filter, Observable, Subject } from 'rxjs';
 // The level's own entity classes. Each is a trigger (a physics volume with no collision response)
 // with a drawing on top, and is registered with the level loader at the bottom of this file, so the
 // level JSON (level.ts) can place it by class name. They know nothing about lives or scores: they
-// only report what touched them, and game.screen.ts decides what that means.
+// only report what touched them, and game.screen.ts decides what that means. Sizes are in meters;
+// only stroke widths are screen pixels.
 
 export type CoinSettings = { position: Point2 };
 export type SpikesSettings = { position: Point2; width: number };
@@ -48,7 +49,7 @@ export class Coin extends Trigger2dEntity {
 
   constructor(world: Gg2dWorld, settings: CoinSettings) {
     const { visual, physics } = factories(world);
-    const radius = 12;
+    const radius = 0.12;
     super(physics.createTrigger({ shape: 'CIRCLE', radius }, { position: settings.position }));
     this.position = settings.position;
 
@@ -58,8 +59,8 @@ export class Coin extends Trigger2dEntity {
     sprite.tick$.subscribe(([elapsed]) => {
       // "spin" by squashing horizontally, and bob up and down a little
       const { x, y } = settings.position;
-      disc.scale = { x: Math.cos(elapsed / 300 + x / 50), y: 1 };
-      sprite.position = { x, y: y + Math.sin(elapsed / 400 + x / 80) * 3 };
+      disc.scale = { x: Math.cos(elapsed / 300 + x * 2), y: 1 };
+      sprite.position = { x, y: y + Math.sin(elapsed / 400 + x * 1.25) * 0.03 };
     });
     // a child entity: removed and disposed together with the coin
     this.addChildren(sprite);
@@ -80,14 +81,14 @@ export class Spikes extends Trigger2dEntity {
   constructor(world: Gg2dWorld, settings: SpikesSettings) {
     const { visual, physics } = factories(world);
     const { position, width } = settings;
-    const height = 24;
+    const height = 0.24;
     // the volume is a little smaller than the drawing, so grazing a tip doesn't count
-    super(physics.createTrigger({ shape: 'BOX', dimensions: { x: width - 12, y: 14 } }));
-    this.position = { x: position.x, y: position.y - 7 };
+    super(physics.createTrigger({ shape: 'BOX', dimensions: { x: width - 0.12, y: 0.14 } }));
+    this.position = { x: position.x, y: position.y - 0.07 };
 
-    // one polygon zig-zagging along the row: a tooth every 20 px. Vertices are in the drawing's own
+    // one polygon zig-zagging along the row: a tooth every 0.2 m. Vertices are in the drawing's own
     // frame, which sits at `position` (the middle of the row, on the ground)
-    const teeth = Math.round(width / 20);
+    const teeth = Math.round(width / 0.2);
     const vertices: Point2[] = [{ x: -width / 2, y: 0 }];
     for (let i = 0; i < teeth; i++) {
       vertices.push({ x: -width / 2 + (i + 0.5) * (width / teeth), y: -height });
@@ -111,9 +112,9 @@ export class Slime extends Trigger2dEntity {
 
   constructor(world: Gg2dWorld, settings: SlimeSettings) {
     const { visual, physics } = factories(world);
-    const radius = 18;
+    const radius = 0.18;
     const y = -radius; // standing on the ground
-    super(physics.createTrigger({ shape: 'CIRCLE', radius: radius - 4 }));
+    super(physics.createTrigger({ shape: 'CIRCLE', radius: radius - 0.04 }));
     this.position = { x: settings.from, y };
 
     // a purple blob with two eyes: three drawings (body, eye whites, pupils - a COMPOUND shape draws
@@ -122,14 +123,17 @@ export class Slime extends Trigger2dEntity {
       visual.createPrimitive(
         {
           shape: 'COMPOUND',
-          children: [3, 11].map(x => ({ shape: { shape: 'CIRCLE', radius: r }, position: { x: x + dx, y: -6 } })),
+          children: [0.03, 0.11].map(x => ({
+            shape: { shape: 'CIRCLE', radius: r },
+            position: { x: x + dx, y: -0.06 },
+          })),
         },
-        { color: r > 3 ? 0xffffff : 0x1a1a1a },
+        { color: r > 0.03 ? 0xffffff : 0x1a1a1a },
       );
     const parts = [
       visual.createCircle(radius, { color: 0x8e5bd6, stroke: { width: 3, color: 0x3d2363 } }),
-      circles(4, 0),
-      circles(2, 1.5),
+      circles(0.04, 0),
+      circles(0.02, 0.015),
     ].map((object2D, zIndex) => {
       object2D.zIndex = zIndex;
       return new Entity2d({ object2D });
@@ -180,29 +184,29 @@ export class Flag extends Trigger2dEntity {
 
   constructor(world: Gg2dWorld, settings: FlagSettings) {
     const { visual, physics } = factories(world);
-    const height = settings.goal ? 160 : 110;
+    const height = settings.goal ? 1.6 : 1.1;
     // a tall volume around the pole, so jumping past it counts as reaching it too
-    super(physics.createTrigger({ shape: 'BOX', dimensions: { x: 30, y: height + 200 } }));
+    super(physics.createTrigger({ shape: 'BOX', dimensions: { x: 0.3, y: height + 2 } }));
     this.isGoal = !!settings.goal;
-    this.position = { x: settings.position.x, y: settings.position.y - height / 2 - 100 };
+    this.position = { x: settings.position.x, y: settings.position.y - height / 2 - 1 };
 
     // the pole, and the cloth flying from its top: two drawings at the same place. The cloth is
     // white, so a tint gives it any color
     const top = -height;
     const pole = visual.createPolygon(
       [
-        { x: -3, y: 0 },
-        { x: -3, y: top },
-        { x: 3, y: top },
-        { x: 3, y: 0 },
+        { x: -0.03, y: 0 },
+        { x: -0.03, y: top },
+        { x: 0.03, y: top },
+        { x: 0.03, y: 0 },
       ],
       { color: 0xe8e2d0, stroke: { width: 2, color: 0x4a3728 } },
     );
     const cloth = visual.createPolygon(
       [
-        { x: 3, y: top },
-        { x: settings.goal ? 70 : 50, y: top + (settings.goal ? 22 : 15) },
-        { x: 3, y: top + (settings.goal ? 44 : 30) },
+        { x: 0.03, y: top },
+        { x: settings.goal ? 0.7 : 0.5, y: top + (settings.goal ? 0.22 : 0.15) },
+        { x: 0.03, y: top + (settings.goal ? 0.44 : 0.3) },
       ],
       { color: 0xffffff, stroke: { width: 2, color: 0x2b1d14 } },
     );

@@ -427,20 +427,21 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
         return;
       }
 
+      const handle1 = body1.handle;
+      const handle2 = body2.handle;
+      // An earlier notification's subscriber - or the first side's own subscriber, for the second
+      // side - may have removed either side (a pickup removing the body it caught) or removed and
+      // re-added it under a new native body: the event is then about a body no longer in the
+      // world, whose stop `removeFromWorld` has already accounted for, so each side's notification
+      // re-checks right before it runs.
+      const current = () => comp1.nativeBody?.handle === handle1 && comp2.nativeBody?.handle === handle2;
+
       if (collider1.isSensor() || collider2.isSensor()) {
-        const handle1 = body1.handle;
-        const handle2 = body2.handle;
         out.push(() => {
-          // an earlier notification's subscriber may have removed either side (a pickup removing the
-          // body it caught) or removed and re-added it under a new native body - this event is then
-          // about a body no longer in the world, and its stop has already been accounted for
-          if (comp1.nativeBody?.handle !== handle1 || comp2.nativeBody?.handle !== handle2) {
-            return;
-          }
-          if (comp1 instanceof Rapier3dTriggerComponent) {
+          if (comp1 instanceof Rapier3dTriggerComponent && current()) {
             comp1.notifyOverlap(comp2, started);
           }
-          if (comp2 instanceof Rapier3dTriggerComponent) {
+          if (comp2 instanceof Rapier3dTriggerComponent && current()) {
             comp2.notifyOverlap(comp1, started);
           }
         });
@@ -464,25 +465,44 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
         const v1 = Pnt3.clone(body1.linvel());
         const v2 = Pnt3.clone(body2.linvel());
         out.push(() => {
-          comp1.notifyCollisionStart({
-            otherBody: comp2,
-            position: geometry.position,
-            normal: geometry.normal,
-            relativeVelocity: Pnt3.sub(v2, v1),
-            impulse: geometry.impulse,
-          });
-          comp2.notifyCollisionStart({
-            otherBody: comp1,
-            position: geometry.position,
-            normal: Pnt3.scalarMult(geometry.normal, -1),
-            relativeVelocity: Pnt3.sub(v1, v2),
-            impulse: geometry.impulse,
-          });
+          if (!current()) {
+            return;
+          }
+          // both sides count the pair before either emits - see `trackCollisionStart`
+          const first1 = comp1.trackCollisionStart(comp2);
+          const first2 = comp2.trackCollisionStart(comp1);
+          if (first1 && current()) {
+            comp1.emitCollisionStart({
+              otherBody: comp2,
+              position: geometry.position,
+              normal: geometry.normal,
+              relativeVelocity: Pnt3.sub(v2, v1),
+              impulse: geometry.impulse,
+            });
+          }
+          if (first2 && current()) {
+            comp2.emitCollisionStart({
+              otherBody: comp1,
+              position: geometry.position,
+              normal: Pnt3.scalarMult(geometry.normal, -1),
+              relativeVelocity: Pnt3.sub(v1, v2),
+              impulse: geometry.impulse,
+            });
+          }
         });
       } else {
         out.push(() => {
-          comp1.notifyCollisionEnd(comp2);
-          comp2.notifyCollisionEnd(comp1);
+          if (!current()) {
+            return;
+          }
+          const last1 = comp1.trackCollisionEnd(comp2);
+          const last2 = comp2.trackCollisionEnd(comp1);
+          if (last1 && current()) {
+            comp1.emitCollisionEnd(comp2);
+          }
+          if (last2 && current()) {
+            comp2.emitCollisionEnd(comp1);
+          }
         });
       }
     });

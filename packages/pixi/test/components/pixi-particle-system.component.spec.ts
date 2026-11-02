@@ -104,12 +104,14 @@ describe('PixiParticleSystemComponent', () => {
     expect(() => new PixiParticleSystemComponent({ capacity: 0 })).toThrow();
   });
 
-  it('fills pooled particles from the buffers: position, scale from the size, rotation, packed color', () => {
-    const system = new PixiParticleSystemComponent({ capacity: 4, texture: atlas(10, 20) });
+  it('fills pooled particles from the buffers: position and size in meters to pixel space, rotation, packed color', () => {
+    // 100 px/m: the container is scaled down by 100, particles are placed and sized in pixels
+    const system = new PixiParticleSystemComponent({ capacity: 4, texture: atlas(10, 20) }, 100);
+    expect(system.nativeSprite.scale).toEqual({ x: 0.01, y: 0.01 });
     const simulation = new ParticleSimulation<Point2>(4, 2, { lifetime: 10 });
     simulation.emit(1, p => {
-      p.position = { x: 5, y: 7 };
-      p.size = { x: 30, y: 40 };
+      p.position = { x: 0.05, y: 0.07 };
+      p.size = { x: 0.3, y: 0.4 };
       p.rotation = 0.5;
       p.tint = 0x102030;
       p.opacity = 0.5;
@@ -120,8 +122,9 @@ describe('PixiParticleSystemComponent', () => {
     expect(native.particleChildren.length).toBe(2);
     expect(native.updates).toBe(1);
     const [first, second] = native.particleChildren;
-    expect(first.x).toBe(5);
-    expect(first.y).toBe(7);
+    expect(first.x).toBeCloseTo(5);
+    expect(first.y).toBeCloseTo(7);
+    // 0.3 m = 30 px over a 10 px wide frame
     expect(first.scaleX).toBeCloseTo(3);
     expect(first.scaleY).toBeCloseTo(2);
     expect(first.rotation).toBeCloseTo(0.5);
@@ -191,14 +194,16 @@ describe('PixiParticleSystemComponent', () => {
     expect(() => system.setParticles(new ParticleSimulation<Point2>(3, 2).writeRenderBuffers())).toThrow(/capacity/);
   });
 
-  it('clones into an empty system with the same options and disposes without touching the texture', () => {
+  it('clones into an empty system with the same options and pixelsPerMeter, and disposes without touching the texture', () => {
     const texture = atlas(8, 8);
-    const system = new PixiParticleSystemComponent({ capacity: 3, texture, zIndex: 2 });
+    const system = new PixiParticleSystemComponent({ capacity: 3, texture, zIndex: 2 }, 50);
     system.position = { x: 1, y: 2 };
     system.opacity = 0.5;
     const copy = system.clone();
     expect(copy).toBeInstanceOf(PixiParticleSystemComponent);
     expect(copy.capacity).toBe(3);
+    expect(copy.pixelsPerMeter).toBe(50);
+    expect(copy.scale).toEqual({ x: 1, y: 1 });
     expect(copy.texture).toBe(texture);
     expect(copy.position).toEqual({ x: 1, y: 2 });
     expect(copy.zIndex).toBe(2);

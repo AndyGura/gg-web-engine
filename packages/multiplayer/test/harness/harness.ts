@@ -30,7 +30,7 @@ export const TICK_MS = 16;
 export interface AdapterSpec {
   name: string;
   dim: 2 | 3;
-  /** world units per meter: 2D adapters work in pixels (100/m), 3D in meters */
+  /** world units per meter: 1 on every adapter of this engine, 2D and 3D alike */
   unit: number;
   createWorld(): Promise<GgWorld<any, any>>;
   createLoader(world: GgWorld<any, any>): LevelLoader<any, any, any>;
@@ -47,12 +47,10 @@ export interface AdapterSpec {
 const boxShape2d = (size: number) => ({ shape: 'BOX' as const, dimensions: { x: size, y: size } });
 const boxShape3d = (size: number) => ({ shape: 'BOX' as const, dimensions: { x: size, y: size, z: size } });
 
-const PX = 100;
-
 const spec2d = (name: string, create: () => any): AdapterSpec => ({
   name,
   dim: 2,
-  unit: PX,
+  unit: 1,
   async createWorld() {
     const physicsWorld = create();
     const world = new Gg2dWorld({ physicsWorld, fixedPhysicsStep: TICK_MS });
@@ -64,19 +62,19 @@ const spec2d = (name: string, create: () => any): AdapterSpec => ({
   },
   createLoader: world => new Gg2dLevelLoader(world as Gg2dWorld),
   // 2D is screen space: +y is down, the ground sits at y = 0
-  at: (x, h) => ({ x: x * PX, y: -h * PX }),
-  up: v => ({ x: 0, y: -v * PX }),
-  along: v => ({ x: v * PX, y: 0 }),
+  at: (x, h) => ({ x, y: -h }),
+  up: v => ({ x: 0, y: -v }),
+  along: v => ({ x: v, y: 0 }),
   addBox(world, position, size = 1, mass = 1) {
     return (world as Gg2dWorld).addPrimitiveRigidBody(
-      { shape: boxShape2d(size * PX), body: { bodyType: 'dynamic', mass } as any },
+      { shape: boxShape2d(size), body: { bodyType: 'dynamic', mass } as any },
       position,
     );
   },
   addGround(world) {
     const ground = (world as Gg2dWorld).addPrimitiveRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 200 * PX, y: 2 * PX } }, body: { bodyType: 'static', mass: 0 } as any },
-      { x: 0, y: PX },
+      { shape: { shape: 'BOX', dimensions: { x: 200, y: 2 } }, body: { bodyType: 'static', mass: 0 } as any },
+      { x: 0, y: 1 },
     );
     ground.name = 'ground';
   },

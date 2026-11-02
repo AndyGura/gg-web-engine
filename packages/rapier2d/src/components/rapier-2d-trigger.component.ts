@@ -97,7 +97,7 @@ export class Rapier2dTriggerComponent
   /** @internal invoked by `Rapier2dWorldComponent.simulate()` for each sensor-intersection
    * start/stop drained from the world's shared event queue that involves one of this trigger's
    * colliders. The world drains that queue once per step and routes every event itself (so plain
-   * rigid-body contacts reach `Rapier2dRigidBodyComponent.handleCollisionStart`/`handleCollisionEnd`
+   * rigid-body contacts reach `Rapier2dRigidBodyComponent.notifyCollisionStart`/`notifyCollisionEnd`
    * from the same drain - see `Rapier2dWorldComponent.simulate`'s own doc); `other` is the
    * component owning the other collider's body. */
   handleOverlapEvent(other: Rapier2dOverlapping, started: boolean): void {

@@ -289,7 +289,7 @@ describe('Rapier2dCharacterControllerComponent', () => {
 
   it(
     'should clone from the CURRENT up vector, not whatever was passed at construction time ' +
-      "(regression: clone() re-applied the live collisionGroups but not the live up, since " +
+      '(regression: clone() re-applied the live collisionGroups but not the live up, since ' +
       '`this.options.up` is only ever read once, in the constructor)',
     () => {
       const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: -5 } });

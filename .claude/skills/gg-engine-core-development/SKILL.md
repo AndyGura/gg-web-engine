@@ -29,6 +29,30 @@ Each of `base/2d/3d` mirrors the same sub-structure: `components/{physics,render
 `entities/`, `interfaces/`, `models/`. When adding a concept to 3D, check whether it belongs in
 `base/` instead (dimension-agnostic) before duplicating it into both `2d/` and `3d/`.
 
+## 2D is a strict counterpart of 3D: same API, same semantics, same units
+
+Every 2D interface, entity, world command, level class and default is the counterpart of its 3D
+twin (`CharacterController2dEntity` ↔ `CharacterController3dEntity`, `Gg2dLevelLoader` ↔
+`Gg3dLevelLoader`, `rapier2d` ↔ `rapier3d`, ...): same member names, same option names, same
+behavior, the same console commands and the same numeric defaults, differing only where
+dimensionality forces it (`Point2` vs `Point3`, a scalar angle vs a quaternion, no Z axis, no
+camera view modes). A change to one side - a new option, a changed default, a bug fix in shared
+logic such as gravity integration or collision-event dedup - is made to the other side in the same
+change, and its contract suite (`test/contract/physics-(2d|3d).contract.ts`, see below) gets the
+same test on both sides. Something 3D-only by nature (lights, GLB models, vehicles, frames) is the
+only exception.
+
+**Both dimensions measure in meters, kilograms and seconds**: positions and sizes in meters,
+velocities in m/s, `physicsWorld.gravity` in m/s² (`{x: 0, y: 9.82}` in 2D, screen Y down),
+forces in N, particle sizes in meters, character tuning (`walkSpeed` 4 m/s, `maxStepHeight`
+0.3 m, ...) and the level loader's `"Player"` capsule (`radius` 0.4, `centersDistance` 1) identical
+in 2D and 3D. There is no pixel unit anywhere in core: how many screen pixels a meter covers is the
+2D visual adapter's business (`ICamera2dComponent.zoom` documents it - pixi draws a texture at
+one texel per screen pixel at zoom 1 and sizes it as texels / `pixelsPerMeter` meters, 100 by
+default), and a 2D physics library that is not meter-native converts privately at its adapter
+boundary (`packages/matter`). A numeric default copied between the dimensions is therefore copied
+verbatim; a 2D adapter or entity that scales a value by 100 somewhere is a bug.
+
 ## Deduping a warning that could fire many times with the same message: `warnOnce`
 
 `base/logging.ts` (exported from the package root) provides `warnOnce(message, ...optionalParams)`:

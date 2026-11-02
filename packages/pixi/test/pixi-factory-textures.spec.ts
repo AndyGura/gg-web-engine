@@ -14,6 +14,7 @@ jest.mock('pixi.js', () => {
   }
   class Stub {
     scale = { x: 1, y: 1 };
+    position = { x: 0, y: 0 };
   }
   return {
     ImageSource,
@@ -105,9 +106,20 @@ describe('PixiFactory textures from fetched data', () => {
 });
 
 describe('PixiFactory.createCamera', () => {
-  it('creates a camera at zoom 1', () => {
+  it("creates a camera at zoom 1 with the factory's pixelsPerMeter", () => {
     const camera = new PixiFactory().createCamera();
     expect(camera).toBeInstanceOf(PixiCameraComponent);
     expect(camera.zoom).toBe(1);
+    expect(camera.pixelsPerMeter).toBe(100);
+    expect(new PixiFactory(undefined, 16).createCamera().pixelsPerMeter).toBe(16);
+    expect(new PixiFactory({ pixelsPerMeter: 32 } as any, 16).createCamera().pixelsPerMeter).toBe(32);
+  });
+
+  it('maps meters to screen pixels with pixelsPerMeter and zoom, around the camera position', () => {
+    const camera = new PixiFactory(undefined, 50).createCamera();
+    camera.position = { x: 1, y: 1 };
+    camera.zoom = 2;
+    expect(camera.worldToScreen({ x: 2, y: 0.5 })).toEqual({ x: 100, y: -50 });
+    expect(camera.screenToWorld({ x: 100, y: -50 })).toEqual({ x: 2, y: 0.5 });
   });
 });

@@ -42,6 +42,35 @@ describe('Rapier2dRigidBodyComponent removed from the world and added again', ()
     expect(body.linearVelocity.x).toBeCloseTo(linvel.x, 3);
     expect(body.angularVelocity).toBeCloseTo(angvel, 5);
   });
+  it('a clone made after a move starts where the source was', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    const ggWorld = { physicsWorld: world } as any;
+    body.addToWorld(ggWorld);
+    body.position = { x: 5, y: -3 };
+    body.removeFromWorld(ggWorld);
+    expect(body.clone().position).toEqual({ x: 5, y: -3 });
+  });
+
+  it('a clone made after a move keeps the velocity the source had', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    const ggWorld = { physicsWorld: world } as any;
+    body.addToWorld(ggWorld);
+    body.linearVelocity = { x: 1, y: 2 };
+    body.angularVelocity = 0.5;
+    body.removeFromWorld(ggWorld);
+    const copy = body.clone();
+    expect(copy.linearVelocity).toEqual({ x: 1, y: 2 });
+    expect(copy.angularVelocity).toBe(0.5);
+    copy.addToWorld(ggWorld);
+    expect(copy.linearVelocity.x).toBeCloseTo(1, 5);
+    expect(copy.angularVelocity).toBeCloseTo(0.5, 5);
+  });
 });
 
 describe('Rapier2dCharacterControllerComponent removed from the world and added again', () => {
@@ -49,14 +78,14 @@ describe('Rapier2dCharacterControllerComponent removed from the world and added 
     const world = new Rapier2dWorldComponent();
     const factory = new Rapier2dFactory(world);
     await world.init();
-    const cc = factory.createCharacterController({ radius: 10, centersDistance: 20 } as any);
+    const cc = factory.createCharacterController({ radius: 0.4, centersDistance: 1 } as any);
     const ggWorld = { physicsWorld: world } as any;
     cc.addToWorld(ggWorld);
-    cc.position = { x: 40, y: -20 };
+    cc.position = { x: 4, y: -2 };
     cc.removeFromWorld(ggWorld);
     cc.addToWorld(ggWorld);
-    expect(cc.position.x).toBeCloseTo(40, 3);
-    expect(cc.position.y).toBeCloseTo(-20, 3);
+    expect(cc.position.x).toBeCloseTo(4, 3);
+    expect(cc.position.y).toBeCloseTo(-2, 3);
     world.dispose();
   });
 });

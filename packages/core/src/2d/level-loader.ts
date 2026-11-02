@@ -16,6 +16,8 @@ import { Body2DOptions } from './models/body-options';
 import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
+import { Camera2dEntity } from './entities/camera-2d.entity';
+import { Camera2dOrigin } from './components/rendering/i-camera-2d.component';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
 import { ParallaxLayer2dEntity } from './entities/parallax-layer-2d.entity';
 import { Environment2dEntity } from './entities/environment-2d.entity';
@@ -263,6 +265,22 @@ export type Player2DSettings = Partial<Omit<CharacterController2dEntityOptions, 
 };
 
 /**
+ * Settings for the built-in `"Camera"` entity class: a positioned `Camera2dEntity` wrapping
+ * `visualScene.factory.createCamera()`, not attached to any renderer (pass its `.camera` to
+ * `Gg2dWorld.addRenderer` once the app has a canvas). The 2D counterpart of `Camera3DSettings`.
+ */
+export interface Camera2DSettings {
+  /** Position of the camera, in meters. */
+  position?: Point2;
+  /** Rotation of the camera, in radians. */
+  rotation?: number;
+  /** View magnification - see `ICamera2dComponent.zoom`. Default 1. */
+  zoom?: number;
+  /** Which point of the view `position` is - see `ICamera2dComponent.origin`. Default `'center'`. */
+  origin?: Camera2dOrigin;
+}
+
+/**
  * 2D level loader: registers the built-in primitive/trigger/player/sound entity classes and
  * dispatches `LevelJson` entities to them (or to custom classes registered via `registerClass`).
  * @template TypeDoc - The type document repository
@@ -325,6 +343,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     );
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
+    this.registerClass('Camera', this.createCamera.bind(this));
     this.registerClass('Sound', this.createSound.bind(this), {
       assets: (settings: Sound2DSettings) => (settings.path ? [{ kind: 'clip', url: settings.path }] : []),
     });
@@ -480,6 +499,42 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       if (angularVelocity !== undefined) {
         entity.objectBody.angularVelocity = angularVelocity;
       }
+    }
+    return entity;
+  }
+
+  /**
+   * Create a camera entity: a `Camera2dEntity` wrapping the raw camera component, not attached to
+   * any renderer/canvas (a level JSON has no notion of one - `world.addRenderer(entity.camera,
+   * canvas)` once the app has a canvas). Parented under the level's group entity, so it's torn
+   * down along with the rest of the level - put a camera meant to outlive a level swap in a
+   * separate, never-unloaded level instead (see `gg-engine-level-json`'s "Camera" section).
+   * Mirrors `Gg3dLevelLoader.createCamera`.
+   * @param world - The world instance
+   * @param settings - The camera settings
+   * @returns The created camera entity, or `undefined` without a visual scene
+   */
+  private createCamera(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Camera2DSettings,
+  ): Camera2dEntity<TypeDoc['vTypeDoc']> | undefined {
+    const { position, rotation, zoom, origin } = settings;
+    const camera = world.visualScene?.factory.createCamera();
+    if (!camera) {
+      return undefined;
+    }
+    if (zoom !== undefined) {
+      camera.zoom = zoom;
+    }
+    if (origin !== undefined) {
+      camera.origin = origin;
+    }
+    const entity = new Camera2dEntity<TypeDoc['vTypeDoc']>(camera);
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation !== undefined) {
+      entity.rotation = rotation;
     }
     return entity;
   }

@@ -14,7 +14,8 @@ import { PixiVisualTypeDocRepo2D } from '../types';
  */
 export type PixiParticleSystemExtraOpts = {
   /**
-   * Whether sprite positions are rounded to whole pixels (crisp pixel art). Default `false`.
+   * Whether sprite positions are rounded to whole texels - whole screen pixels at camera `zoom` 1
+   * (crisp pixel art). Default `false`.
    *
    * @example
    * ```ts
@@ -33,15 +34,21 @@ const BLEND_MODE: Record<ParticleBlendMode2d, BLEND_MODES> = {
 /**
  * The pixi.js `IParticleSystem2dComponent`: a `ParticleContainer` whose `particleChildren` are
  * `capacity` pooled plain `IParticle` records, refilled from core's `ParticleRenderBuffers` on every
- * `setParticles` - position, scale (the particle's size in world units over the frame's size in
- * pixels), rotation, anchor (pixi's own `anchorX`/`anchorY`, the point at the position that the
- * sprite turns around), packed tint and opacity, and the atlas region as a sub-texture of the system's
- * texture (one `Texture` per distinct region, created on demand and shared by every particle
- * showing it). Every property is dynamic, so the container re-uploads them each frame. The
- * container's own `tint`/`opacity` multiply the particles' (inherited, like any pixi container).
+ * `setParticles` - position, scale, rotation, anchor (pixi's own `anchorX`/`anchorY`, the point at
+ * the position that the sprite turns around), packed tint and opacity, and the atlas region as a
+ * sub-texture of the system's texture (one `Texture` per distinct region, created on demand and
+ * shared by every particle showing it). Every property is dynamic, so the container re-uploads them
+ * each frame. The container's own `tint`/`opacity` multiply the particles' (inherited, like any
+ * pixi container).
+ *
+ * The container is laid out in pixel space with a base scale of one over the scene's
+ * `pixelsPerMeter`: a particle's position in meters becomes `position * pixelsPerMeter` and its
+ * size in meters the scale `size * pixelsPerMeter / frame texels`, so `roundPixels` rounds to
+ * whole texels.
  *
  * pixi's `ParticleContainer` never computes bounds itself, so `getBoundings`/`getLocalBoundings`
- * report whatever `nativeSprite.boundsArea` was set to (an empty box by default).
+ * report whatever `nativeSprite.boundsArea` was set to (an empty box by default; in the
+ * container's own pixel space).
  */
 export class PixiParticleSystemComponent
   extends PixiDisplayObjectComponent
@@ -59,7 +66,11 @@ export class PixiParticleSystemComponent
   /** sub-textures of the current texture by atlas region, see `frameTexture` */
   private readonly frameTextures: Map<string, Texture> = new Map();
 
-  constructor(options: ParticleSystem2dRenderOptions<Texture> & PixiParticleSystemExtraOpts) {
+  /** @param pixelsPerMeter - The scene's texel density, see `PixiSceneComponent.pixelsPerMeter`. */
+  constructor(
+    options: ParticleSystem2dRenderOptions<Texture> & PixiParticleSystemExtraOpts,
+    public readonly pixelsPerMeter: number = 100,
+  ) {
     const capacity = options.capacity;
     if (!(capacity > 0) || !Number.isInteger(capacity)) {
       throw new Error(`Particle system capacity must be a positive integer, got ${capacity}`);
@@ -72,6 +83,7 @@ export class PixiParticleSystemComponent
     });
     container.blendMode = BLEND_MODE[options.blending ?? 'normal'];
     container.zIndex = options.zIndex ?? 0;
+    container.scale.x = container.scale.y = 1 / pixelsPerMeter;
     super(container);
     this.capacity = capacity;
     this._renderOptions = { ...options };
@@ -115,17 +127,19 @@ export class PixiParticleSystemComponent
       throw new Error('A 2D particle system needs 2D particle buffers');
     }
     const n = buffers.count;
+    const ppm = this.pixelsPerMeter;
     const children = this.nativeSprite.particleChildren;
     children.length = n;
     for (let i = 0; i < n; i++) {
       const p = this.pool[i];
       const c = i * 4;
-      p.x = buffers.position[i * 2];
-      p.y = buffers.position[i * 2 + 1];
+      // meters to the container's pixel space
+      p.x = buffers.position[i * 2] * ppm;
+      p.y = buffers.position[i * 2 + 1] * ppm;
       const texture = this.frameTexture(buffers.uv[c], buffers.uv[c + 1], buffers.uv[c + 2], buffers.uv[c + 3]);
       p.texture = texture;
-      p.scaleX = buffers.size[i * 2] / texture.orig.width;
-      p.scaleY = buffers.size[i * 2 + 1] / texture.orig.height;
+      p.scaleX = (buffers.size[i * 2] * ppm) / texture.orig.width;
+      p.scaleY = (buffers.size[i * 2 + 1] * ppm) / texture.orig.height;
       p.rotation = buffers.rotation[i];
       // the same fractions of the frame, top-left origin, as pixi's own anchor
       p.anchorX = buffers.anchor[i * 2];
@@ -177,7 +191,7 @@ export class PixiParticleSystemComponent
   }
 
   clone(): PixiParticleSystemComponent {
-    const copy = new PixiParticleSystemComponent(this._renderOptions);
+    const copy = new PixiParticleSystemComponent(this._renderOptions, this.pixelsPerMeter);
     copy.position = this.position;
     copy.rotation = this.rotation;
     copy.visible = this.visible;

@@ -37,6 +37,7 @@
           "enum": [
             "Primitive",
             "Trigger",
+            "Camera",
             "ParallaxLayer",
             "Environment",
             "Player",
@@ -76,6 +77,21 @@
           },
           "then": {
             "$ref": "#/$defs/Trigger2DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Camera"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Camera2DEntityJson"
           }
         },
         {
@@ -1729,6 +1745,63 @@
         }
       ]
     },
+    "Camera2DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "Camera"
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "zoom": {
+              "type": "number",
+              "description": "View magnification - see `ICamera2dComponent.zoom`. Default 1.",
+              "default": 1
+            },
+            "origin": {
+              "$ref": "#/$defs/Camera2dOrigin",
+              "description": "Which point of the view `position` is - see `ICamera2dComponent.origin`. Default `'center'`.",
+              "default": "center"
+            }
+          },
+          "additionalProperties": false
+        },
+        "position": {
+          "$ref": "#/$defs/Point2",
+          "description": "Position of the entity"
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation of the entity in radians"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "description": "A `\"Camera\"` entity."
+    },
+    "Camera2dOrigin": {
+      "type": "string",
+      "enum": [
+        "center",
+        "top-left"
+      ],
+      "description": "Which point of a renderer's view a 2D camera's `position` is: `'center'` (the default) for a camera that follows the action, `'top-left'` for a screen-space layer such as a HUD or a menu, where a camera at `{ x: 0, y: 0 }` puts the world origin at the canvas' top-left corner (y down), one meter covering the visual scene's pixels per meter at `zoom` 1."
+    },
     "ParallaxLayer2DEntityJson": {
       "type": "object",
       "additionalProperties": false,
@@ -2289,6 +2362,7 @@
         "properties": {
           "class": {
             "enum": [
+              "Camera",
               "Environment",
               "ParallaxLayer",
               "Player",

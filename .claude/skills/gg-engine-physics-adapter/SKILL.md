@@ -16,6 +16,15 @@ Implement either the `3d/components/physics/*` interfaces (see `packages/ammo`, 
 rapier3d`) or the `2d/components/physics/*` ones (see `packages/matter`, `packages/rapier2d`) from
 `packages/core/src`.
 
+The 2D and 3D interfaces are strict counterparts (see `gg-engine-core-development`'s "2D is a
+strict counterpart of 3D" section): a 2D adapter implements the same members with the same
+semantics and the same units as a 3D one - meters, kg, seconds, m/s², N - differing only in
+`Point2` vs `Point3` and a scalar angle vs a quaternion. A native engine that is not meter-native
+(matter-js solves best with bodies tens of units across) converts at the adapter boundary with one
+private constant, on every quantity crossing it (sizes, positions, velocities, forces, torques,
+raycasts, character-controller tuning), and never exposes its native unit through the interface -
+see `packages/matter` for the pattern.
+
 ## File layout (mirror the closest existing adapter)
 
 ```
@@ -59,8 +68,11 @@ export type <Lib>PhysicsTypeDocRepo = {
   Any other native-handle getter (`nativeWorld`, `eventQueue`) and any `addToWorld` that would hand
   a not-yet-created native world to the library (`MatterWorldComponent.requireMatterWorld`) throws
   the same error instead of a `TypeError` from inside the native library.
-- `gravity` — plain `Point2`/`Point3` getter/setter, translated to the native gravity
-  representation on write. Settable before `init()`: store it and apply it when the native world is
+- `gravity` — plain `Point2`/`Point3` getter/setter in m/s² (default `{x: 0, y: 9.82}` in 2D,
+  screen Y down; `{x: 0, y: 0, z: -9.82}` in 3D), translated to the native representation on write.
+  The getter returns exactly what was set - never scale it on the way in or out: core's
+  `CharacterController(2d|3d)Entity` integrates `physicsWorld.gravity` itself, in the same unit as
+  the positions it moves. Settable before `init()`: store it and apply it when the native world is
   created - the setter checks the private native field (`this._nativeWorld`), never a getter that
   throws before init. Core reads `gravity` to tell a 2D physics world from a 3D one (a `z`
   component), so a 3D world's gravity always has `z` and a 2D world's never does.
@@ -315,6 +327,18 @@ pair:
   `added$`/`removed$`, and a trigger reacting to `removed$` would report the one without an entity.
   The 3D contract suite's `raycast vehicle` block checks `added$`/`removed$` name only the vehicle
   and that collision events on both sides name the vehicle.
+- **Deliver collision events after the step, and count both sides before emitting to either.**
+  Subscribers remove and re-add bodies (a pickup removing what it caught), which must not happen
+  while the native engine is still inside its step: collect the step's events (reading contact
+  data right away) and run the notifications once `simulate()`'s native step has returned, each
+  checking both bodies are still in the world under the native body they were reported with -
+  right before *each* side's emission, since the first side's subscriber may remove the second.
+  Update both sides' contact bookkeeping before either subscriber runs, so a body removed from
+  inside the first side's callback already knows the pair and `removeFromWorld` gives the
+  survivor its `onCollisionEnd(null)`. Every shipped adapter does this (`pendingCollisionEvents` in
+  `packages/matter`, `collectCollisionEvents(out)` in the rapier packages, with
+  `trackCollisionStart`/`emitCollisionStart` and `trackCollisionEnd`/`emitCollisionEnd` on the
+  bodies).
 - **Self-collision guard.** A compound body's own sub-colliders can resolve to the *same* component
   on both sides of a reported pair - that must never reach `onCollisionStart`/`onCollisionEnd`, or
   a body would appear to collide with itself. Skip the pair whenever both sides resolve to the same
@@ -777,8 +801,8 @@ describePhysics3dContract('jolt', () => new JoltWorldComponent(), { unsupportedS
 ```
 
 It checks the API contract every adapter of that dimension shares: default gravity (−Z in 3D, +Y
-in 2D, about 9.8 m/s²), `simulate()` in milliseconds, lengths in meters (3D) or pixels at 100 per
-meter (2D), velocity, impulse, force and torque units, every shape, `children`/`added$`/`removed$`,
+in 2D, 9.82 m/s²), `simulate()` in milliseconds, lengths in meters in both dimensions, velocity,
+impulse, force and torque units (m/s, N·s, N, N·m with kg), every shape, `children`/`added$`/`removed$`,
 collision events and groups, triggers (polled with `checkOverlaps()` every step, as
 `Trigger(2d|3d)Entity` does), raycasts, sleep/wake, clone, and the character controller's axes,
 grounding and wall blocking. It never compares trajectories between backends, so its tolerances are

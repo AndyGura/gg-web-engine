@@ -145,9 +145,9 @@ export interface NetworkControllerOptions<D> {
   ownership?: IOwnershipStrategy<D>;
   /**
    * World units per meter, so the defaults (correction deadzone/snap distance, the ownership floor
-   * and contact impulse threshold) mean the same physical thing in every world. Default 1; the 2D
-   * controller defaults to 100, the pixel scale every 2D physics adapter works in. Explicitly passed
-   * `tuning`/`ownership` are used as given.
+   * and contact impulse threshold) mean the same physical thing in every world. Default 1, which
+   * is right for every 2D and 3D world of this engine (both measure in meters); only a world that
+   * deliberately uses another unit sets it. Explicitly passed `tuning`/`ownership` are used as given.
    */
   unitScale?: number;
   /** state broadcasts per second, or `'tick'` for every world tick; never above the tick rate. Default 30. */

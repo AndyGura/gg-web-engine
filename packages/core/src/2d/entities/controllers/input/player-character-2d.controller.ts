@@ -30,11 +30,12 @@ export type Character2dGamepadBinding = {
   crouch: GamepadControls;
 };
 
-/** Left stick or d-pad moves, A jumps, X runs, B crouches */
+/** Left stick or d-pad moves, A jumps, the left stick's click runs, B crouches - the same buttons
+ * as the 3D `DEFAULT_CHARACTER_GAMEPAD_BINDING` */
 export const DEFAULT_CHARACTER_2D_GAMEPAD_BINDING: Character2dGamepadBinding = {
   move: GAMEPAD_LEFT_STICK_OR_DPAD,
   jump: 'b0',
-  run: 'b2',
+  run: 'b10',
   crouch: 'b1',
 };
 
@@ -103,20 +104,20 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
  * ```ts
  * import { CharacterController2dEntity, Pnt2, PlayerCharacterController2d } from '@gg-web-engine/core';
  *
- * // sizes and speeds in pixels; screen Y points down, so "up" is -Y
+ * // sizes in meters, speeds in m/s, as in 3D; screen Y points down, so "up" is -Y
  * const character = new CharacterController2dEntity(
- *   { radius: 20, centersDistance: 40, walkSpeed: 260, jumpSpeed: 780, gravity: 2000 },
- *   world.visualScene.factory.createCapsule(20, 40, { color: 0x3388ff }),
+ *   { radius: 0.4, centersDistance: 1, walkSpeed: 4, jumpSpeed: 6 },
+ *   world.visualScene.factory.createCapsule(0.4, 1, { color: 0x3388ff }),
  *   world.physicsWorld.factory.createCharacterController(
- *     { radius: 20, centersDistance: 40, up: Pnt2.nY },
- *     { position: { x: 0, y: 100 } },
+ *     { radius: 0.4, centersDistance: 1, up: Pnt2.nY },
+ *     { position: { x: 0, y: -1 } },
  *   ),
  * );
  * world.addEntity(character);
  *
  * const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
  * world.addEntity(
- *   new PlayerCharacterController2d(world.keyboardInput, character, renderer, { lookAheadDistance: 120 }),
+ *   new PlayerCharacterController2d(world.keyboardInput, character, renderer, { lookAheadDistance: 1.2 }),
  * );
  * ```
  */

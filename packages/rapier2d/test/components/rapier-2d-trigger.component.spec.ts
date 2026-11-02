@@ -166,17 +166,17 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   describe('exact shape overlap (not the bounding box)', () => {
-    // a 200x200 box rotated 45 degrees: its AABB spans about +-141 in x/y, its corners along the
-    // axes. (120, 120) is inside that AABB but about 170 from the center along the diagonal,
-    // outside the box's 100 half-extent
+    // a 2x2 box rotated 45 degrees: its AABB spans about +-1.41 in x/y, its corners along the
+    // axes. (1.2, 1.2) is inside that AABB but about 1.7 from the center along the diagonal,
+    // outside the box's 1 half-extent
     const rot45 = Math.PI / 4;
-    // an L: a 200x100 bar along x at y in [-100, 0] plus a 100x100 block at x in [-100, 0], y in
-    // [0, 100]; the AABB quadrant x in [0, 100], y in [0, 100] is empty
+    // an L: a 2x1 bar along x at y in [-1, 0] plus a 1x1 block at x in [-1, 0], y in
+    // [0, 1]; the AABB quadrant x in [0, 1], y in [0, 1] is empty
     const lShape = {
       shape: 'COMPOUND' as const,
       children: [
-        { position: { x: 0, y: -50 }, shape: { shape: 'BOX' as const, dimensions: { x: 200, y: 100 } } },
-        { position: { x: -50, y: 50 }, shape: { shape: 'BOX' as const, dimensions: { x: 100, y: 100 } } },
+        { position: { x: 0, y: -0.5 }, shape: { shape: 'BOX' as const, dimensions: { x: 2, y: 1 } } },
+        { position: { x: -0.5, y: 0.5 }, shape: { shape: 'BOX' as const, dimensions: { x: 1, y: 1 } } },
       ],
     };
 
@@ -188,7 +188,7 @@ describe(`Rapier2dTriggerComponent`, () => {
       const trigger = factory.createTrigger(shape, { rotation });
       trigger.addToWorld({ physicsWorld: world } as any);
       const circle = factory.createRigidBody(
-        { shape: { shape: 'CIRCLE', radius: 10 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { shape: { shape: 'CIRCLE', radius: 0.1 }, body: { bodyType: 'dynamic', mass: 1 } },
         { position: circlePosition },
       );
       circle.addToWorld({ physicsWorld: world } as any);
@@ -199,29 +199,29 @@ describe(`Rapier2dTriggerComponent`, () => {
     };
 
     it('a box rotated 45 degrees does not fire for a body in its AABB corner', () => {
-      expect(entered({ shape: 'BOX', dimensions: { x: 200, y: 200 } }, rot45, { x: 120, y: 120 })).toBe(false);
+      expect(entered({ shape: 'BOX', dimensions: { x: 2, y: 2 } }, rot45, { x: 1.2, y: 1.2 })).toBe(false);
     });
 
     it('a box rotated 45 degrees fires for a body inside it', () => {
-      expect(entered({ shape: 'BOX', dimensions: { x: 200, y: 200 } }, rot45, { x: 40, y: 40 })).toBe(true);
-      expect(entered({ shape: 'BOX', dimensions: { x: 200, y: 200 } }, rot45, { x: 130, y: 0 })).toBe(true);
+      expect(entered({ shape: 'BOX', dimensions: { x: 2, y: 2 } }, rot45, { x: 0.4, y: 0.4 })).toBe(true);
+      expect(entered({ shape: 'BOX', dimensions: { x: 2, y: 2 } }, rot45, { x: 1.3, y: 0 })).toBe(true);
     });
 
     it('an L-shaped compound does not fire in the empty quadrant of its AABB', () => {
-      expect(entered(lShape, undefined, { x: 50, y: 50 })).toBe(false);
+      expect(entered(lShape, undefined, { x: 0.5, y: 0.5 })).toBe(false);
     });
 
     it('an L-shaped compound fires inside either of its children', () => {
-      expect(entered(lShape, undefined, { x: 50, y: -50 })).toBe(true);
-      expect(entered(lShape, undefined, { x: -50, y: 50 })).toBe(true);
+      expect(entered(lShape, undefined, { x: 0.5, y: -0.5 })).toBe(true);
+      expect(entered(lShape, undefined, { x: -0.5, y: 0.5 })).toBe(true);
     });
 
     it('reports one enter and one leave for a body crossing from one compound child into the other and out', () => {
       const trigger = factory.createTrigger(lShape);
       trigger.addToWorld({ physicsWorld: world } as any);
       const circle = factory.createRigidBody(
-        { shape: { shape: 'CIRCLE', radius: 10 }, body: { bodyType: 'dynamic', mass: 1 } },
-        { position: { x: -50, y: -50 } },
+        { shape: { shape: 'CIRCLE', radius: 0.1 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: -0.5, y: -0.5 } },
       );
       circle.addToWorld({ physicsWorld: world } as any);
       const events: string[] = [];
@@ -229,9 +229,30 @@ describe(`Rapier2dTriggerComponent`, () => {
       trigger.onEntityLeft.subscribe(obj => obj === circle && events.push('left'));
       // starts in the bar, moves up through the bar/block seam into the block, then out of the top
       advance(30, () => trigger.checkOverlaps());
-      circle.linearVelocity = { x: 0, y: 300 };
+      circle.linearVelocity = { x: 0, y: 3 };
       advance(1000, () => trigger.checkOverlaps());
-      expect(circle.position.y).toBeGreaterThan(120);
+      expect(circle.position.y).toBeGreaterThan(1.2);
+      expect(events).toEqual(['enter', 'left']);
+      expect(activated(trigger)).toBe(false);
+    });
+    it('a body removed by an enter subscriber is not entered again by its other compound child', () => {
+      const trigger = factory.createTrigger(lShape);
+      trigger.addToWorld({ physicsWorld: world } as any);
+      // on the bar/block seam, touching both children in the same step
+      const circle = factory.createRigidBody(
+        { shape: { shape: 'CIRCLE', radius: 0.2 }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: -0.5, y: 0 } },
+      );
+      circle.addToWorld({ physicsWorld: world } as any);
+      const events: string[] = [];
+      trigger.onEntityEntered.subscribe(obj => {
+        if (obj === circle) {
+          events.push('enter');
+          circle.removeFromWorld({ physicsWorld: world } as any);
+        }
+      });
+      trigger.onEntityLeft.subscribe(obj => obj === circle && events.push('left'));
+      advance(30, () => trigger.checkOverlaps());
       expect(events).toEqual(['enter', 'left']);
       expect(activated(trigger)).toBe(false);
     });
@@ -239,7 +260,7 @@ describe(`Rapier2dTriggerComponent`, () => {
 
   describe('one enter/leave per body', () => {
     it('reports one enter and one leave for a COMPOUND body passing through', () => {
-      const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 200, y: 200 } });
+      const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 2, y: 2 } });
       trigger.addToWorld({ physicsWorld: world } as any);
       // two circles side by side along x, both inside the trigger at once while it crosses
       const body = factory.createRigidBody(
@@ -247,21 +268,21 @@ describe(`Rapier2dTriggerComponent`, () => {
           shape: {
             shape: 'COMPOUND',
             children: [
-              { position: { x: -20, y: 0 }, shape: { shape: 'CIRCLE', radius: 10 } },
-              { position: { x: 20, y: 0 }, shape: { shape: 'CIRCLE', radius: 10 } },
+              { position: { x: -0.2, y: 0 }, shape: { shape: 'CIRCLE', radius: 0.1 } },
+              { position: { x: 0.2, y: 0 }, shape: { shape: 'CIRCLE', radius: 0.1 } },
             ],
           },
           body: { bodyType: 'dynamic', mass: 1 },
         },
-        { position: { x: 0, y: -160 } },
+        { position: { x: 0, y: -1.6 } },
       );
       body.addToWorld({ physicsWorld: world } as any);
       const events: string[] = [];
       trigger.onEntityEntered.subscribe(obj => obj === body && events.push('enter'));
       trigger.onEntityLeft.subscribe(obj => obj === body && events.push('left'));
-      body.linearVelocity = { x: 0, y: 300 };
+      body.linearVelocity = { x: 0, y: 3 };
       advance(1100, () => trigger.checkOverlaps());
-      expect(body.position.y).toBeGreaterThan(120);
+      expect(body.position.y).toBeGreaterThan(1.2);
       expect(events).toEqual(['enter', 'left']);
       expect(activated(trigger)).toBe(false);
     });
@@ -273,10 +294,10 @@ describe(`Rapier2dTriggerComponent`, () => {
     it.each([false, true])(
       'a body removed and added back before the next step still reports leaving later (slot taken: %s)',
       occupyFreedSlot => {
-        const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 200, y: 200 } });
+        const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 2, y: 2 } });
         trigger.addToWorld({ physicsWorld: world } as any);
         const circle = factory.createRigidBody(
-          { shape: { shape: 'CIRCLE', radius: 10 }, body: { bodyType: 'dynamic', mass: 1 } },
+          { shape: { shape: 'CIRCLE', radius: 0.1 }, body: { bodyType: 'dynamic', mass: 1 } },
           { position: Pnt2.O },
         );
         circle.addToWorld({ physicsWorld: world } as any);
@@ -289,8 +310,8 @@ describe(`Rapier2dTriggerComponent`, () => {
         if (occupyFreedSlot) {
           factory
             .createRigidBody(
-              { shape: { shape: 'CIRCLE', radius: 10 }, body: { bodyType: 'dynamic', mass: 1 } },
-              { position: { x: 1000, y: 0 } },
+              { shape: { shape: 'CIRCLE', radius: 0.1 }, body: { bodyType: 'dynamic', mass: 1 } },
+              { position: { x: 10, y: 0 } },
             )
             .addToWorld({ physicsWorld: world } as any);
         }
@@ -299,9 +320,9 @@ describe(`Rapier2dTriggerComponent`, () => {
         advance(30, () => trigger.checkOverlaps());
         expect(events).toEqual(['enter', 'left', 'enter']);
         expect(activated(trigger)).toBe(true);
-        circle.linearVelocity = { x: 0, y: 300 };
+        circle.linearVelocity = { x: 0, y: 3 };
         advance(1000, () => trigger.checkOverlaps());
-        expect(circle.position.y).toBeGreaterThan(120);
+        expect(circle.position.y).toBeGreaterThan(1.2);
         expect(events).toEqual(['enter', 'left', 'enter', 'left']);
         expect(activated(trigger)).toBe(false);
       },

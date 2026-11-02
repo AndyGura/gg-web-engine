@@ -21,9 +21,10 @@ subjects (the ones backing `onCollisionStart`/`onCollisionEnd`). `MatterTriggerC
 `super.dispose()` to complete the inherited pair too.
 
 Separately, `MatterRigidBodyComponent.removeFromWorld` also emits `onCollisionEnd(null)` on every
-other body this one is still touching at the moment of removal (tracked via a `currentContacts`
-`Set<MatterRigidBodyComponent>`, populated/drained by `notifyCollisionStart`/`notifyCollisionEnd` -
-see the "Wiring `onCollisionStart`/`onCollisionEnd`" section below) - this is what backs
+other body this one is still touching at the moment of removal (tracked via `collidingWith`, a
+`Map<MatterRigidBodyComponent, number>` of touching part pairs per partner, populated/drained by
+`notifyCollisionStart`/`notifyCollisionEnd` - see the "Wiring `onCollisionStart`/`onCollisionEnd`"
+section below) - this is what backs
 `onCollisionEnd`'s documented "`null` when the other body was removed from the world while still in
 contact" case. This fires unconditionally on every `removeFromWorld` call (dispose or not), since it
 reflects the body actually leaving the world, not memory cleanup.
@@ -34,9 +35,50 @@ reflects the body actually leaving the world, not memory cleanup.
 via the interface getters, but doesn't listen to matter-js itself - `MatterWorldComponent` registers a
 single pair of `Matter.Events.on(engine, 'collisionStart'/'collisionEnd', ...)` listeners once (in
 `init()`, mirroring how `simulate()`/`dispose()` already own the engine lifecycle), resolves each
-`pair.bodyA`/`pair.bodyB` back to its owning component via the same `this.children.find(c =>
-c.nativeBody === body)` lookup `MatterTriggerComponent` already used, and calls
-`notifyCollisionStart`/`notifyCollisionEnd` on each side reciprocally. `pair.isSensor` (true whenever
+`pair.bodyA`/`pair.bodyB` back to its owning component via `findRigidBody` (a `handleIdEntityMap`
+lookup keyed by `Body.id`), and calls `notifyCollisionStart`/`notifyCollisionEnd` on each side
+reciprocally.
+
+**The listeners only queue; `simulate()` delivers after `Engine.update` returns.** matter-js fires
+`collisionStart`/`collisionEnd` from inside the step, and a subscriber that removes or re-adds a body
+there (a pickup removing what it caught) mutates `engine.world` while the step is still iterating
+it. So each listener reads the event's data (contact point, normal, velocities, the impulse
+estimate) right away and pushes a closure to `MatterWorldComponent.pendingCollisionEvents`, which
+`simulate()` splices and runs once `Engine.update` is done (`dispose()` drops whatever is queued).
+Each closure first checks both components are still in the world under the native body they were
+reported with (`isCurrent`: same `nativeBody`, same `handleIdEntityMap` entry), then does the
+bookkeeping for *both* sides before emitting to either - `trackCollisionStart`/`trackCollisionEnd`
+return whether an emission is due, `emitCollisionStart`/`emitCollisionEnd` do it - re-checking
+`isCurrent` right before each side's emission. The order matters: if A's `onCollisionStart`
+subscriber removes B, B's `collidingWith` already holds A, so B's `removeFromWorld` emits
+`onCollisionEnd(null)` on A and A's map is clean; B's own start is then skipped (it is out of the
+world). Counting B only after A's emission would leave A with a stale entry and no end event.
+`notifyCollisionStart`/`notifyCollisionEnd` remain the one-call form (track, then emit) that
+`removeFromWorld` (with `null`) and tests use. A test that drives `world['handleCollisionStart']`/
+`world['handleCollisionEnd']` with synthetic pairs must flush `world['pendingCollisionEvents']` by
+hand (see the `COMPOUND bodies` block) - nothing is emitted until then. Regression: "delivers
+collision events after the step, so a subscriber may remove the other body" in
+`matter-rigid-body-collision.spec.ts`.
+
+**matter-js pairs parts, so `findRigidBody` resolves `.parent` before the map lookup, and the
+component counts part pairs per partner.** `Detector.collisions` walks parts `1..n` of a multi-part
+(`COMPOUND`, flattened into one `Body.create({ parts })` - see the `COMPOUND` section) body, so a
+reported `pair.bodyA`/`pair.bodyB` is a *part*; `handleIdEntityMap` is keyed by the parent body's id
+(a single-part body is its own `parent`), so looking a part up directly finds nothing and silently
+drops every collision of a compound body. `findRigidBody` does `nativeBody.parent ?? nativeBody`
+first, the same resolution `raycast()` and `MatterTriggerComponent.resolveOther` do. Once resolved,
+a compound body touching another on two parts is two native pairs, each starting and ending on its
+own, while the contract is one `onCollisionStart` and one `onCollisionEnd` per body pair:
+`MatterRigidBodyComponent.collidingWith` maps each partner to the number of touching part pairs,
+`trackCollisionStart` reports a due emission only on 0 -> 1, `trackCollisionEnd` only on 1 -> 0 and
+not at all for a partner with no count (no start was reported, e.g. a pair that began before a re-add). The
+same shape as `MatterTriggerComponent.nativePairCounts` (see its own section) and the rapier
+adapters' `collidingWith`. In practice a two-box compound resting flat on a floor *does* end one
+part's pair after settling (it rests with a slight tilt) while the other still touches - without
+the count that would be a spurious `onCollisionEnd` on a body that never left. Regressions: the
+`COMPOUND bodies` block in `matter-rigid-body-collision.spec.ts` (which drives
+`world['handleCollisionEnd']` with synthetic per-part pairs for the let-go sequence) and the shared
+2D contract's "once per body pair" case. `pair.isSensor` (true whenever
 either native body is a trigger's - triggers always set `isSensor = true` in their own constructor) is
 skipped entirely in both listeners, so a trigger overlapping a rigid body only ever fires the
 trigger's own `onEntityEntered`/`onEntityLeft`, never the rigid body's `onCollisionStart`/
@@ -123,19 +165,73 @@ asleep *naturally* from prolonged inactivity, no matter how long it rests, only 
 `sleep()` call. Re-check this doc comment (and the "still work uniformly" claim above) if a future
 change ever turns `enableSleeping: true` on for this adapter.
 
+## Units: meters at the API, `MATTER_UNITS_PER_METER` native units inside
+
+The engine measures every 2D world in meters, kg and seconds; matter-js's solver assumes bodies tens
+to hundreds of native units across (`slop` 0.05, resting/sleeping thresholds, `Bodies.circle`'s side
+count all scale with it), so meter-sized bodies fed to it raw are numerically bad. The adapter keeps
+the API in meters and converts at its boundary through `src/matter-units.ts`, the single source of
+every scale: `MATTER_UNITS_PER_METER = 100` for lengths (`toMatterLength`/`toMatterPoint` in,
+`fromMatterLength`/`fromMatterPoint` out) and the derived `MATTER_VELOCITY_SCALE`,
+`MATTER_ANGULAR_VELOCITY_SCALE`, `MATTER_FORCE_SCALE`, `MATTER_TORQUE_SCALE`, `MATTER_INERTIA_TO_SI`
+and `MATTER_GRAVITY_SCALE`, which fold in matter-js's own time base and inertia scale. Nothing of it
+is exported from the package: `nativeBody`, `matterEngine`/`matterWorld` are in native units and
+documented as such. Where each conversion is applied:
+
+- Shapes: `createShapeParts` (`matter-rigid-body-builder.ts`) converts every dimension, radius,
+  vertex and `COMPOUND` child offset for rigid bodies, triggers and clones alike; the character
+  controller's capsule in its own constructor. `debugBodySettings` keeps the meter descriptor.
+- Transforms: construction transform (builder), `position` get/set on the rigid body and character
+  controller, `applyForce`/`applyImpulse`'s `worldPoint` (the lever arm is computed in meters).
+- Velocities: `linearVelocity` goes through `Body.getVelocity`/`Body.setVelocity` (normalised to
+  matter's base step of 1000/60 ms, so the m/s conversion holds at any frame rate - the raw
+  `body.velocity` field is the last step's own displacement), `angularVelocity` through
+  `Body.getAngularVelocity`/`setAngularVelocity` and is rad/s.
+- Forces: see the next section. Gravity: `Engine.gravity.x/y` carry the m/s² numbers and
+  `gravity.scale = MATTER_GRAVITY_SCALE` (= `MATTER_FORCE_SCALE`, units-per-meter × 1e-6) turns them
+  into matter's per-millisecond integration.
+- Queries: `raycast()` converts `from`/`to` in and `hitPoint`/`hitDistance` out (normals are
+  unitless); `CollisionEvent.position` comes out of `averageSupports` in meters.
+- Character controller: `options` stay in meters for `clone()`; the lengths the mover reads every
+  tick (`radius`, `offset`, `maxStepHeight`, `snapToGroundDistance`) are converted once into
+  `native`, `move()` converts the translation on entry and runs entirely in native units,
+  `pushDynamicBodies` gets the horizontal distance back in meters so the push is m/s.
+
+Specs are written as meter-sized scenes (a 0.1-0.2 m circle, a 5 x 1 m floor, 1 m/s). A test that
+reads native geometry (`nativeBody.bounds`) says so and expects 100 units per meter.
+
 ## `IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`: matter-js units
 
 `Body.update` integrates `velocity += force / mass * dt²` with `dt` in **milliseconds** and the
 velocity in units per update, and `Engine.update` clears `body.force`/`body.torque` afterwards. So
-a force in Newtons is scaled by `MATTER_FORCE_SCALE = 1e-6` before `Body.applyForce`
-(`1 / 1000²`), after which one update of `dt` ms changes the velocity by `F / m * dt` seconds'
-worth; the same scale goes on `body.torque`. The clear-after-update is the core contract's "next
-`simulate()` only" lifetime for free. matter-js has no impulse: `applyImpulse` adds `J / m` through
-this component's own `linearVelocity` setter (which carries the `MATTER_VELOCITY_SCALE` conversion),
-plus `r × J / inertia` through `applyTorqueImpulse` for a world point; `applyTorqueImpulse` adds
-`L / inertia × MATTER_VELOCITY_SCALE` to the raw native `angularVelocity`. Every body has a default
-`frictionAir` of 0.01 (1% velocity damping per update), so a test checking `F / m` exactly sets
-`nativeBody.frictionAir = 0` first (`matter-rigid-body-forces.spec.ts`).
+a force in Newtons is scaled by `MATTER_FORCE_SCALE = MATTER_UNITS_PER_METER * 1e-6` (meters to
+units, `1 / 1000²` for the time base) before `Body.applyForce`, after which one update of `dt` ms
+changes the velocity by `F / m * dt` seconds' worth; the clear-after-update is the core contract's
+"next `simulate()` only" lifetime for free. matter-js has no impulse: `applyImpulse` adds `J / m`
+through this component's own `linearVelocity` setter, plus `r × J` (meters) through
+`applyTorqueImpulse` for a world point; `applyTorqueImpulse` adds `L / I` rad/s through the
+`angularVelocity` setter, with `I = nativeBody.inertia * MATTER_INERTIA_TO_SI` the physical inertia
+in kg·m². A torque is scaled by `MATTER_TORQUE_SCALE` (`_inertiaScale` × units² × 1e-6), and
+`applyForce` adds a `worldPoint`'s lever-arm torque itself through that scale rather than handing
+the point to `Body.applyForce`, since force and torque convert by different factors. Every body has
+a default `frictionAir` of 0.01 (1% velocity damping per update), so a test checking `F / m` exactly
+sets `nativeBody.frictionAir = 0` first (`matter-rigid-body-forces.spec.ts`).
+
+**Inertia is set by the builder, not by `Body.create`'s `mass` option.** matter-js's native
+`inertia` is `Body._inertiaScale` (4) times the physical moment of inertia of the vertices
+(`Vertices.inertia`), which is what `MATTER_INERTIA_TO_SI`/`MATTER_TORQUE_SCALE` undo. Two upstream
+quirks, both confirmed by reading `Body.js` and measuring: `Body.create` computes the inertia for the
+default-density mass *before* it applies a `mass` option, in one `Body.set` call whose
+`inertia: options.inertia || body.inertia` override was captured before the mass change, so a body
+built with `mass` in its options keeps the default-density inertia whatever mass was asked for (a
+1 kg and a 7 kg circle of the same radius report the same `inertia`); and `Body.setParts` sums a
+compound's part inertias with no parallel-axis term (two 20 x 20 boxes at ±10 give 533 instead of
+1333). `buildMatterRigidBody` therefore builds every dynamic body without `mass` and then calls
+`applyMass`, which sets the mass (`descriptor.body.mass`, defaulting to 1 kg) and recomputes the
+inertia from every part's vertices about the body's centre of mass, the mass shared between parts
+by area, times `_inertiaScale`. `matter-rigid-body-forces.spec.ts` checks a 1 kg 0.2 m disc spins
+at ~5 rad/s from a 0.1 N·m·s impulse, a 2 kg one from 0.2, and a two-box compound at exactly
+`L / I` with the offset term.
 
 **The "ignored while not in a world" half of the contract needs an explicit guard.** `Engine.update`
 only clears `force`/`torque` on bodies in its composite, so a call on a body outside the world
@@ -400,16 +496,15 @@ entirely (see `gg-engine-physics-adapter`'s general section on this pattern - ma
   `computeColliderMovement` or Bullet's `convexSweepTest`). A naive "move to the fully-displaced
   candidate, then test" would tunnel clean through anything thinner than the requested displacement (a
   large single-tick `move()` call is routine - e.g. the "slide to a stop against a wall" test moves 5
-  units in one call against a 1-unit-thick wall). `marchMove` subdivides every requested delta into
+  meters in one call against a 1 m-thick wall). `marchMove` subdivides every requested delta into
   substeps no longer than half the capsule's radius and re-queries after each one, stopping at the
   first substep whose query finds a meaningfully-opposing obstacle - the direct 2D analog of what a
   sweep primitive gives other backends for free, and worth remembering for any other library in this
   position (a discrete-only collision query with no swept-cast equivalent). The step must scale with
-  the capsule, never be a fixed length in world units: a cap of `min(radius, 0.1)` was tuned for a
-  metre-scale world and, in a pixel-scale one (a 20 px capsule running at 468 px/s), made every
-  character run ~185 `Query.collides` calls per tick. Half the radius still can't step past even a
-  zero-thickness wall (the capsule is `2 × radius` wide), and the exact-depth correction below keeps
-  the resting position precise regardless of step length.
+  the capsule, never be a fixed length: a fixed cap of 0.1 native units made a 20-unit capsule
+  running at 468 units/s issue ~185 `Query.collides` calls per tick. Half the radius still can't
+  step past even a zero-thickness wall (the capsule is `2 × radius` wide), and the exact-depth
+  correction below keeps the resting position precise regardless of step length.
 - **A rejected substep must correct along the blocking contact's own normal by its exact `Collision
   .depth`, not simply revert the whole substep.** An early version reverted fully to the pre-substep
   position on any block, which is only ever as precise as the substep length itself (up to `maxSubstep`)
@@ -461,7 +556,8 @@ entirely (see `gg-engine-physics-adapter`'s general section on this pattern - ma
   `pushDynamicBodies` uses to resolve a native body it just bumped into back to its owning component
   (via `MatterRigidBodyComponent.linearVelocity`'s existing get/set, which already carries the
   `MATTER_VELOCITY_SCALE` conversion - reuse that rather than touching `Body.velocity` directly and
-  re-deriving the scale factor). `MatterWorldComponent.findRigidBody` (used by the real
+  re-deriving the scale factor; the push is computed in m/s, from a horizontal distance converted
+  back to meters). `MatterWorldComponent.findRigidBody` (used by the real
   `collisionStart`/`collisionEnd` listeners) needed an explicit `instanceof MatterRigidBodyComponent`
   narrow after this widening, since a character controller's phantom body can never actually be a
   reported pair's `bodyA`/`bodyB` but the map's value type no longer says so on its own.

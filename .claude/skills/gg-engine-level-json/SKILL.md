@@ -567,9 +567,13 @@ or declaratively from a level JSON's `events` (see "Blueprints" below) - the bui
 node's `impactClips` setting is built specifically for this: picking a different clip for a light tap
 versus a hard crash off this same `impulse` field.
 
-### `"Camera"` (3D only) - a `Camera3dEntity`, ready to use
+### `"Camera"` - a `Camera3dEntity` / `Camera2dEntity`, ready to use (2D and 3D)
 
-`config: { fov?, aspectRatio?, frustrum?: { near, far } }`. A camera looks down its local -Z, so
+3D `config: { fov?, aspectRatio?, frustrum?: { near, far } }`; 2D `config: { zoom?, origin? }`
+(`Camera2DSettings`, see `ICamera2dComponent` for both fields) with `position` in meters and
+`rotation` an angle - the 2D loader wraps `visualScene.factory.createCamera()` in a
+`Camera2dEntity` exactly the way the 3D one below wraps a perspective camera, same lifetime rules.
+In 3D, a camera looks down its local -Z, so
 with no `rotation` it looks straight down at the ground; `Qtrn.lookAt(position, target)` gives the
 entry's `rotation` for a camera at `position` looking at `target` (a rotation of 90 degrees about X,
 `{ "x": 0.7071, "y": 0, "z": 0, "w": 0.7071 }`, looks level along +Y). A `PlayerCharacterController`
@@ -642,11 +646,12 @@ the loader serializes through its spawn record (the original `config`, texture U
 parallax?, zIndex?, repeat?, offset?, scale? }`. `parallax` and `scale` take a number (both axes) or
 `{ x, y }`; `parallax` `0` stays fixed on screen, `1` moves with the world (default `0.5`); `repeat`
 is `"x"` (default), `"y"`, `"both"` or `"none"`; `zIndex` defaults to `-1` (behind the world);
-`offset` is the texture's world position while the camera is at the origin.
+`offset` is the texture's world position (meters) while the camera is at the origin; `scale`
+multiplies the texture's natural size (one texel per screen pixel at camera zoom 1).
 
 ```json
 { "class": "ParallaxLayer", "name": "FarHills",
-  "config": { "texture": "/img/hills.png", "parallax": 0.2, "zIndex": -2, "offset": { "x": 0, "y": 100 } } }
+  "config": { "texture": "/img/hills.png", "parallax": 0.2, "zIndex": -2, "offset": { "x": 0, "y": 1 } } }
 ```
 
 The texture loads while the level loads (`world.loader.loadTexture`). A no-op (`undefined`) without a
@@ -1450,7 +1455,7 @@ own coverage against a hand-rolled node type in
 trigger shape, and a `COMPOUND` trigger's `serializeEntity`/`createEntity` round trip, with
 `createTrigger` stubbed to return a `mock3DBody(shape)`/`mock2DBody(shape)` so the live serializer
 reads back the shape it was built with)/
-`"Player"`/`"Sound"` classes (both dimensions) plus the 3D-only `"Camera"`/`"GgCar"`/`"MapGraph"`
+`"Player"`/`"Sound"`/`"Camera"` classes (both dimensions) plus the 3D-only `"GgCar"`/`"MapGraph"`
 (`"Light"`/`"Environment"` are in `packages/core/test/3d/lights-environment.spec.ts`, the 2D
 `"ParallaxLayer"`/`"Environment"` in `packages/core/test/2d/parallax-environment.spec.ts`)
 against hand-rolled mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine
