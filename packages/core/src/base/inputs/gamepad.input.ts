@@ -91,6 +91,14 @@ export type GamepadBindKeysOptions = {
   repeatDelay?: number;
   /** Milliseconds between two repeats. 125 by default. */
   repeatInterval?: number;
+  /**
+   * Have only a stick press a key through an axis control: an axis resting at an end (`axisRest`
+   * -1 or 1 - a pedal, a trigger reported as an axis) presses nothing however it is pushed. For a
+   * menu's keys, whose arrows `GAMEPAD_MENU_KEYS` puts on axes 0 and 1: pedals listed as a gamepad
+   * (a wheel base) sit on those, and the brake must not move the selection. Buttons are unaffected.
+   * Off by default here, on by default in `Screen.bindGamepadKeys`.
+   */
+  sticksOnly?: boolean;
 };
 
 export type GamepadInputOptions = {
@@ -497,7 +505,9 @@ export class GamepadInput extends IInput {
    * the rule of the first poll (`controlPushed$`): for a calibration step of the app's own - "let
    * go of every control, then press a button" - which is the way out when that poll got an axis
    * wrong (a stick of a gamepad without the standard mapping held past half way while the
-   * browser listed it is taken as resting at that end, and then reads dead towards that end).
+   * browser listed it is taken as resting at that end: it then reads dead towards that end and,
+   * centred, about 0.4 towards the other - a constant drift on `direction` and the bindings that
+   * never reaches `pressThreshold`, so menus work and the game creeps).
    * Every `GamepadInput` measures the axes from the new rests from its next poll on; the change
    * itself pushes nothing. `axisRest` answers the new rests at once.
    */
@@ -706,7 +716,8 @@ export class GamepadInput extends IInput {
    * request, for a calibration step of the app's own. Known gaps, all on axes outside the
    * standard sticks: a trigger held on that poll is taken as resting pulled (its pull is then not
    * reported, its release is, and `value` reads its pull as 0), an axis held to one end on it never
-   * reports that direction and reads dead towards it, and a trigger the browser reads as 0 until
+   * reports that direction and reads dead towards it - a stick so learned drifts about 0.4 the
+   * other way when centred - and a trigger the browser reads as 0 until
    * it is first touched (seen on Linux) is taken as resting at 0, so its release reports `-` like
    * a push and `value` reads its release as a `-` push.
    */
@@ -825,8 +836,8 @@ export class GamepadInput extends IInput {
    * pressed any more - or when this input stops. Returns a function that unbinds (and releases).
    * While a key is held this way, releasing the same physical key, or another binding's hold of the
    * same key (a touch button, another controller's gamepad button), does not let go of it.
-   * `options` make it press like a key of a real keyboard (`edge`) and repeat held keys (`repeat`),
-   * for a menu.
+   * `options` make it press like a key of a real keyboard (`edge`), repeat held keys (`repeat`)
+   * and keep pedals off the keys (`sticksOnly`), for a menu.
    */
   public bindKeys(
     keyboard: KeyboardInput,
@@ -837,6 +848,7 @@ export class GamepadInput extends IInput {
     const repeating = new Set(options.repeat || []);
     const repeatDelay = options.repeatDelay ?? 350;
     const repeatInterval = options.repeatInterval ?? 125;
+    const sticksOnly = !!options.sticksOnly;
     // the keys this binding holds down, and the controls pressed as of the last poll
     const held = new Set<string>();
     const down = new Set<string>();
@@ -857,7 +869,7 @@ export class GamepadInput extends IInput {
       const baseline = afterStop || (edge && (initial || awaitingRead));
       awaitingRead = !this.hasRead;
       for (const code of Object.keys(keys)) {
-        const pressed = this.pressed(keys[code]);
+        const pressed = this.pressed(sticksOnly ? this.stickControls(keys[code]) : keys[code]);
         const wasDown = down.has(code);
         if (!pressed) {
           down.delete(code);
@@ -1177,6 +1189,15 @@ export class GamepadInput extends IInput {
     for (const control of newlyPushed) {
       this._controlPushed$.next(control);
     }
+  }
+
+  /**
+   * `controls` without the axis controls of an axis resting at an end as of the last read (a
+   * pedal, a trigger reported as an axis): the buttons and the sticks' axes - `bindKeys`'
+   * `sticksOnly`
+   */
+  private stickControls(controls: GamepadControls): readonly GamepadControl[] {
+    return asList(controls).filter(c => c[0] === 'b' || !this.axisRests[parseInt(c.slice(1), 10)]);
   }
 
   /**

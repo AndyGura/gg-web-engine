@@ -840,6 +840,29 @@ describe('GamepadInput', () => {
       expect(input.value('a1+')).toBeCloseTo((0.56 - 0.12) / 0.88);
     });
 
+    it('keeps a pedal off the keys of a sticksOnly bindKeys, and a stick on them', () => {
+      const keyboard = new KeyboardInput();
+      keyboard.start();
+      const down: string[] = [];
+      keyboard.bind('ArrowUp').subscribe(v => v && down.push('ArrowUp'));
+      keyboard.bind('ArrowDown').subscribe(v => v && down.push('ArrowDown'));
+      const unbind = input.bindKeys(keyboard, GAMEPAD_MENU_KEYS, { sticksOnly: true });
+      connect({ mapping: '', axes: [0, 1, 0, 0] }); // a pedal resting at +1 on axis 1
+      connect({ mapping: '', axes: [0, -1, 0, 0] }); // floored
+      expect(down).toEqual([]);
+      connect({ mapping: '', axes: [0, 1, 0, 0], buttons: { 12: true } }); // the d-pad still works
+      expect(down).toEqual(['ArrowUp']);
+      // a stick (resting at 0) presses the arrows
+      connect({ mapping: '', axes: [0, 0, 0, 0] });
+      pads.set(null);
+      input.poll(); // gone: learned again when it is back
+      connect({ mapping: '', axes: [0, 0, 0, 0] });
+      connect({ mapping: '', axes: [0, -1, 0, 0] });
+      expect(down).toEqual(['ArrowUp', 'ArrowUp']);
+      unbind();
+      keyboard.stop();
+    });
+
     it('is not in use by a pedal push inside the dead zone that value reads as 0', () => {
       connect({ mapping: '', axes: [0, 1, 0, 0] }); // a pedal resting at +1
       connect({ mapping: '', axes: [0, 0.78, 0, 0] });

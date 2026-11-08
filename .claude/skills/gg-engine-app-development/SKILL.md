@@ -891,6 +891,9 @@ class GameScreen extends Screen {
   `world.keyboardInput`. `this.bindGamepadKeys()` in a menu screen's constructor or `enter()` has
   the gamepad press that keyboard too: d-pad or left stick are the arrows (held ones repeat), A is
   Enter, B is Escape, so a menu driven by `this.keyboard.bind('ArrowDown')` etc. works from a pad.
+  A pedal or a trigger reported as an axis (one resting at an end, `GamepadInput.axisRest`) presses
+  none of them, so a wheel base's pedals never move the selection; pass `{ sticksOnly: false }` to
+  let one.
   Moving DOM focus or clicking the focused button on those keys is your handler's job. Keep the
   menu keys off a game screen (B is a gameplay button there) and bind only its pause key:
   `this.bindGamepadKeys({ Escape: 'b9' })` (Start). With the pointer locked the browser keeps Escape for releasing the lock,

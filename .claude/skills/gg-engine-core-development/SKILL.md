@@ -872,7 +872,10 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
   `dispose`; running beside a world's own input costs no second `navigator.getGamepads()` read -
   every running `GamepadInput` shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
-  screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
+  screen's teardowns; a call before the screen is pushed waits for `attach`. They pass `sticksOnly`
+  too (overridable), so `bindKeys` drops the axis controls of an axis resting at an end (per poll,
+  from the input's `axisRests` - `stickControls`): a wheel base's pedals sit on the axes the menu
+  arrows use. `edge` is what makes it work
   across screens: B closing the pause menu is still held when the game screen's keyboard starts,
   and pressing it would open the menu again at once. An edge binding presses only a control
   pushed while the keyboard runs. Every binding, edge or not, drops a hold the keyboard no longer

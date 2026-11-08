@@ -157,9 +157,11 @@ export abstract class Screen {
    * `GAMEPAD_MENU_KEYS` by default (d-pad or left stick: the arrows, A: Enter, B: Escape). Keys are
    * pressed like those of a real keyboard: only when a control is pushed while the screen is on
    * top, so the button that closed the screen above presses nothing here. Held arrows repeat (the
-   * codes in `options.repeat`, every arrow by default), first after 350 ms, then every 125 ms.
-   * Call it from the constructor or `enter()`; the binding ends with the screen. The gamepad is
-   * `screens.gamepadInput`.
+   * codes in `options.repeat`, every arrow by default), first after 350 ms, then every 125 ms. An
+   * axis resting at an end - a pedal, a trigger reported as an axis - presses nothing
+   * (`options.sticksOnly`, on by default): pedals listed as a gamepad sit on the arrows' axes, and
+   * the brake must not move the selection. Call it from the constructor or `enter()`; the binding
+   * ends with the screen. The gamepad is `screens.gamepadInput`.
    *
    * Only the screen's own handlers (`this.keyboard.bind(...)`) see these keys: moving the focus in
    * the screen's DOM, or clicking the focused element, is up to them. A game screen keeps the menu
@@ -181,6 +183,7 @@ export abstract class Screen {
       this.addTeardown(
         this.screens.gamepadInput.bindKeys(this.keyboard, keys, {
           repeat: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
+          sticksOnly: true,
           ...options,
           edge: true,
         }),

@@ -37,6 +37,10 @@ where one exists.
   learns every axis's rest again from how the gamepad reads now, for a calibration step of the app's
   own ("let go of every control, then press a button") - the correction for a rest the first poll
   learned wrong.
+- core: `GamepadInput.bindKeys`' `sticksOnly` option: an axis resting at an end (a pedal, a trigger
+  reported as an axis) presses no key, however it is pushed; buttons and sticks are unaffected. On by
+  default in `Screen.bindGamepadKeys`, so pedals listed as a gamepad (a wheel base's, on the axes
+  `GAMEPAD_MENU_KEYS` puts the arrows on) no longer move a menu's selection when pressed.
 
 ### Fixed
 
