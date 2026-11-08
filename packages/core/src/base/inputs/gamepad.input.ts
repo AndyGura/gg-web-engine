@@ -95,8 +95,9 @@ export type GamepadBindKeysOptions = {
 
 export type GamepadInputOptions = {
   /**
-   * Below this a stick axis reads as 0, and the rest of its travel is rescaled to 0..1, so a stick
-   * at rest a little off center does not move anything. Default 0.12.
+   * Below this an axis (measured from where it rests, see `value`) reads as 0, and the rest of its
+   * travel is rescaled to 0..1, so a stick at rest a little off center does not move anything.
+   * Default 0.12.
    */
   stickDeadzone: number;
   /** Below this a button's analog value (a trigger's) reads as 0. Default 0.02. */
@@ -233,7 +234,11 @@ const asList = (controls: GamepadControls): readonly GamepadControl[] =>
  * A gamepad, read through the Gamepad API. Every world has one (`world.gamepadInput`), running
  * while the world's `inputEnabled`; it polls `navigator.getGamepads()` on every frame of the global
  * clock - also while the world is paused, so a gamepad can unpause it - and reports its controls
- * by index (`GamepadControl`), with the stick and trigger dead zones applied.
+ * by index (`GamepadControl`), with the stick and trigger dead zones applied. An axis is measured
+ * from where it rests, learned per gamepad (`axisRest`): a stick from its centre, a pedal or a
+ * trigger reported as an axis (resting at -1 or +1) from that end over its whole travel, and its
+ * direction towards the rest is never pushed - so pedals listed as a gamepad never hold a menu's
+ * arrow down.
  *
  * It feeds the other inputs rather than replacing them: `bindKeys` presses keys of a
  * `KeyboardInput` while buttons are held (so anything bound to those keys works from the gamepad
@@ -442,6 +447,25 @@ export class GamepadInput extends IInput {
     return pressed || gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
   }
 
+  /**
+   * Where axis `index` of `gamepad` (a connected one) rests, as the engine learned it: -1 or 1 for
+   * an axis resting at an end (a pedal, a trigger reported as an axis), 0 for a stick - or for an
+   * axis the gamepad lacks. Learned on the first poll that lists the gamepad, see `controlPushed$`;
+   * a gamepad no poll has seen yet is learned now, from how it reads. Every `GamepadInput` measures
+   * the axis's values from this rest (`value`), so an app needs it only to tell a pedal from a
+   * stick - to keep pedals from moving a menu cursor, say.
+   *
+   * @example
+   * ```ts
+   * // the menu's arrows on the left stick only when axis 1 is a stick, not a pedal
+   * const pad = world.gamepadInput.gamepad;
+   * const stick = !pad || GamepadInput.axisRest(pad, 1) === 0;
+   * ```
+   */
+  public static axisRest(gamepad: Gamepad, index: number): number {
+    return GamepadInput.knownGamepad(gamepad).rests[index] || 0;
+  }
+
   /** `gamepad` in `knownGamepads`, added (`fresh`) with where its axes rest as it reads now if new */
   private static knownGamepad(gamepad: Gamepad): KnownGamepad {
     let known = GamepadInput.knownGamepads.find(x => sameDevice(x, gamepad));
@@ -566,6 +590,11 @@ export class GamepadInput extends IInput {
   private buttons: number[] = [];
   /** raw axis values */
   private axes: number[] = [];
+  /**
+   * where each axis of the gamepad read last rests (-1, 0 or 1, see `axisRest`), as of that read:
+   * what the axis values are measured from in `controlValue`
+   */
+  private axisRests: number[] = [];
   /** raw axis values of the poll before, to tell a stick moved from one held still */
   private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
@@ -633,8 +662,10 @@ export class GamepadInput extends IInput {
    *
    * Where an axis rests is learned per gamepad on the first poll that lists it (by any running
    * `GamepadInput`): the standard mapping's sticks rest at 0, any other axis then past half way
-   * rests at that end, the rest at 0. Disconnecting the gamepad forgets it, so plugging it in
-   * again learns it again. Known gaps, all on axes outside the standard sticks: a trigger held on
+   * rests at that end, the rest at 0 (`axisRest` reads it). The same rest is what `value`,
+   * `pressed`, `direction` and the bindings measure the axis from. Disconnecting the gamepad
+   * forgets it, so plugging it in again learns it again. Known gaps, all on axes outside the
+   * standard sticks: a trigger held on
    * that poll is taken as resting pulled (its pull is then not reported, its release is), an axis
    * held to one end on it never reports that direction, and a trigger the browser reads as 0
    * until it is first touched (seen on Linux) is taken as resting at 0, so its release reports `-`
@@ -669,8 +700,10 @@ export class GamepadInput extends IInput {
 
   /**
    * How far a control is pushed as of the last poll, 0 to 1: a button's analog value (a trigger),
-   * 1 for a pressed digital button, a stick axis past its dead zone rescaled to 0..1. Of several
-   * controls, the most pushed one.
+   * 1 for a pressed digital button, an axis measured from where it rests (`axisRest`) - a stick
+   * from 0, an axis resting at an end over the travel from that end, so a pedal resting at -1
+   * reads `a5+` 0 at rest, 0.5 half way and 1 floored, and `a5-` 0 always - past its dead zone
+   * rescaled to 0..1. Of several controls, the most pushed one.
    */
   public value(controls: GamepadControls): number {
     let result = 0;
@@ -689,7 +722,11 @@ export class GamepadInput extends IInput {
     );
   }
 
-  /** Whether any of `controls` is pushed past `pressThreshold` */
+  /**
+   * Whether any of `controls` is pushed past `pressThreshold` - an axis measured from where it
+   * rests (`value`): an axis resting at +1 never presses `+`, and presses `-` once pushed past half
+   * its travel
+   */
   public pressed(controls: GamepadControls): boolean {
     return this.value(controls) > this.options.pressThreshold;
   }
@@ -721,7 +758,10 @@ export class GamepadInput extends IInput {
     );
   }
 
-  /** The direction `binding` points as of the last poll, each axis `positive - negative` in [-1, 1] */
+  /**
+   * The direction `binding` points as of the last poll, each axis `positive - negative` in [-1, 1],
+   * every control measured from where its axis rests (`value`)
+   */
   public direction(binding: GamepadDirectionBinding): Point2 {
     const axis = (b: GamepadAxisBinding | undefined) => (b ? this.value(b.positive) - this.value(b.negative) : 0);
     return { x: axis(binding.x), y: axis(binding.y) };
@@ -1008,6 +1048,7 @@ export class GamepadInput extends IInput {
     this.hasRead = false;
     this.buttons = [];
     this.axes = [];
+    this.axisRests = [];
     this.previousAxes = [];
     this.pushedRaw = new Set<GamepadControl>();
     this.polled$.next();
@@ -1045,6 +1086,7 @@ export class GamepadInput extends IInput {
         return b.pressed ? 1 : 0;
       });
       this.axes = Array.from(gamepad.axes);
+      this.axisRests = rests.slice();
       gamepad.buttons.forEach((b, i) => (b.pressed || b.value > RAW_PUSH_THRESHOLD) && pushed.add(`b${i}`));
       // an axis at rest away from 0 is pushed towards its rest, which is never a push
       gamepad.axes.forEach(
@@ -1054,6 +1096,7 @@ export class GamepadInput extends IInput {
     } else {
       this.buttons = [];
       this.axes = [];
+      this.axisRests = [];
     }
     // a button pressed, or an axis moved away from where it rests (a trigger reported as an axis
     // rests at -1, and pedals listed as a gamepad rest pushed)
@@ -1106,12 +1149,29 @@ export class GamepadInput extends IInput {
     return previous !== undefined && Math.abs(value - previous) > AXIS_MOVE_THRESHOLD;
   }
 
+  /**
+   * How far `control` is pushed as of the last read, 0..1. An axis is measured from where it rests
+   * (`axisRests`, see `axisRest`): towards the rest it reads 0, away from it the travel left is
+   * scaled to 0..1 - a pedal resting at -1 reads `+` as 0 at rest, 0.5 half way and 1 floored, and
+   * `-` as 0 always; an axis resting at 0 (a stick) reads as its raw value. Then the stick dead zone.
+   */
   private controlValue(control: GamepadControl): number {
     const index = parseInt(control.slice(1), 10);
     if (control[0] === 'b') {
       return this.buttons[index] || 0;
     }
-    const value = (this.axes[index] || 0) * (control.endsWith('-') ? -1 : 1);
+    const raw = this.axes[index];
+    if (raw === undefined) {
+      return 0;
+    }
+    const rest = this.axisRests[index] || 0;
+    let value: number;
+    if (control.endsWith('-')) {
+      value = rest < 0 ? 0 : (rest - raw) / (1 + rest);
+    } else {
+      value = rest > 0 ? 0 : (raw - rest) / (1 - rest);
+    }
+    value = Math.min(1, Math.max(0, value));
     const deadzone = this.options.stickDeadzone;
     return value <= deadzone ? 0 : Math.min(1, (value - deadzone) / (1 - deadzone));
   }

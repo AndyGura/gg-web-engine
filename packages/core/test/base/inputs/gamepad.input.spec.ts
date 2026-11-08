@@ -1,6 +1,7 @@
 import {
   DirectionInput,
   GAMEPAD_LEFT_STICK,
+  GAMEPAD_MENU_KEYS,
   GamepadControl,
   GamepadInput,
   GgGlobalClock,
@@ -722,6 +723,83 @@ describe('GamepadInput', () => {
       connect({ axes: [1] });
       connect({ axes: [-1] }); // flicked across within one poll
       expect(pushed).toEqual(['a0-', 'a0+', 'a0-']);
+    });
+
+    it('measures an axis resting at an end from that end, over its whole travel', () => {
+      // a pedal: dead zone off, so the values are the travel as it is
+      input.stop();
+      input = new GamepadInput({ stickDeadzone: 0 });
+      input.start();
+      const pedal = (v: number) => connect({ mapping: '', axes: [0, v, 0, 0] });
+      pedal(1); // listed resting at +1
+      expect(input.value('a1+')).toBe(0);
+      expect(input.value('a1-')).toBe(0);
+      pedal(0); // half way
+      expect(input.value('a1+')).toBe(0);
+      expect(input.value('a1-')).toBe(0.5);
+      pedal(-1); // floored
+      expect(input.value('a1+')).toBe(0);
+      expect(input.value('a1-')).toBe(1);
+      expect(input.direction(GAMEPAD_LEFT_STICK)).toEqual({ x: 0, y: 1 });
+      pedal(0.5);
+      expect(input.value('a1-')).toBe(0.25);
+    });
+
+    it('measures a pedal resting at -1 from that end, with the dead zone after', () => {
+      trigger(-1);
+      expect(input.value('a5+')).toBe(0);
+      expect(input.value('a5-')).toBe(0);
+      trigger(0);
+      expect(input.value('a5+')).toBeCloseTo((0.5 - 0.12) / 0.88);
+      expect(input.value('a5-')).toBe(0);
+      trigger(1);
+      expect(input.value('a5+')).toBe(1);
+    });
+
+    it('reads a standard stick as before, from 0', () => {
+      connect({ axes: [0, 1] }); // held when listed: a stick rests at 0 regardless
+      expect(input.value('a1+')).toBe(1);
+      expect(input.value('a1-')).toBe(0);
+      connect({ axes: [0, -0.56] });
+      expect(input.value('a1-')).toBeCloseTo((0.56 - 0.12) / 0.88);
+      expect(input.value('a1+')).toBe(0);
+      expect(input.direction(GAMEPAD_LEFT_STICK).y).toBeCloseTo((0.56 - 0.12) / 0.88);
+    });
+
+    it('does not press a menu arrow with a pedal resting at +1', () => {
+      connect({ mapping: '', axes: [0, 1, 0, 0] });
+      expect(input.pressed(GAMEPAD_MENU_KEYS.ArrowDown)).toBe(false);
+      expect(input.pressed(GAMEPAD_MENU_KEYS.ArrowUp)).toBe(false);
+      connect({ mapping: '', axes: [0, -1, 0, 0] }); // floored: pushed away from its rest
+      expect(input.pressed(GAMEPAD_MENU_KEYS.ArrowDown)).toBe(false);
+      expect(input.pressed(GAMEPAD_MENU_KEYS.ArrowUp)).toBe(true);
+    });
+
+    it('reads 0 for every control of an input that read no gamepad', () => {
+      pads.setAll([fakeGamepad({ mapping: '', axes: [0, 1, 0, 0] })]);
+      // learned by another input's poll, never read by this one
+      input.stop();
+      const other = new GamepadInput();
+      other.start();
+      other.poll();
+      other.stop();
+      input.start();
+      expect(input.value('a1-')).toBe(0);
+      expect(input.value('a1+')).toBe(0);
+    });
+
+    it('tells where an axis rests through axisRest', () => {
+      const pad = fakeGamepad({ mapping: '', axes: [0, 1, 0, 0, 0, -1] });
+      pads.setAll([pad]);
+      input.poll();
+      expect(GamepadInput.axisRest(pad, 0)).toBe(0);
+      expect(GamepadInput.axisRest(pad, 1)).toBe(1);
+      expect(GamepadInput.axisRest(pad, 5)).toBe(-1);
+      expect(GamepadInput.axisRest(pad, 9)).toBe(0); // no such axis
+      // a standard stick held when listed rests at 0; a gamepad no poll saw yet is learned now
+      const stick = fakeGamepad({ id: 'Stick', index: 1, axes: [0, 1, 0, 0, 0, -1] });
+      expect(GamepadInput.axisRest(stick, 1)).toBe(0);
+      expect(GamepadInput.axisRest(stick, 5)).toBe(-1);
     });
 
     it('learns the rest of each gamepad on its own', () => {

@@ -29,6 +29,25 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+
+- core: `GamepadInput` measures an axis from where it rests, in `value`, `value$`, `pressed`,
+  `pressed$`, `released$`, `direction`, `direction$`, `bindKeys` and `bindDirection` (so in
+  `Screen.bindGamepadKeys`, the input controllers' gamepad bindings and `followGamepadKey` /
+  `followGamepadDirection`), as `controlPushed$` and `inUse$` already did: a pedal or a trigger
+  reported as an axis resting at -1 or +1 (sim racing wheel bases, DirectInput pads) reads 0
+  towards its rest and 0..1 over its whole travel away from it, then the stick dead zone. Before,
+  the axis was read as if resting at 0: a pedal on axis 1 resting at +1 held `GAMEPAD_MENU_KEYS`'
+  ArrowDown pressed for good (the menu cursor ran away), and one resting at -1 bound as `a1+` was
+  dead over half its travel and went 0..1 over the rest (it acted like a button). A standard
+  mapping's sticks rest at 0: nothing changes for them.
+
+### Added
+
+- core: `GamepadInput.axisRest(gamepad, index)`: where an axis of a connected gamepad rests as the
+  engine learned it (-1, 0 or 1; 0 for an axis the gamepad lacks), so an app can tell a pedal from a
+  stick - to keep pedals from moving a menu cursor at all, say.
+
 ## [0.0.90] - 2026-11-02
 
 ### Added
