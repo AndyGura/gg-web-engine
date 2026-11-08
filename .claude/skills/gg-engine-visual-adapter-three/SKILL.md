@@ -148,8 +148,11 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
   off its backdrop (see `gg-engine-visual-adapter`).
 - `test/components/three-backdrop.spec.ts` drives a recording fake `WebGLRenderer` (draw and clear
   order, each drawn scene's `background`/rotation/children at draw time) and stubs
-  `ThreeProceduralSky.prototype.bake` for the baked case. The visual result was not checked in a
-  real WebGL context by that spec; see the example for a live check.
+  `ThreeProceduralSky.prototype.bake` for the baked case. The sky lending was verified in headless
+  Chromium (SwiftShader): with a dynamic procedural sky, a baked one and an equirectangular texture
+  with vertical marker stripes, a frame switch with a yaw of about 1 rad left every pixel of the
+  sky in place (under 0.5% of pixels differing, all from the scene itself). Re-run that comparison
+  after any change to the lend or to `applyEnvironmentRotation`.
 
 ## Display objects
 

@@ -676,7 +676,9 @@ origin), `frustum` the backdrop camera's `{ near, far }` in backdrop units (defa
 - **No physics, no positional audio inside**: a child with a body (`"Primitive"` in a world with
   physics, `"Trigger"`, `"Player"`, `"GgCar"`, a `"Glb"` whose `.meta` has bodies) or a `"Sound"`
   fails the load, which is rolled back as for any failing entity. Backdrop content is never hit by
-  raycasts or triggers.
+  raycasts or triggers. For primitive scenery, register a display-only class of the app's own (an
+  `Entity3d` with only `object3D`, from `world.visualScene.factory.createPrimitive`); it validates
+  against the schema inside `children` like any app class.
 - `events` on a child may use inline blueprints only; the level's named `blueprints` are not passed
   down. Assets of the children are part of the level preload. A world frame switch leaves backdrop
   content where it is. It serializes through its spawn record (the original `config`, children

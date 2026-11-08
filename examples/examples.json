@@ -39,6 +39,13 @@
       "physics": ["ammo", "rapier3d"]
     },
     {
+      "dir": "3d/backdrop",
+      "title": "Backdrops (3D skybox)",
+      "description": "A small island in front of two miniature backdrops - a 1/16 coastline and a 1/256 mountain ring, each with its own fog - drawn behind the world like a Source engine 3D skybox; change the coast's scale live and switch the world frame without the horizon jumping.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
       "dir": "3d/raycast-vehicle",
       "title": "Raycast vehicle",
       "description": "A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API, leaving tyre smoke particles when braking.",
