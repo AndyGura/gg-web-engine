@@ -29,6 +29,33 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+
+- core: `GamepadInput.axisRest(gamepad, index)`: where an axis of a connected gamepad rests as the
+  engine learned it (-1, 0 or 1; 0 for an axis the gamepad lacks), so an app can tell a pedal from a
+  stick - to keep pedals from moving a menu cursor at all, say. `GamepadInput.learnAxisRests(gamepad)`
+  learns every axis's rest again from how the gamepad reads now, for a calibration step of the app's
+  own ("let go of every control, then press a button") - the correction for a rest the first poll
+  learned wrong.
+- core: `GamepadInput.bindKeys`' `sticksOnly` option: an axis resting at an end (a pedal, a trigger
+  reported as an axis) presses no key, however it is pushed; buttons and sticks are unaffected. On by
+  default in `Screen.bindGamepadKeys`, so pedals listed as a gamepad (a wheel base's, on the axes
+  `GAMEPAD_MENU_KEYS` puts the arrows on) no longer move a menu's selection when pressed.
+
+### Fixed
+
+- core: `GamepadInput` measures an axis from where it rests, in `value`, `value$`, `pressed`,
+  `pressed$`, `released$`, `direction`, `direction$`, `bindKeys` and `bindDirection` (so in
+  `Screen.bindGamepadKeys`, the input controllers' gamepad bindings and `followGamepadKey` /
+  `followGamepadDirection`), as `controlPushed$` and `inUse$` already did: a pedal or a trigger
+  reported as an axis resting at -1 or +1 (sim racing wheel bases, DirectInput pads) reads 0
+  towards its rest and 0..1 over its whole travel away from it, then the stick dead zone. Before,
+  the axis was read as if resting at 0: a pedal on axis 1 resting at +1 held `GAMEPAD_MENU_KEYS`'
+  ArrowDown pressed for good (the menu cursor ran away), and one resting at -1 bound as `a1+` was
+  dead over half its travel and went 0..1 over the rest (it acted like a button). A standard
+  mapping's sticks rest at 0: nothing changes for them. `inUse$` applies the stick dead zone on
+  the same scale as `value`, so a push `value` reads as 0 never switches the hints to the gamepad.
+
 ## [0.0.90] - 2026-11-02
 
 ### Added
