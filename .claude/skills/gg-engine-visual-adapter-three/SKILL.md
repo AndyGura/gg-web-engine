@@ -110,6 +110,47 @@ procedural `environmentMap`, and updates their uniforms on every `setEnvironment
   dynamic one view for view, and `'standart'` meshes lit by it. Repeat that for any shader change:
   a GLSL error only shows up in a real context.
 
+## Backdrops
+
+A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true) is an ordinary
+`ThreeSceneComponent` whose `setEnvironment` refuses a non-`null` `background`.
+
+- **Pass order in `ThreeRendererComponent.render`**: `prepareFrame` on the world scene, then (only
+  when `world.backdrops` is non-empty) `renderer.clear()`, `autoClear = false`, the sky lent to the
+  first backdrop, and per backdrop `poseBackdropCamera` (core's `poseCameraFor` plus the main
+  camera's `aspect`, copied with `updateProjectionMatrix` only when it differs), `prepareFrame` on
+  the backdrop scene, `render(backdropScene, backdrop.camera)`, `clearDepth()`; then the world
+  scene; in a `finally`, the sky taken back and `autoClear` restored. The physics debug view draws
+  after that, unchanged. A `WebGLRenderer.render` with `autoClear` off and `scene.background`
+  `null` draws no background at all, which is what keeps the world pass from painting over the
+  backdrops.
+- **`lendBackgroundTo(target, extraYaw)`/`takeBackgroundBack()`** move the sky for one frame:
+  `background`, `backgroundIntensity`, `backgroundBlurriness` and `backgroundRotation` go to the
+  backdrop's native scene (the world scene's `background` is set to `null`), and a `'DYNAMIC'`
+  procedural sky's box mesh is reparented there (`Object3D.add` reparents) with `setFrameYaw(frameYaw
+  + extraYaw)`. `extraYaw` is `world.frame.yaw`: the backdrop camera's rotation is global, the
+  world's cameras local. Adding it to the Euler's `z` is exactly `Rz(extraYaw) * R` because the
+  order is `'ZYX'` - for an image sky (`Rz(frameYaw) * Rx(PI/2)`) that cancels the frame-switch yaw
+  for a world that started at identity, for a baked cube (rotation `0`, content baked in local
+  space) it is `Rz(frame.yaw)`. A baked sky's `setFrameYaw` is never touched by the lend: its yaw
+  is part of the bake key and would trigger a re-bake every frame.
+- **`ThreeComposerRendererComponent`** keeps one `RenderPass` per backdrop (created in
+  `attachBackdrop`, disposed in `detachBackdrop`) and re-inserts them in front of `mainPass` only
+  when the order changed: the first `clear = true`, the others and `mainPass` `clear = false`,
+  `clearDepth = true` (`RenderPass.render` calls `clearDepth()` before `setRenderTarget`, which
+  works because consecutive render passes share `readBuffer`). With no backdrops `mainPass` is back
+  to `clear = true, clearDepth = false`. The inserted list is owned by that sync alone: a detach
+  removes the pass from the composer but leaves the list as it was, or the next sync would see no
+  change and leave `mainPass` clearing only depth. Cameras are posed and the sky lent around the
+  whole `nativeComposer.render()`.
+- **Display objects remember their scene** (`attachedScene`) for `removeFromWorld`, and particle
+  systems the scene whose `beforeRenderHooks` they joined: by removal time the entity may already be
+  off its backdrop (see `gg-engine-visual-adapter`).
+- `test/components/three-backdrop.spec.ts` drives a recording fake `WebGLRenderer` (draw and clear
+  order, each drawn scene's `background`/rotation/children at draw time) and stubs
+  `ThreeProceduralSky.prototype.bake` for the baked case. The visual result was not checked in a
+  real WebGL context by that spec; see the example for a live check.
+
 ## Display objects
 
 - **`Object3D.traverse()` fires on the root node itself first, then recursively on children.**

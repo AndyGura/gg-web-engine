@@ -17,6 +17,7 @@ export * from './components/rendering/i-visual-scene-3d.component';
 
 export * from './entities/gg-car/gg-car.entity';
 export * from './entities/audio-source-3d.entity';
+export * from './entities/backdrop-3d.entity';
 export * from './entities/camera-3d.entity';
 export * from './entities/environment-3d.entity';
 export * from './entities/light-3d.entity';
@@ -43,7 +44,9 @@ export * from './entities/surface-following.entity';
 
 export * from './interfaces/i-frame-switchable';
 export * from './interfaces/i-positionable-3d';
+export * from './interfaces/i-scene-owner';
 
+export * from './models/backdrop';
 export * from './models/body-options';
 export * from './models/character-controller-options';
 export * from './models/environment';

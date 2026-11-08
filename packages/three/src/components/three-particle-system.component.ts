@@ -3,6 +3,7 @@ import {
   ParticleBlendMode,
   ParticleRenderBuffers,
   ParticleSystem3dRenderOptions,
+  resolveVisualScene,
   sortParticlesBackToFront,
   UniqueResources3d,
 } from '@gg-web-engine/core';
@@ -28,6 +29,7 @@ import {
 } from 'three';
 import { ThreeDisplayObjectComponent } from './three-display-object.component';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
+import type { ThreeSceneComponent } from './three-scene.component';
 
 /**
  * three.js-only particle system options, merged into `ParticleSystem3dRenderOptions` when creating a
@@ -329,7 +331,8 @@ export class ThreeParticleSystemComponent
   private dirty = false;
   private readonly sortIndices: Uint32Array;
   private readonly sortDepths: Float32Array;
-  private world: ThreeGgWorld | null = null;
+  /** The scene whose `beforeRenderHooks` this system joined in `addToWorld`. */
+  private hookedScene: ThreeSceneComponent | null = null;
   private readonly inverseMatrix = new Matrix4();
   private readonly cameraPosition = new Vector3();
   private readonly cameraDirection = new Vector3();
@@ -513,13 +516,14 @@ export class ThreeParticleSystemComponent
 
   addToWorld(world: ThreeGgWorld): void {
     super.addToWorld(world);
-    this.world = world;
-    world.visualScene.beforeRenderHooks.add(this.beforeRender);
+    // a backdrop's scene sorts for the backdrop camera
+    this.hookedScene = resolveVisualScene(this.entity, world);
+    this.hookedScene.beforeRenderHooks.add(this.beforeRender);
   }
 
   removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void {
-    world.visualScene.beforeRenderHooks.delete(this.beforeRender);
-    this.world = null;
+    this.hookedScene?.beforeRenderHooks.delete(this.beforeRender);
+    this.hookedScene = null;
     super.removeFromWorld(world, dispose);
   }
 
@@ -540,9 +544,8 @@ export class ThreeParticleSystemComponent
   makeUnique(_resources?: UniqueResources3d): void {}
 
   dispose(): void {
-    if (this.world) {
-      this.world.visualScene.beforeRenderHooks.delete(this.beforeRender);
-    }
+    this.hookedScene?.beforeRenderHooks.delete(this.beforeRender);
+    this.hookedScene = null;
     this.buffers = null;
     if (this.resourceOwnership === 'none') {
       return;

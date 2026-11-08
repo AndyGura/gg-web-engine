@@ -47,6 +47,9 @@ import {
   ParticleSystem3dRenderOptions,
 } from './components/rendering/i-particle-system-3d.component';
 import { ParticleSystem3dEntity, ParticleSystem3dOptions } from './entities/particle-system-3d.entity';
+import { Backdrop3dEntity } from './entities/backdrop-3d.entity';
+import { Backdrop3dOpts } from './models/backdrop';
+import { findSceneOwner } from './interfaces/i-scene-owner';
 
 export type VisualTypeDocRepo3D = {
   factory: IDisplayObject3dComponentFactory;
@@ -218,6 +221,60 @@ export class Gg3dWorld<
     super(assertWorldDimensions('Gg3dWorld', 3, args));
     this.loader = new Gg3dLoader(this);
     this._frame$ = new BehaviorSubject<Frame3d>(args.frame ? Frame3d.from(args.frame) : Frame3d.IDENTITY);
+    this.entityAdded$.subscribe(entity => {
+      if (entity instanceof Backdrop3dEntity) {
+        this._backdrops.push(entity);
+      }
+    });
+    this.entityRemoved$.subscribe(entity => {
+      const index = this._backdrops.indexOf(entity as Backdrop3dEntity<TypeDoc['vTypeDoc']>);
+      if (index >= 0) {
+        this._backdrops.splice(index, 1);
+      }
+    });
+  }
+
+  private readonly _backdrops: Backdrop3dEntity<TypeDoc['vTypeDoc']>[] = [];
+
+  /**
+   * Every `Backdrop3dEntity` spawned in this world, in drawing order: ascending `scale`, so the
+   * farthest backdrop comes first (ties in the order they were added). Read by the visual adapter's
+   * renderers each frame; `scale` may change at any time, so the order is computed on each read.
+   */
+  public get backdrops(): ReadonlyArray<Backdrop3dEntity<TypeDoc['vTypeDoc']>> {
+    if (this._backdrops.length > 1) {
+      // Array.prototype.sort is stable: equal scales keep their insertion order
+      this._backdrops.sort((a, b) => a.scale - b.scale);
+    }
+    return this._backdrops;
+  }
+
+  /**
+   * Creates a backdrop - a miniature scene drawn behind this world, see `Backdrop3dEntity` - and
+   * adds it to the world: its scene from `visualScene.createBackdropScene()`, initialized, wrapped in
+   * a `Backdrop3dEntity`. Content goes in with `backdrop.addChildren(...)`.
+   * @param options - Scale (1/16 by default), anchor and camera frustum, see `Backdrop3dOpts`
+   * @throws if the world has no visual scene
+   *
+   * @example
+   * ```ts
+   * const horizon = await world.addBackdrop({ scale: 1 / 16 });
+   * horizon.setEnvironment({ fog: { type: 'LINEAR', color: 0xd9b48a, near: 40, far: 400 } });
+   * const mountains = await world.loader.loadModel('assets/mountain_ring');
+   * horizon.addChildren(new Entity3d({ object3D: mountains }));
+   * ```
+   */
+  public async addBackdrop(options: Backdrop3dOpts = {}): Promise<Backdrop3dEntity<TypeDoc['vTypeDoc']>> {
+    if (!this.visualScene) {
+      throw new Error(
+        "Cannot add a backdrop to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
+      );
+    }
+    const scene = this.visualScene.createBackdropScene();
+    await scene.init();
+    const backdrop = new Backdrop3dEntity<TypeDoc['vTypeDoc']>(scene, options);
+    this.addEntity(backdrop);
+    return backdrop;
   }
 
   private readonly _frame$: BehaviorSubject<Frame3d>;
@@ -272,6 +329,8 @@ export class Gg3dWorld<
    *
    * Only entities in the world at the time are moved: one taken out with `removeEntity` and added
    * back later keeps its old local pose, which the app maps through the switch's `delta`. The
+   * content of a backdrop (`Backdrop3dEntity`, any `ISceneOwner`) is left alone: it lives in the
+   * backdrop's own space, which the backdrop maps from global coordinates. The
    * visual scene turns its directional environment (sky, environment map) by the yaw through its
    * optional `onFrameSwitch`. Entities without the hook keep their state. While the dev console is loaded
    * (`window.ggstatic`), each such entity class with a `position` and `rotation` is reported once
@@ -355,7 +414,11 @@ export class Gg3dWorld<
       }
       return depth;
     };
-    const entities = this.children.map(e => [e, depthOf(e)] as const).sort((a, b) => b[1] - a[1]);
+    // a backdrop's content lives in the backdrop's own space, mapped through global coordinates
+    const entities = this.children
+      .filter(e => !findSceneOwner(e))
+      .map(e => [e, depthOf(e)] as const)
+      .sort((a, b) => b[1] - a[1]);
     const warn = typeof window !== 'undefined' && !!(window as any).ggstatic;
     for (const [entity] of entities) {
       if (isFrameSwitchable(entity)) {

@@ -44,7 +44,8 @@
             "Glb",
             "GgCar",
             "MapGraph",
-            "Sound"
+            "Sound",
+            "Backdrop"
           ]
         }
       },
@@ -200,6 +201,21 @@
           },
           "then": {
             "$ref": "#/$defs/Sound3DEntityJson"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "Backdrop"
+              }
+            },
+            "required": [
+              "class"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Backdrop3DEntityJson"
           }
         }
       ]
@@ -5076,6 +5092,82 @@
       ],
       "description": "How a positional audio source's gain falls off with distance from the listener - the same three curves the Web Audio `PannerNode` itself offers, so `packages/audio` (and any future adapter built on the same primitive) can map this straight through. `'inverse'`'s slope is steepest close to `refDistance`, which is the main amplifier of otherwise-inaudible per-tick position jitter into an audible volume swing for a source sitting close to the listener (e.g. a chase-cammed vehicle's own engine), which is why `IAudioSource3dComponent`/ `IAudioSource2dComponent` default to `'linear'` instead."
     },
+    "Backdrop3DEntityJson": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string",
+          "const": "Backdrop"
+        },
+        "config": {
+          "$ref": "#/$defs/BackdropConfig3D"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this (overriding whatever default the generator gave it), so it can be found afterwards with `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return an `IEntity` - that result is discarded (with a console warning) before naming is applied. Optional - an entity with no explicit `name` here instead gets one derived from the level's own `levelName` and this entity's position in `entities`, deterministic across every peer loading the same document under the same `levelName` - see `LevelLoader.loadLevel`."
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EntityEventBinding"
+          },
+          "description": "Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s `\"onEntityEntered\"`) to what should run whenever that observable fires - see `EntityEventBinding`. `createEntity` (and therefore `loadLevel`, which builds every entity through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its `\"in\"` entry point) with whatever value it emits, each time it fires, and parents the binding directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json` skill's \"Blueprints\" section. Silently ignored (with a console warning) if the binding can't be resolved to a blueprint, or the named property isn't an `Observable`."
+        }
+      },
+      "required": [
+        "class"
+      ],
+      "description": "A `\"Backdrop\"` entity."
+    },
+    "BackdropConfig3D": {
+      "type": "object",
+      "properties": {
+        "scale": {
+          "type": "number",
+          "description": "Backdrop units per main-world meter. Default `0.0625`: a backdrop is a sixteenth-scale miniature of the land around the level. `0` puts it infinitely far away (the backdrop camera turns with the world's camera but never moves); `1` maps it one to one. Backdrops are drawn in ascending `scale` order, so the smaller the scale, the farther away a backdrop looks.",
+          "default": 0.0625
+        },
+        "anchor": {
+          "$ref": "#/$defs/Point3",
+          "description": "The global main-world point that maps onto `anchorInBackdrop`. Default the origin."
+        },
+        "anchorInBackdrop": {
+          "$ref": "#/$defs/Point3",
+          "description": "The backdrop point `anchor` maps onto: where the real level sits inside the miniature. Default the origin."
+        },
+        "frustum": {
+          "type": "object",
+          "properties": {
+            "near": {
+              "type": "number"
+            },
+            "far": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "near",
+            "far"
+          ],
+          "additionalProperties": false,
+          "description": "Near and far clipping planes of the backdrop camera, in backdrop units. Default `{ near: 0.05, far: 10000 }`; the world camera's own planes mean nothing across a scale change.",
+          "default": {
+            "near": 0.05,
+            "far": 10000
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LevelEntityJson"
+          },
+          "description": "The entities of the backdrop, built by the same loader before the backdrop is spawned, in backdrop units. Any class but those with physics or positional audio."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A `\"Backdrop\"`'s settings: how it maps the world's camera, and the entities it is made of."
+    },
     "BlueprintJson": {
       "type": "object",
       "properties": {
@@ -5221,6 +5313,7 @@
         "properties": {
           "class": {
             "enum": [
+              "Backdrop",
               "Camera",
               "Environment",
               "GgCar",

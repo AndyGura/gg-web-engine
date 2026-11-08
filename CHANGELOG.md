@@ -31,6 +31,23 @@ where one exists.
 
 ### Added
 
+- core: 3D backdrops (Source-style 3D skyboxes). `world.addBackdrop(options)` or the new
+  `"Backdrop"` level class creates a `Backdrop3dEntity`: a miniature scene drawn behind the world,
+  whose child entities draw into a second visual scene of the same adapter instead of the world's.
+  Each renderer draws every backdrop before the world, farthest (smallest `scale`, 1/16 by default)
+  first, from a camera derived from its own through `scale`/`anchor`/`anchorInBackdrop`. The world's
+  sky is drawn behind the farthest backdrop, a backdrop has fog and an environment map of its own,
+  and a world frame switch leaves backdrop content in place. Backdrop children tick and are named
+  like any entity; physics and positional audio are refused there. `world.backdrops` lists them.
+- core: `ISceneOwner`/`isSceneOwner`/`resolveVisualScene`: an entity draws into the scene of its
+  nearest scene-owning ancestor, else the world's. A visual adapter attaches its display objects,
+  lights and particle systems through `resolveVisualScene`; `IVisualScene3dComponent` gains
+  `createBackdropScene()`.
+- three: backdrop rendering in `ThreeRendererComponent` (one pass per backdrop, depth cleared in
+  between) and `ThreeComposerRendererComponent` (one `RenderPass` per backdrop in front of the
+  world's), and `ThreeSceneComponent.createBackdropScene`/`lendBackgroundTo`/`takeBackgroundBack`,
+  which hand every kind of sky (color, cube or panorama texture, baked or dynamic procedural sky)
+  to the farthest backdrop's pass.
 - core: `GamepadInput.axisRest(gamepad, index)`: where an axis of a connected gamepad rests as the
   engine learned it (-1, 0 or 1; 0 for an axis the gamepad lacks), so an app can tell a pedal from a
   stick - to keep pedals from moving a menu cursor at all, say. `GamepadInput.learnAxisRests(gamepad)`

@@ -219,6 +219,34 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   renderer-less `setEnvironment` call can't bake, so baking happens just before the next render.
   Its settings are global, so after a frame switch with a yaw the adapter turns the directions it
   draws the sky in back by the summed yaw, the same way it turns a sky texture.
+- **Backdrops (3D)**: `IVisualScene3dComponent.createBackdropScene()` returns a fresh, uninitialized
+  scene of the same adapter for a core `Backdrop3dEntity` (the caller awaits its `init()`). That
+  scene has no background of its own: its `setEnvironment` throws on a non-`null` `background` and
+  takes `fog`/`environmentMap`. Three things make backdrops work, all adapter-side:
+  - **Attach through `resolveVisualScene(component.entity, world)`**, never `world.visualScene`, in
+    every visual component's `addToWorld` (display objects, lights, particle systems - including
+    any per-scene registration such as a before-render hook). It returns the `ownedScene` of the
+    entity's nearest `ISceneOwner` ancestor, else the world's scene. In `removeFromWorld`, detach
+    from the scene recorded at `addToWorld`, not from a fresh resolve: `IEntity.removeChildren`
+    clears `parent` before it calls `removeEntity`, so by then the entity no longer resolves to the
+    backdrop it was drawn in.
+  - **Draw in passes.** When `world.backdrops` (ascending `scale`, i.e. farthest first, re-sorted
+    on every read) is non-empty, each renderer clears once, then per backdrop calls
+    `backdrop.poseCameraFor(ownCamera)`, gives `backdrop.camera` its own aspect ratio, prepares and
+    draws the backdrop scene through `backdrop.camera` and clears depth only; then draws the world
+    scene without clearing. The backdrop camera is shared by every renderer, so pose it right before
+    each draw, never once per frame. Without backdrops, render exactly as before.
+  - **Draw the world's one sky in the farthest pass.** Move the world scene's background (every
+    kind: color, sky texture, baked or drawn procedural sky) into the first backdrop's draw and keep
+    it out of the world pass, then put it back. The backdrop camera's rotation is global while the
+    world's cameras are local, so a directional sky drawn there is turned by `world.frame.yaw` on top
+    of whatever the world scene applies (its Z-up orientation and frame-switch yaw).
+  Each renderer also joins every backdrop scene's own renderer bookkeeping (whatever its loader's
+  `prepare` and sky bakes use), tracking backdrops added and removed later through
+  `world.entityAdded$`/`entityRemoved$`, and releases what it baked there when a backdrop leaves.
+  A post-processing renderer composes the same passes in front of its world pass.
+  `ThreeRendererComponent`/`ThreeComposerRendererComponent`/`ThreeSceneComponent` are the
+  reference implementation.
 - **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
   `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
   `zoom` 1, `origin` `'center'`) on the 2D one. A 2D camera's `position` is the world point drawn

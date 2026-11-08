@@ -287,6 +287,23 @@ function toShippedSchema({ level, entity }, { builtIns, title }) {
     then: builtInRef,
     else: { $ref: '#/$defs/EntityJson' },
   };
+  // Entities nested inside a built-in class (a `"Backdrop"`'s `children`) accept app-registered
+  // classes just like the level's own `entities` do.
+  const visitNested = node => {
+    if (Array.isArray(node)) {
+      node.forEach(visitNested);
+    } else if (node && typeof node === 'object') {
+      if (node.type === 'array' && node.items?.$ref === builtInRef.$ref) {
+        node.items = { $ref: '#/$defs/LevelEntityJson' };
+      }
+      Object.values(node).forEach(visitNested);
+    }
+  };
+  for (const [name, def] of Object.entries($defs)) {
+    if (name !== 'LevelEntityJson') {
+      visitNested(def);
+    }
+  }
   // The level type itself becomes the schema root.
   const rootName = names.get(decodeURIComponent(level.$ref.slice('#/definitions/'.length)));
   const root = $defs[rootName];

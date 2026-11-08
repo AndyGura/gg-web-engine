@@ -349,7 +349,13 @@ Status
   landing events (`RaycastVehicle3dEntity.impact$`/`airborne$`/`landed$`) are computed in core from
   the collision events and wheel contacts every 3D adapter reports, with the approach speed taken
   before the step that resolved the hit, so hit sounds, damage and camera shake need no
-  backend-specific velocity bookkeeping.
+  backend-specific velocity bookkeeping. 2026-11-08: 3D backdrops (Source-style 3D skyboxes) are behind
+  core too: a `Backdrop3dEntity` (`world.addBackdrop`, the `"Backdrop"` level class) owns a second
+  scene from `IVisualScene3dComponent.createBackdropScene()`, its child entities draw there through
+  `ISceneOwner`/`resolveVisualScene`, and each renderer draws backdrops far to near from a camera
+  mapped through `scale`/`anchor`, the world's sky drawn by the farthest pass - so distant scenery
+  needs no second world and no adapter-native render passes. Implemented by three.js (both
+  renderers).
 - ✅ Cross-adapter contract tests (2026-10-15): `packages/core/test/contract/` holds one suite per
   dimension for physics (`describePhysics3dContract`/`describePhysics2dContract`) and one for
   rendering (`describeVisual3dContract`/`describeVisual2dContract`), and every adapter runs its

@@ -13,6 +13,7 @@ import { Point3, Point4 } from '../../src/base/models/points';
 import { CylinderRadius, Shape3DDescriptor } from '../../src/3d/models/shapes';
 import { Light3dDescriptor } from '../../src/3d/models/lights';
 import {
+  Backdrop3DSettings,
   Camera3DSettings,
   CompoundChild3DSettings,
   Environment3DSettings,
@@ -181,6 +182,18 @@ type SoundConfig3D = Omit<Sound3DSettings, EntityLevelKeys>;
 /** A `"Sound"` entity. */
 export type Sound3DEntityJson = EntityCommon & Positioned3D & { class: 'Sound'; config: SoundConfig3D };
 
+// an interface, so the recursion through `children` resolves lazily
+/** A `"Backdrop"`'s settings: how it maps the world's camera, and the entities it is made of. */
+export interface BackdropConfig3D extends Omit<Backdrop3DSettings, 'children' | 'name'> {
+  /**
+   * The entities of the backdrop, built by the same loader before the backdrop is spawned, in
+   * backdrop units. Any class but those with physics or positional audio.
+   */
+  children?: BuiltIn3DEntityJson[];
+}
+/** A `"Backdrop"` entity. */
+export type Backdrop3DEntityJson = EntityCommon & { class: 'Backdrop'; config?: BackdropConfig3D };
+
 /** One entity of a 3D level, discriminated on `class`. */
 export type BuiltIn3DEntityJson =
   | Primitive3DEntityJson
@@ -192,7 +205,8 @@ export type BuiltIn3DEntityJson =
   | Glb3DEntityJson
   | GgCar3DEntityJson
   | MapGraph3DEntityJson
-  | Sound3DEntityJson;
+  | Sound3DEntityJson
+  | Backdrop3DEntityJson;
 
 /** A level for a 3D world, as `world.loader.loadLevel` accepts it. */
 export type Level3DJson = Omit<LevelJson, 'entities'> & {
@@ -234,6 +248,7 @@ export type LevelSchema3DChecks = [
   Assert<Same<Glb3DSettings, WithLevelKeys<GlbConfig3D>>>,
   Assert<Same<WithLevelKeys<GgCar3DSettings>, WithLevelKeys<GgCarConfig3D>>>,
   Assert<Same<Sound3DSettings, WithLevelKeys<SoundConfig3D>>>,
+  Assert<Same<Omit<Backdrop3DSettings, 'children' | 'name'>, Omit<BackdropConfig3D, 'children'>>>,
   // `config` is optional exactly where its settings have no required field.
   Assert<Same<ConfigRequired<PrimitiveConfig3D>, false>>,
   Assert<Same<ConfigRequired<TriggerConfig3D>, false>>,
@@ -245,4 +260,5 @@ export type LevelSchema3DChecks = [
   Assert<Same<ConfigRequired<GgCarConfig3D>, true>>,
   Assert<Same<ConfigRequired<MapGraph3DSettings>, true>>,
   Assert<Same<ConfigRequired<SoundConfig3D>, true>>,
+  Assert<Same<ConfigRequired<BackdropConfig3D>, false>>,
 ];
