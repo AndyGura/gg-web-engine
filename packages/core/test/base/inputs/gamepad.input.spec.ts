@@ -796,10 +796,59 @@ describe('GamepadInput', () => {
       expect(GamepadInput.axisRest(pad, 1)).toBe(1);
       expect(GamepadInput.axisRest(pad, 5)).toBe(-1);
       expect(GamepadInput.axisRest(pad, 9)).toBe(0); // no such axis
-      // a standard stick held when listed rests at 0; a gamepad no poll saw yet is learned now
+      // a standard stick held when listed rests at 0; a gamepad no poll saw yet is judged from how
+      // it reads now, without being remembered: the poll learns it
       const stick = fakeGamepad({ id: 'Stick', index: 1, axes: [0, 1, 0, 0, 0, -1] });
       expect(GamepadInput.axisRest(stick, 1)).toBe(0);
       expect(GamepadInput.axisRest(stick, 5)).toBe(-1);
+      expect((GamepadInput as any).knownGamepads).toHaveLength(1);
+    });
+
+    it('does not bake a reading into the rests through axisRest while no input polls', () => {
+      // a settings screen asks while the world's input is off and the stick is held down
+      input.stop();
+      const pad = fakeGamepad({ mapping: '', axes: [0, 0.9, 0, 0] });
+      pads.setAll([pad]);
+      expect(GamepadInput.axisRest(pad, 1)).toBe(1);
+      expect((GamepadInput as any).knownGamepads).toHaveLength(0);
+      // let go before the first poll: the stick is learned as a stick
+      pads.set({ mapping: '', axes: [0, 0, 0, 0] });
+      input.start();
+      input.poll();
+      expect(GamepadInput.axisRest(pad, 1)).toBe(0);
+      connect({ mapping: '', axes: [0, -1, 0, 0] });
+      expect(input.value('a1-')).toBe(1);
+    });
+
+    it('learns the rests again on request, and every input measures from them at once', () => {
+      // a stick of a gamepad without the standard mapping, held forward while the browser listed it
+      connect({ mapping: '', axes: [0, -0.8, 0, 0] });
+      const pad = navigator.getGamepads()[0]!;
+      expect(GamepadInput.axisRest(pad, 1)).toBe(-1);
+      connect({ mapping: '', axes: [0, 0, 0, 0] });
+      expect(input.value('a1+')).toBeCloseTo((0.5 - 0.12) / 0.88); // half way "up" from a wrong rest
+      connect({ mapping: '', axes: [0, -1, 0, 0] });
+      expect(input.value('a1-')).toBe(0); // dead towards the wrong rest
+      // the app's calibration step: let go of everything, then learn again
+      pads.set({ mapping: '', axes: [0, 0, 0, 0] });
+      GamepadInput.learnAxisRests(navigator.getGamepads()[0]!);
+      expect(GamepadInput.axisRest(pad, 1)).toBe(0);
+      connect({ mapping: '', axes: [0, -1, 0, 0] });
+      expect(input.value('a1-')).toBe(1);
+      expect(input.value('a1+')).toBe(0);
+      connect({ mapping: '', axes: [0, 0.56, 0, 0] });
+      expect(input.value('a1+')).toBeCloseTo((0.56 - 0.12) / 0.88);
+    });
+
+    it('is not in use by a pedal push inside the dead zone that value reads as 0', () => {
+      connect({ mapping: '', axes: [0, 1, 0, 0] }); // a pedal resting at +1
+      connect({ mapping: '', axes: [0, 0.78, 0, 0] });
+      connect({ mapping: '', axes: [0, 0.76, 0, 0] }); // a push value reads as 0 (0.12 of the travel)
+      expect(input.value('a1-')).toBe(0);
+      expect(input.inUse).toBe(false);
+      connect({ mapping: '', axes: [0, 0.7, 0, 0] }); // past the dead zone (0.15 of the travel)
+      expect(input.value('a1-')).toBeGreaterThan(0);
+      expect(input.inUse).toBe(true);
     });
 
     it('learns the rest of each gamepad on its own', () => {
