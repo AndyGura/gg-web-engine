@@ -69,10 +69,10 @@ export interface IVisualScene3dComponent<
   /**
    * A fresh, empty scene of the same adapter for a `Backdrop3dEntity` (see `Gg3dWorld.addBackdrop`),
    * not yet initialized: the caller awaits its `init()`. This scene's renderers draw it behind this
-   * scene, from the backdrop's own camera, with this scene's `environment.background` drawn by the
-   * farthest backdrop instead of by this scene. The returned scene has no background of its own:
-   * its `setEnvironment` throws on a `background` other than `null`, and accepts `fog` and
-   * `environmentMap`.
+   * scene, each through a camera of its own (`Backdrop3dEntity.createCamera`), with this scene's
+   * `environment.background` drawn by the farthest backdrop instead of by this scene. The returned
+   * scene has no background of its own: its `setEnvironment` throws on a `background` other than
+   * `null`, and accepts `fog` and `environmentMap`.
    */
   createBackdropScene(): IVisualScene3dComponent<VTypeDoc>;
 }

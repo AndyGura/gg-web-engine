@@ -595,7 +595,9 @@ following; a path fixed in space is written in global coordinates and mapped wit
 - **Distant scenery (3D backdrops, a "3D skybox")**: `await world.addBackdrop({ scale, anchor,
   anchorInBackdrop, frustum })` returns a `Backdrop3dEntity`, a miniature scene every renderer draws
   behind the world from the world camera mapped through `anchorInBackdrop + scale * (P - anchor)`
-  (`scale` 1/16 by default; `0` = infinitely far, turning with the camera but never moving).
+  (`scale` 1/16 by default; `0` = infinitely far, turning with the camera but never moving), with
+  that camera's lens: its fov and aspect, and with three.js also a `zoom` or `setViewOffset` set on
+  the renderer's native camera, so the backdrop's horizon stays on the world's.
   Content goes in with `backdrop.addChildren(entity)` - display-only `Entity3d`s, lights, particle
   systems, loaded models, any app entity; they tick and are named like any entity, but draw into the
   backdrop's own scene. Author it in backdrop units (a 1/16 model at 1/16 coordinates). The world's

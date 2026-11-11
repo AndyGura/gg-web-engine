@@ -49,11 +49,36 @@ where one exists.
   nothing, and it decodes in web workers (`lazyMeshoptDecoder.useWorkers(0)` keeps it on the main
   thread). `lazyMeshoptDecoder` is the same decoder for a `GLTFLoader` of the app's own.
 
+### Changed
+
+- **Breaking** (code using a backdrop's camera or a custom 3D visual adapter): every renderer
+  draws a backdrop through a camera of its own instead of one shared by all renderers.
+  `Backdrop3dEntity.camera` is gone; `Backdrop3dEntity.createCamera()` makes such a camera, and
+  `poseCameraFor(mainCamera, camera)` takes the camera to place. With three.js,
+  `ThreeRendererComponent.backdropCamera(backdrop)` returns a renderer's camera for a backdrop
+  (where to set its render layers). Apps that never touched `backdrop.camera` need no change.
+
 ### Fixed
 
 - three: a `ThreeComposerRendererComponent` removed from a world and added again kept its old world
   pass next to the new one, which drew the world twice and wiped out the backdrops and the sky; it
   now takes its world pass out on removal.
+- three: a 3D backdrop is drawn with the renderer camera's whole projection. Its camera took only
+  the fov and aspect ratio, so a `zoom` or view offset (`setViewOffset`: a moved projection centre,
+  a view window) set on the renderer's native camera put the backdrop's horizon and scale off the
+  world's. It now also takes `zoom`, the view offset and the film offset (`filmGauge`/`filmOffset`),
+  recomputing its projection only when one of them changed. Both `ThreeRendererComponent` and
+  `ThreeComposerRendererComponent`.
+- three: renderers drawing the same backdrop no longer pass camera settings to each other. A
+  backdrop behind an orthographic camera was drawn with the zoom, view offset and aspect ratio of
+  the last perspective renderer, and a renderer created with `reversedDepthBuffer: true` left the
+  backdrop camera's reversed depth for every other renderer, inverting occlusion inside the
+  backdrop there. A backdrop behind an orthographic camera takes the canvas's aspect ratio.
+- three: resizing a renderer keeps a view offset set with `setViewOffset` working. The resize set
+  the camera's `aspect` to the canvas's, but under a view offset `aspect` is the full view's, so a
+  view window narrower than the full view (a tile of a multi-screen view) came out squeezed after
+  any resize. The resize now leaves the view offset as set and gives the full view the aspect ratio
+  that makes the drawn window as wide as the canvas.
 
 ## [0.0.91] - 2026-11-11
 

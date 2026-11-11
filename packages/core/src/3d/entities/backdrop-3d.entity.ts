@@ -40,14 +40,16 @@ function isAudioComponent(c: object): boolean {
  * in the sky - the 3D counterpart of a 2D `ParallaxLayer` stack (Source engine's "3D skybox").
  *
  * The entity owns a second visual scene of the world's adapter (`ownedScene`, from
- * `world.visualScene.createBackdropScene()`) and a camera in it. Entities added as its children
- * (`addChildren`) are ordinary entities of the world - they tick, are named world-wide and found
- * with `getEntityByName` - but their meshes, lights and particle systems draw into `ownedScene`
- * (see `ISceneOwner`). Each renderer of the world draws every backdrop before the world itself,
- * farthest (smallest `scale`) first, clearing depth in between, from a camera derived from its own
- * (`poseCameraFor`): the world's camera position mapped through `scale`/`anchor`/`anchorInBackdrop`,
- * its rotation and field of view copied. The world's sky (`environment.background` of the world's
- * scene) is drawn by the farthest backdrop's pass, so backdrop geometry stands in front of it.
+ * `world.visualScene.createBackdropScene()`). Entities added as its children (`addChildren`) are
+ * ordinary entities of the world - they tick, are named world-wide and found with
+ * `getEntityByName` - but their meshes, lights and particle systems draw into `ownedScene` (see
+ * `ISceneOwner`). Each renderer of the world draws every backdrop before the world itself, farthest
+ * (smallest `scale`) first, clearing depth in between, through a camera of its own
+ * (`createCamera`) posed from the renderer's camera (`poseCameraFor`): the world camera's position
+ * mapped through `scale`/`anchor`/`anchorInBackdrop`, its rotation and field of view copied, and
+ * the rest of its projection (aspect ratio, an adapter's zoom or view offset) copied by the
+ * renderer. The world's sky (`environment.background` of the world's scene) is drawn by the
+ * farthest backdrop's pass, so backdrop geometry stands in front of it.
  *
  * Content inside a backdrop is authored in backdrop units - what its camera sees: a model exported
  * at 1/16 is placed at 1/16 coordinates, and fog distances and light ranges are 1/16 too. Its fog
@@ -78,16 +80,13 @@ export class Backdrop3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   static readonly entityTypeName: string = 'Backdrop3dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
-  /** The camera every renderer draws this backdrop through, re-posed right before each draw. */
-  public readonly camera: VTypeDoc['camera'];
-
   /** Backdrop units per main-world meter, see `Backdrop3dOpts.scale`. Live: the next frame uses it. */
   public scale: number;
   /** The global main-world point that maps onto `anchorInBackdrop`, see `Backdrop3dOpts.anchor`. */
   public anchor: Point3;
   /** The backdrop point `anchor` maps onto, see `Backdrop3dOpts.anchorInBackdrop`. */
   public anchorInBackdrop: Point3;
-  /** Near and far planes of `camera`, in backdrop units. */
+  /** Near and far planes of every camera drawing this backdrop (`createCamera`), in backdrop units. */
   public readonly frustum: Readonly<{ near: number; far: number }>;
 
   /**
@@ -107,7 +106,17 @@ export class Backdrop3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
     if (!(this.scale >= 0) || !Number.isFinite(this.scale)) {
       throw new Error(`Backdrop3dEntity: scale must be a finite number >= 0, got ${options.scale}`);
     }
-    this.camera = ownedScene.factory.createPerspectiveCamera({ frustrum: { ...this.frustum } });
+  }
+
+  /**
+   * A new camera for drawing this backdrop: perspective, from `ownedScene`'s factory, with `frustum`
+   * as its near and far planes. Every renderer of the world keeps one of its own per backdrop -
+   * its lens follows that renderer's camera, so renderers sharing one would keep overwriting each
+   * other's settings - poses it with `poseCameraFor` right before each draw and disposes it when it
+   * stops drawing this backdrop.
+   */
+  public createCamera(): VTypeDoc['camera'] {
+    return this.ownedScene.factory.createPerspectiveCamera({ frustrum: { ...this.frustum } });
   }
 
   /**
@@ -148,21 +157,24 @@ export class Backdrop3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   }
 
   /**
-   * Places `camera` for drawing this backdrop through `mainCamera`, a camera of the world: the world
-   * camera's global position `P` (through `world.frame`) goes to `anchorInBackdrop + scale * (P -
-   * anchor)`, its global rotation and field of view are copied. Called by every renderer of the
-   * world right before it draws this backdrop; the aspect ratio is the renderer's business.
+   * Places `camera`, a renderer's camera for this backdrop (`createCamera`), for drawing it through
+   * `mainCamera`, that renderer's camera in the world: the world camera's global position `P`
+   * (through `world.frame`) goes to `anchorInBackdrop + scale * (P - anchor)`, its global rotation
+   * is copied, and so is its field of view when it differs. Called by the renderer right before it
+   * draws this backdrop; the rest of the projection (aspect ratio, and whatever else the adapter's
+   * camera has, such as three.js's `zoom` and view offset) is the renderer's business: it copies
+   * that from its own camera too, keeping `frustum` as the near and far planes.
    */
-  public poseCameraFor(mainCamera: ICamera3dComponent<any>): void {
+  public poseCameraFor(mainCamera: ICamera3dComponent<any>, camera: VTypeDoc['camera']): void {
     const frame = (this.world as Gg3dWorld<any> | null)?.frame ?? Frame3d.IDENTITY;
     const globalPosition = frame.toGlobalPoint(mainCamera.position);
-    this.camera.position = Pnt3.add(
+    camera.position = Pnt3.add(
       this.anchorInBackdrop,
       Pnt3.scalarMult(Pnt3.sub(globalPosition, this.anchor), this.scale),
     );
-    this.camera.rotation = frame.toGlobalRotation(mainCamera.rotation);
-    if (mainCamera.supportsFov && this.camera.supportsFov && this.camera.fov !== mainCamera.fov) {
-      this.camera.fov = mainCamera.fov;
+    camera.rotation = frame.toGlobalRotation(mainCamera.rotation);
+    if (mainCamera.supportsFov && camera.supportsFov && camera.fov !== mainCamera.fov) {
+      camera.fov = mainCamera.fov;
     }
   }
 
@@ -171,7 +183,6 @@ export class Backdrop3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
       return;
     }
     super.dispose();
-    this.camera.dispose();
     this.ownedScene.dispose();
   }
 

@@ -207,12 +207,15 @@ which is why `Gg3dWorld.moveIntoFrame` skips every entity with an owning ancesto
 flag. Anything later needing a subtree in another space reuses this interface.
 
 `Backdrop3dEntity` (`3d/entities/backdrop-3d.entity.ts`) is the one implementation: a scene from
-`IVisualScene3dComponent.createBackdropScene()` plus a perspective camera created by that scene's
-factory, with `scale` (backdrop units per meter, `DEFAULT_BACKDROP_SCALE` 1/16), `anchor` (global)
-and `anchorInBackdrop` live-settable, `frustum` fixed at construction (`models/backdrop.ts`).
-`poseCameraFor(mainCamera)` maps through `world.frame` (`anchorInBackdrop + scale * (global P -
-anchor)`, global rotation, fov copied only when it differs), so a frame switch changes nothing
-there. What to keep when changing it:
+`IVisualScene3dComponent.createBackdropScene()`, with `scale` (backdrop units per meter,
+`DEFAULT_BACKDROP_SCALE` 1/16), `anchor` (global) and `anchorInBackdrop` live-settable, `frustum`
+fixed at construction (`models/backdrop.ts`). It holds no camera: `createCamera()` makes a
+perspective one from its scene's factory with `frustum` as its planes, and every renderer keeps
+one of its own per backdrop (a camera shared by renderers carries one renderer's lens and native
+state into the next one's draw). `poseCameraFor(mainCamera, camera)` places the camera it is given,
+mapping through `world.frame` (`anchorInBackdrop + scale * (global P - anchor)`, global rotation,
+fov copied only when it differs), so a frame switch changes nothing there. What to keep when
+changing it:
 
 - **Children are validated, not the world.** `addChildren` (and `onSpawned`, for a subtree that grew
   afterwards) throws on any physics component (`debugBodySettings` + `interactWithCollisionGroups`,
@@ -232,7 +235,8 @@ there. What to keep when changing it:
   `entityRemoved$` subscriptions (`instanceof Backdrop3dEntity`) and sorted in place by `scale` on
   every read (stable, so ties keep insertion order) - renderers read it every frame, so it must not
   filter `children`. `addBackdrop(options)` creates the scene, awaits `init()`, wraps and adds it.
-- `dispose()` disposes children first (via `super`), then the camera, then the owned scene.
+- `dispose()` disposes children first (via `super`), then the owned scene. The cameras drawing it
+  are the renderers', disposed by them when the backdrop leaves the world.
 - **Per renderer, backdrops can be left out**: `IRenderer3dComponent.drawBackdrops` is an accessor
   over `rendererOptions.drawBackdrops` (the protected constructor fills in `true`; the subclass
   re-declares `rendererOptions` as `Renderer3dOptions & ...` with `declare`), stored nowhere else, so

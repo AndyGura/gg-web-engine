@@ -117,10 +117,9 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
 
 - **Pass order in `ThreeRendererComponent.render`**: `prepareFrame` on the world scene, then (only
   when core's `backdropsToDraw(world)` - `world.backdrops`, or none with `drawBackdrops` off - is
-  non-empty) `renderer.clear()`, `autoClear =
-  false`, the sky lent to the first backdrop, and per backdrop `poseBackdropCamera` (core's
-  `poseCameraFor` plus the main camera's `aspect`, copied with `updateProjectionMatrix` only when
-  it differs), `prepareFrame` on the backdrop scene, `render(backdropScene, backdrop.camera)`,
+  non-empty) `renderer.clear()`, `autoClear = false`, the sky lent to the first backdrop, and per
+  backdrop `poseBackdropCamera` (the main camera's projection, below, then core's
+  `poseCameraFor`), `prepareFrame` on the backdrop scene, `render(backdropScene, backdropCamera)`,
   `clearDepth()`; then the world scene; in a `finally`, the sky taken back and `autoClear`
   restored. The physics debug view draws after that, unchanged. A `WebGLRenderer.render` with
   `autoClear` off and `scene.background` `null` draws no background at all, which is what keeps
@@ -132,10 +131,36 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
 - **A renderer joins a backdrop's scene (`renderers`) only while it draws backdrops**:
   `attachBackdrop` runs for `backdropsToDraw(world)` in `addToWorld`, for a backdrop spawned while
   `drawBackdrops` is on, and from `onDrawBackdropsChanged` when it is turned on; turning it off
-  detaches them all (`releaseRenderer` frees the backdrop skies baked with this renderer).
+  detaches them all (`releaseRenderer` frees the backdrop skies baked with this renderer, and the
+  renderer's camera for each backdrop is disposed).
   `ThreeLoader.prepare` uploads to a scene's `renderers`, so a permanent mirror on a canvas of its
   own would otherwise hold a second copy of every backdrop texture and program in its WebGL
   context. The price: turning it on compiles and uploads the backdrops on the next frame.
+- **Each renderer has a camera of its own per backdrop** (`backdropCamera(backdrop)`, from
+  `Backdrop3dEntity.createCamera()` in `attachBackdrop`, disposed in `detachBackdrop`), never one
+  shared by every renderer. A shared camera would carry whatever one renderer set to the next:
+  every lens setting a renderer doesn't overwrite (an orthographic renderer's backdrop drawn with a
+  perspective renderer's view window), and the depth mode, since `WebGLRenderer` sets
+  `camera._reversedDepth = true` (and recomputes) on any camera it draws with a reversed depth
+  buffer and never sets it back - so a renderer built with `reversedDepthBuffer: true` would leave
+  the shared camera reversed for a second, standard-depth renderer, inverting the backdrop's
+  occlusion there. It also never touches `coordinateSystem`, which stays `WebGLCoordinateSystem`.
+- **The backdrop camera takes the main camera's whole projection but its planes.**
+  `poseBackdropCamera` copies, for a `PerspectiveCamera` main camera, everything
+  `updateProjectionMatrix` reads: `fov`, `aspect`, `zoom`, `filmGauge`/`filmOffset` and the view
+  offset (`view`, copied into the backdrop camera's own object, never shared, since
+  `setViewOffset` changes it in place; a disabled `view` and `null` count as the same). `near`/`far`
+  stay the backdrop's `frustum`, in backdrop units: near and far only scale a perspective
+  projection's depth terms, so the x/y scale and the off-centre shift (where the horizon is) match
+  the world's either way. `focus` is left alone (only `StereoCamera` reads it). Apps set `zoom` (a
+  widescreen crop) and `setViewOffset` (a horizon moved up or down, a view window) on the
+  renderer's native camera, so without this the backdrop's horizon and scale drift off the world's.
+  An orthographic main camera has no lens to copy, so the backdrop camera takes the canvas's aspect
+  ratio (`getSize`) and keeps its default fov. `updateProjectionMatrix` runs only when a copied
+  setting differs from the backdrop camera's own, so a steady view recomputes never. The copy runs
+  before core's `poseCameraFor`, which copies `fov` through `ThreeCameraComponent`'s `fov` setter
+  (an `updateProjectionMatrix` of its own) only when it differs: run after it, a fov change together
+  with any other setting would recompute twice.
 - **`lendBackgroundTo(target, extraYaw)`/`takeBackgroundBack()`** move the sky for one frame:
   `background`, `backgroundIntensity`, `backgroundBlurriness` and `backgroundRotation` go to the
   backdrop's native scene (the world scene's `background` is set to `null`), and a `'DYNAMIC'`
@@ -147,8 +172,9 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
   space) it is `Rz(frame.yaw)`. A baked sky's `setFrameYaw` is never touched by the lend: its yaw
   is part of the bake key and would trigger a re-bake every frame.
 - **`ThreeComposerRendererComponent`** keeps one `RenderPass` per backdrop (created in
-  `attachBackdrop`, disposed in `detachBackdrop`) and re-inserts them in front of `mainPass` only
-  when the order changed: the first `clear = true`, the others and `mainPass` `clear = false`,
+  `attachBackdrop` with its `backdropCamera`, disposed in `detachBackdrop`) and re-inserts them in
+  front of `mainPass` only when the order changed: the first `clear = true`, the others and
+  `mainPass` `clear = false`,
   `clearDepth = true` (`RenderPass.render` calls `clearDepth()` before `setRenderTarget`, which
   works because consecutive render passes share `readBuffer`). With no backdrops `mainPass` is back
   to `clear = true, clearDepth = false`. The inserted list is owned by that sync alone: a detach
@@ -163,16 +189,19 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
   systems the scene whose `beforeRenderHooks` they joined: by removal time the entity may already be
   off its backdrop (see `gg-engine-visual-adapter`).
 - `test/components/three-backdrop.spec.ts` drives a recording fake `WebGLRenderer` (draw and clear
-  order, each drawn scene's `background`/rotation/children at draw time) and stubs
-  `ThreeProceduralSky.prototype.bake` for the baked case; its `drawBackdrops off` block covers both
-  renderers, a mirror drawing after a renderer with backdrops, runtime toggles, scene membership
-  and backdrops added or removed while it is off. The composer is driven through `addToWorld`/
-  `removeFromWorld` directly, so a remove and re-add is one line each. The sky lending was
-  verified in headless Chromium (SwiftShader): with a dynamic procedural sky, a baked one and an
-  equirectangular texture
-  with vertical marker stripes, a frame switch with a yaw of about 1 rad left every pixel of the
-  sky in place (under 0.5% of pixels differing, all from the scene itself). Re-run that comparison
-  after any change to the lend or to `applyEnvironmentRotation`.
+  order, each drawn scene's `background`/rotation/children and the drawn camera's `projectionMatrix`
+  at draw time: compare a backdrop pass with the world pass through the near/far-independent
+  elements `[0]`, `[5]`, `[8]`, `[9]`, and pass cameras by identity (`toBe`); a main camera whose
+  `zoom` the test sets needs its own `updateProjectionMatrix` first, or the world pass draws with
+  the stale one; count recomputes with a spy on the backdrop camera's `updateProjectionMatrix`) and
+  stubs `ThreeProceduralSky.prototype.bake` for the baked case; its `drawBackdrops off` block covers
+  both renderers, a mirror drawing after a renderer with backdrops, runtime toggles, scene
+  membership and backdrops added or removed while it is off. The composer is driven through
+  `addToWorld`/`removeFromWorld` directly, so a remove and re-add is one line each. The sky lending
+  was verified in headless Chromium (SwiftShader): with a dynamic procedural sky, a baked one and an
+  equirectangular texture with vertical marker stripes, a frame switch with a yaw of about 1 rad
+  left every pixel of the sky in place (under 0.5% of pixels differing, all from the scene itself).
+  Re-run that comparison after any change to the lend or to `applyEnvironmentRotation`.
 
 ## Display objects
 
@@ -389,6 +418,15 @@ false, so the CSS size stays). `ThreeComposerRendererComponent.setResolution` al
 renderer once, at construction) for its render targets and passes, and would otherwise keep
 rendering at the old resolution into a canvas of the new one. A new subclass owning more
 pixel-sized targets resizes them there too.
+
+`resizeRenderer` gives a perspective camera the aspect ratio of the canvas, except under a view
+offset (`setViewOffset`): there `aspect` is the *full* view's (`setViewOffset` sets it to
+`fullWidth / fullHeight`), and the drawn window is `width / fullWidth` of it across and `height /
+fullHeight` down. So `view` is left as the app set it - offset and window keep their share of the
+full view - and `aspect` becomes `canvasAspect * (fullWidth / width) / (fullHeight / height)`
+(`aspectForCanvas`), which makes the window as wide as the canvas. The canvas's own aspect there
+would squeeze a window narrower than the full view (a tile of a multi-screen view) by
+`width / fullWidth`.
 
 ## Renderer disposal
 

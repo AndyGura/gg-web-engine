@@ -41,6 +41,7 @@ jest.mock('three', () => {
         op: 'render',
         scene,
         camera,
+        projection: camera.projectionMatrix.clone(),
         autoClear: this.autoClear,
         background: scene.background,
         rotation: scene.backgroundRotation.clone(),
@@ -59,9 +60,11 @@ jest.mock('three', () => {
   return { ...actual, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { Color, Mesh, PerspectiveCamera, Texture } from 'three';
+import { Color, Matrix4, Mesh, OrthographicCamera, PerspectiveCamera, Texture } from 'three';
 import { Entity3d, Frame3d, Gg3dWorld, Light3dEntity, Pnt3, Qtrn } from '@gg-web-engine/core';
 import {
+  ThreeBackdrop,
+  ThreeCameraComponent,
   ThreeComposerRendererComponent,
   ThreeGgWorld,
   ThreeProceduralSky,
@@ -70,6 +73,15 @@ import {
 } from '../../src';
 
 const renders = () => calls.filter(c => c.op === 'render');
+
+/**
+ * The parts of a perspective projection that don't depend on the near and far planes: x and y
+ * scale (`[0]`, `[5]`) and the off-centre shift (`[8]`, `[9]`), i.e. where the horizon is and how
+ * big things look. A backdrop camera keeps its own planes, so only these must match the world's.
+ */
+const lens = (projection: Matrix4) => [0, 5, 8, 9].map(i => projection.elements[i]);
+const expectSameLens = (actual: Matrix4, expected: Matrix4) =>
+  lens(actual).forEach((v, i) => expect(v).toBeCloseTo(lens(expected)[i], 10));
 
 describe('backdrops (three)', () => {
   let scene: ThreeSceneComponent;
@@ -95,6 +107,10 @@ describe('backdrops (three)', () => {
     calls.length = 0;
     return entity;
   };
+
+  /** The camera `renderer` draws `backdrop` through. */
+  const cameraFor = (renderer: { renderer: unknown }, backdrop: ThreeBackdrop) =>
+    (renderer.renderer as ThreeRendererComponent).backdropCamera(backdrop)!;
 
   it('createBackdropScene returns a fresh backdrop scene that refuses a background', async () => {
     const backdropScene = scene.createBackdropScene();
@@ -132,19 +148,20 @@ describe('backdrops (three)', () => {
 
     expect(calls.map(c => c.op)).toEqual(['clear', 'render', 'clearDepth', 'render']);
     const [, backdropPass, , mainPass] = calls;
+    const camera = cameraFor(renderer, backdrop);
     expect(backdropPass.scene).toBe(own.nativeScene);
-    expect(backdropPass.camera).toBe(backdrop.camera.nativeCamera);
+    expect(backdropPass.camera).toBe(camera.nativeCamera);
     expect(backdropPass.autoClear).toBe(false);
     expect((backdropPass.background as Color).getHex()).toBe(0x334455);
     expect(mainPass.scene).toBe(scene.nativeScene);
     expect(mainPass.background).toBeNull();
     expect(mainPass.autoClear).toBe(false);
     // the backdrop camera was posed from the renderer's camera
-    const p = backdrop.camera.position;
+    const p = camera.position;
     expect(p.x).toBeCloseTo(2);
     expect(p.y).toBeCloseTo(1);
     expect(p.z).toBeCloseTo(0.1);
-    expect((backdrop.camera.nativeCamera as PerspectiveCamera).aspect).toBeCloseTo(2);
+    expect((camera.nativeCamera as PerspectiveCamera).aspect).toBeCloseTo(2);
     // everything put back
     expect((scene.nativeScene!.background as Color).getHex()).toBe(0x334455);
     expect(own.nativeScene!.background).toBeNull();
@@ -251,19 +268,32 @@ describe('backdrops (three)', () => {
     expect(own.beforeRenderHooks.size).toBe(0);
   });
 
-  it('joins and leaves every backdrop scene as one of its renderers', async () => {
-    const early = await world.addBackdrop();
+  it('joins and leaves every backdrop scene as one of its renderers, with a camera of its own there', async () => {
+    const early = await world.addBackdrop({ frustum: { near: 0.1, far: 300 } });
     const renderer = addRenderer();
     const late = await world.addBackdrop();
     const native = renderer.renderer as ThreeRendererComponent;
     expect((early.ownedScene as ThreeSceneComponent).renderers.has(native)).toBe(true);
     expect((late.ownedScene as ThreeSceneComponent).renderers.has(native)).toBe(true);
+    const earlyCamera = cameraFor(renderer, early);
+    const lateCamera = cameraFor(renderer, late);
+    expect(earlyCamera).toBeInstanceOf(ThreeCameraComponent);
+    expect(lateCamera).toBeInstanceOf(ThreeCameraComponent);
+    expect(earlyCamera).not.toBe(lateCamera);
+    expect((earlyCamera.nativeCamera as PerspectiveCamera).near).toBe(0.1);
+    expect((earlyCamera.nativeCamera as PerspectiveCamera).far).toBe(300);
+    const disposeEarly = jest.spyOn(earlyCamera, 'dispose');
+    const disposeLate = jest.spyOn(lateCamera, 'dispose');
     const release = jest.spyOn(late.ownedScene as ThreeSceneComponent, 'releaseRenderer');
     world.removeEntity(late);
     expect((late.ownedScene as ThreeSceneComponent).renderers.has(native)).toBe(false);
     expect(release).toHaveBeenCalledWith(native.nativeRenderer);
+    expect(native.backdropCamera(late)).toBeUndefined();
+    expect(disposeLate).toHaveBeenCalledTimes(1);
     world.removeEntity(renderer);
     expect((early.ownedScene as ThreeSceneComponent).renderers.has(native)).toBe(false);
+    expect(native.backdropCamera(early)).toBeUndefined();
+    expect(disposeEarly).toHaveBeenCalledTimes(1);
   });
 
   it('a frame switch leaves the backdrop camera where it was', async () => {
@@ -272,10 +302,10 @@ describe('backdrops (three)', () => {
     renderer.position = { x: 40, y: -8, z: 3 };
     renderer.rotation = Qtrn.fromEuler({ x: 1.2, y: 0, z: 0.4 });
     renderer.renderer.render();
-    const before = backdrop.camera.position;
+    const before = cameraFor(renderer, backdrop).position;
     world.switchFrame(new Frame3d({ x: 100, y: 50, z: 0 }, 1.1));
     renderer.renderer.render();
-    const after = backdrop.camera.position;
+    const after = cameraFor(renderer, backdrop).position;
     expect(after.x).toBeCloseTo(before.x);
     expect(after.y).toBeCloseTo(before.y);
     expect(after.z).toBeCloseTo(before.z);
@@ -347,7 +377,7 @@ describe('backdrops (three)', () => {
       const own = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
       expect(calls.map(c => c.op)).toEqual(['clear', 'render', 'clearDepth', 'render', 'render']);
       expect(renders().map(c => [c.scene, c.camera])).toEqual([
-        [own, backdrop.camera.nativeCamera],
+        [own, cameraFor(main, backdrop).nativeCamera],
         [scene.nativeScene, main.camera.nativeCamera],
         [scene.nativeScene, mirror.camera.nativeCamera],
       ]);
@@ -378,14 +408,20 @@ describe('backdrops (three)', () => {
       const joined = () => [before, after].map(b => (b.ownedScene as ThreeSceneComponent).renderers.has(component));
       const after = await world.addBackdrop({ scale: 1 / 16 });
       expect(joined()).toEqual([false, false]);
+      expect(component.backdropCamera(before)).toBeUndefined();
 
       mirror.drawBackdrops = true;
       expect(joined()).toEqual([true, true]);
+      const camera = component.backdropCamera(before)!;
+      expect(camera).toBeInstanceOf(ThreeCameraComponent);
+      const disposeCamera = jest.spyOn(camera, 'dispose');
 
       const release = jest.spyOn(before.ownedScene as ThreeSceneComponent, 'releaseRenderer');
       mirror.drawBackdrops = false;
       expect(joined()).toEqual([false, false]);
       expect(release).toHaveBeenCalledWith(component.nativeRenderer);
+      expect(component.backdropCamera(before)).toBeUndefined();
+      expect(disposeCamera).toHaveBeenCalledTimes(1);
     });
 
     it('draws the backdrops added and leaves out those removed while it was off, once turned on', async () => {
@@ -400,6 +436,235 @@ describe('backdrops (three)', () => {
         (added.ownedScene as ThreeSceneComponent).nativeScene,
         scene.nativeScene,
       ]);
+    });
+  });
+
+  describe("the backdrop camera's projection", () => {
+    const nativeCameraOf = (renderer: { renderer: unknown }) =>
+      (renderer.renderer as ThreeRendererComponent).camera.nativeCamera as PerspectiveCamera;
+    const backdropCameraOf = (renderer: { renderer: unknown }, backdrop: ThreeBackdrop) =>
+      cameraFor(renderer, backdrop).nativeCamera as PerspectiveCamera;
+    /** A second renderer of the world (a mirror, a minimap), on a 120x40 canvas. */
+    const addMirror = (camera = scene.factory.createPerspectiveCamera()) => {
+      const entity = world.addRenderer(camera, document.createElement('canvas'), { size: { x: 120, y: 40 } });
+      calls.length = 0;
+      return entity;
+    };
+
+    it("takes the renderer camera's zoom and view offset, keeping its own near and far planes", async () => {
+      const renderer = addRenderer();
+      const backdrop = await world.addBackdrop({ frustum: { near: 0.05, far: 500 } });
+      const main = nativeCameraOf(renderer);
+      const own = backdropCameraOf(renderer, backdrop);
+      main.zoom = 1.25;
+      // a projection centre moved up by a sixth of the height (a cockpit view's horizon)
+      main.setViewOffset(200, 100, 0, -100 / 6, 200, 100);
+      calls.length = 0;
+
+      renderer.renderer.render();
+
+      const [backdropPass, mainPass] = renders();
+      expect(own.zoom).toBe(1.25);
+      expect(own.view).toEqual(main.view);
+      expect(own.view).not.toBe(main.view);
+      expect(own.near).toBe(0.05);
+      expect(own.far).toBe(500);
+      expect(lens(mainPass.projection)[3]).not.toBeCloseTo(0);
+      expectSameLens(backdropPass.projection, mainPass.projection);
+
+      main.zoom = 1;
+      main.clearViewOffset(); // recomputes the main camera's projection
+      calls.length = 0;
+      renderer.renderer.render();
+      const [clearedBackdropPass, clearedMainPass] = renders();
+      expect(own.view?.enabled).toBe(false);
+      expect(lens(clearedMainPass.projection)[3]).toBeCloseTo(0);
+      expectSameLens(clearedBackdropPass.projection, clearedMainPass.projection);
+    });
+
+    it('takes the film offset and film gauge', async () => {
+      const renderer = addRenderer();
+      await world.addBackdrop();
+      const main = nativeCameraOf(renderer);
+      main.filmGauge = 24;
+      main.filmOffset = 3;
+      main.updateProjectionMatrix();
+      calls.length = 0;
+      renderer.renderer.render();
+      const [backdropPass, mainPass] = renders();
+      expect(lens(mainPass.projection)[2]).not.toBeCloseTo(0);
+      expectSameLens(backdropPass.projection, mainPass.projection);
+    });
+
+    it("gives every renderer a camera of its own for a shared backdrop, with that renderer's projection", async () => {
+      const wide = addRenderer();
+      const mirror = addMirror();
+      const backdrop = await world.addBackdrop();
+      nativeCameraOf(wide).zoom = 1.5;
+      nativeCameraOf(wide).updateProjectionMatrix();
+      nativeCameraOf(mirror).setViewOffset(120, 40, 10, 5, 100, 30);
+      const forWide = backdropCameraOf(wide, backdrop);
+      const forMirror = backdropCameraOf(mirror, backdrop);
+      expect(forWide).not.toBe(forMirror);
+      calls.length = 0;
+
+      for (let frame = 0; frame < 2; frame++) {
+        wide.renderer.render();
+        mirror.renderer.render();
+      }
+
+      const passes = renders();
+      const frame = [forWide, nativeCameraOf(wide), forMirror, nativeCameraOf(mirror)];
+      expect(passes).toHaveLength(8);
+      passes.forEach((pass, i) => expect(pass.camera).toBe(frame[i % 4]));
+      for (let i = 0; i < passes.length; i += 2) {
+        expectSameLens(passes[i].projection, passes[i + 1].projection);
+      }
+      expect(lens(passes[0].projection)).not.toEqual(lens(passes[2].projection));
+      expect(forWide.zoom).toBe(1.5);
+      expect(forWide.view?.enabled ?? false).toBe(false);
+      expect(forMirror.zoom).toBe(1);
+      expect(forMirror.view?.enabled).toBe(true);
+    });
+
+    it("takes each renderer camera's fov, recomputing once when it changes along with another setting", async () => {
+      const wide = addRenderer();
+      const mirror = addMirror();
+      const backdrop = await world.addBackdrop();
+      nativeCameraOf(mirror).fov = 40;
+      nativeCameraOf(mirror).updateProjectionMatrix();
+      wide.renderer.render();
+      mirror.renderer.render();
+      const forWide = backdropCameraOf(wide, backdrop);
+      const forMirror = backdropCameraOf(mirror, backdrop);
+      expect(forWide.fov).toBe(75);
+      expect(forMirror.fov).toBe(40);
+      const updateWide = jest.spyOn(forWide, 'updateProjectionMatrix');
+      const updateMirror = jest.spyOn(forMirror, 'updateProjectionMatrix');
+      calls.length = 0;
+
+      for (let frame = 0; frame < 3; frame++) {
+        wide.renderer.render();
+        mirror.renderer.render();
+      }
+      expect(updateWide).not.toHaveBeenCalled();
+      expect(updateMirror).not.toHaveBeenCalled();
+      const passes = renders();
+      for (let i = 0; i < passes.length; i += 2) {
+        expectSameLens(passes[i].projection, passes[i + 1].projection);
+      }
+
+      nativeCameraOf(wide).fov = 60;
+      nativeCameraOf(wide).zoom = 1.2;
+      nativeCameraOf(wide).updateProjectionMatrix();
+      calls.length = 0;
+      wide.renderer.render();
+      expect(updateWide).toHaveBeenCalledTimes(1);
+      expect(updateMirror).not.toHaveBeenCalled();
+      expect(forWide.fov).toBe(60);
+      const [backdropPass, mainPass] = renders();
+      expectSameLens(backdropPass.projection, mainPass.projection);
+    });
+
+    it('recomputes the projection only when one of its settings changed', async () => {
+      const wide = addRenderer();
+      const mirror = addMirror();
+      const backdrop = await world.addBackdrop();
+      wide.renderer.render();
+      mirror.renderer.render();
+      const update = jest.spyOn(backdropCameraOf(wide, backdrop), 'updateProjectionMatrix');
+
+      // the mirror, with another aspect ratio, draws through a camera of its own
+      for (let frame = 0; frame < 2; frame++) {
+        wide.renderer.render();
+        mirror.renderer.render();
+      }
+      expect(update).not.toHaveBeenCalled();
+
+      nativeCameraOf(wide).zoom = 2;
+      nativeCameraOf(wide).updateProjectionMatrix();
+      wide.renderer.render();
+      expect(update).toHaveBeenCalledTimes(1);
+      wide.renderer.render();
+      expect(update).toHaveBeenCalledTimes(1);
+
+      // a view offset recomputes it once, the same one set again not at all
+      nativeCameraOf(wide).setViewOffset(200, 100, 0, 10, 200, 100);
+      wide.renderer.render();
+      expect(update).toHaveBeenCalledTimes(2);
+      nativeCameraOf(wide).setViewOffset(200, 100, 0, 10, 200, 100);
+      wide.renderer.render();
+      expect(update).toHaveBeenCalledTimes(2);
+    });
+
+    it("behind an orthographic camera takes the canvas's aspect ratio and nothing from other renderers", async () => {
+      const wide = addRenderer();
+      const ortho = addMirror(new ThreeCameraComponent(new OrthographicCamera(-6, 6, 2, -2, 0.1, 100)));
+      const backdrop = await world.addBackdrop();
+      nativeCameraOf(wide).zoom = 1.5;
+      nativeCameraOf(wide).setViewOffset(300, 100, 100, 0, 100, 100);
+      const forOrtho = backdropCameraOf(ortho, backdrop);
+      calls.length = 0;
+
+      wide.renderer.render();
+      ortho.renderer.render();
+
+      const orthoBackdropPass = renders()[2];
+      expect(orthoBackdropPass.camera).toBe(forOrtho);
+      expect(forOrtho.aspect).toBeCloseTo(3);
+      expect(forOrtho.zoom).toBe(1);
+      expect(forOrtho.view?.enabled ?? false).toBe(false);
+      // y scale over x scale: the aspect ratio the projection was computed with
+      const [sx, sy] = lens(orthoBackdropPass.projection);
+      expect(sy / sx).toBeCloseTo(3);
+
+      (ortho.renderer as ThreeRendererComponent).resizeRenderer({ x: 100, y: 100 });
+      calls.length = 0;
+      ortho.renderer.render();
+      expect(forOrtho.aspect).toBeCloseTo(1);
+      const [sx1, sy1] = lens(renders()[0].projection);
+      expect(sy1 / sx1).toBeCloseTo(1);
+    });
+
+    describe('across a resize', () => {
+      /** How wide the drawn picture is: y scale over x scale of the projection. */
+      const drawnAspect = (projection: Matrix4) => lens(projection)[1] / lens(projection)[0];
+      const renderAndResize = async (setUp: (main: PerspectiveCamera) => void) => {
+        const renderer = addRenderer(); // 200x100
+        await world.addBackdrop();
+        setUp(nativeCameraOf(renderer));
+        renderer.renderer.render();
+        const before = renders();
+        (renderer.renderer as ThreeRendererComponent).resizeRenderer({ x: 300, y: 100 });
+        calls.length = 0;
+        renderer.renderer.render();
+        return { before, after: renders(), main: nativeCameraOf(renderer) };
+      };
+
+      it('keeps a moved projection centre at its share of the height', async () => {
+        const { before, after, main } = await renderAndResize(main =>
+          main.setViewOffset(200, 100, 0, -100 / 6, 200, 100),
+        );
+        expect(drawnAspect(before[1].projection)).toBeCloseTo(2);
+        expect(drawnAspect(after[1].projection)).toBeCloseTo(3);
+        expect(main.aspect).toBeCloseTo(3);
+        expect(lens(after[1].projection)[3]).toBeCloseTo(lens(before[1].projection)[3]);
+        expect(lens(after[1].projection)[3]).not.toBeCloseTo(0);
+        expectSameLens(after[0].projection, after[1].projection);
+      });
+
+      it("keeps a view window's share of the full view, as wide as the canvas", async () => {
+        // the left third of a view three canvases wide
+        const { before, after, main } = await renderAndResize(main => main.setViewOffset(600, 100, 0, 0, 200, 100));
+        expect(main.view).toMatchObject({ fullWidth: 600, fullHeight: 100, offsetX: 0, width: 200, height: 100 });
+        expect(drawnAspect(before[1].projection)).toBeCloseTo(2);
+        expect(lens(before[1].projection)[2]).toBeCloseTo(-2);
+        // the full view gets three times the canvas's aspect, the window still its left third
+        expect(main.aspect).toBeCloseTo(9);
+        expect(drawnAspect(after[1].projection)).toBeCloseTo(3);
+        expect(lens(after[1].projection)[2]).toBeCloseTo(-2);
+        expectSameLens(after[0].projection, after[1].projection);
+      });
     });
   });
 
@@ -518,6 +783,25 @@ describe('backdrops (three)', () => {
         [scene.nativeScene, false, true],
       ]);
       expect(renders().map(c => c.scene)).toEqual([own, scene.nativeScene]);
+      composer.removeFromWorld(world, true);
+    });
+
+    it("draws each backdrop pass with the renderer camera's zoom and view offset", async () => {
+      const composer = addComposer();
+      const near = await world.addBackdrop({ scale: 1 / 16 });
+      const far = await world.addBackdrop({ scale: 1 / 256 });
+      const main = composer.camera.nativeCamera as PerspectiveCamera;
+      main.zoom = 1.4;
+      main.setViewOffset(300, 150, 0, -20, 300, 150);
+      calls.length = 0;
+      composer.render();
+      const [farPass, nearPass, mainPass] = renders();
+      expect(farPass.camera).toBe(composer.backdropCamera(far)!.nativeCamera);
+      expect(nearPass.camera).toBe(composer.backdropCamera(near)!.nativeCamera);
+      expect(farPass.camera).not.toBe(nearPass.camera);
+      expect(mainPass.camera).toBe(main);
+      expectSameLens(farPass.projection, mainPass.projection);
+      expectSameLens(nearPass.projection, mainPass.projection);
       composer.removeFromWorld(world, true);
     });
   });

@@ -106,9 +106,18 @@ describe('Backdrop3dEntity', () => {
     expect(backdrop.scale).toBe(1 / 16);
     expect(backdrop.name).toMatch(/^Backdrop3dEntity_/);
     expect(isSceneOwner(backdrop)).toBe(true);
-    expect(scene.backdropScenes[0].factory.createPerspectiveCamera).toHaveBeenCalledWith({
-      frustrum: { near: 0.05, far: 10000 },
-    });
+    // cameras are the renderers': each creates its own (createCamera)
+    expect(scene.backdropScenes[0].factory.createPerspectiveCamera).not.toHaveBeenCalled();
+  });
+
+  it('createCamera returns a new perspective camera of its scene, with the frustum as its planes', async () => {
+    const backdrop = await world.addBackdrop({ frustum: { near: 0.1, far: 300 } });
+    const factory = (backdrop.ownedScene as unknown as MockScene).factory;
+    const a = backdrop.createCamera();
+    const b = backdrop.createCamera();
+    expect(a).not.toBe(b);
+    expect(factory.createPerspectiveCamera).toHaveBeenCalledTimes(2);
+    expect(factory.createPerspectiveCamera).toHaveBeenCalledWith({ frustrum: { near: 0.1, far: 300 } });
   });
 
   it('rejects an invalid scale', () => {
@@ -131,10 +140,11 @@ describe('Backdrop3dEntity', () => {
       const main = mockCamera(75);
       main.position = P;
       main.rotation = R;
-      backdrop.poseCameraFor(main);
-      close(backdrop.camera.position, expected);
-      expect(backdrop.camera.rotation).toEqual(R);
-      expect(backdrop.camera.fov).toBe(75);
+      const camera = backdrop.createCamera();
+      backdrop.poseCameraFor(main, camera);
+      close(camera.position, expected);
+      expect(camera.rotation).toEqual(R);
+      expect(camera.fov).toBe(75);
     });
 
     it('maps through the world frame (global coordinates)', async () => {
@@ -143,11 +153,12 @@ describe('Backdrop3dEntity', () => {
       const main = mockCamera();
       main.position = { x: 10, y: 0, z: 2 };
       main.rotation = Qtrn.O;
-      backdrop.poseCameraFor(main);
+      const camera = backdrop.createCamera();
+      backdrop.poseCameraFor(main, camera);
       // global = rotZ(90°) * local + position = (100, 10, 2)
-      close(backdrop.camera.position, { x: 50, y: 5, z: 1 });
+      close(camera.position, { x: 50, y: 5, z: 1 });
       const yaw = Qtrn.fromAngle(Pnt3.Z, Math.PI / 2);
-      close(Pnt3.rot(Pnt3.X, backdrop.camera.rotation), Pnt3.rot(Pnt3.X, yaw));
+      close(Pnt3.rot(Pnt3.X, camera.rotation), Pnt3.rot(Pnt3.X, yaw));
     });
 
     it('scale and anchors are live', async () => {
@@ -156,8 +167,25 @@ describe('Backdrop3dEntity', () => {
       main.position = { x: 10, y: 0, z: 0 };
       backdrop.scale = 0.1;
       backdrop.anchorInBackdrop = { x: 0, y: 0, z: 3 };
-      backdrop.poseCameraFor(main);
-      close(backdrop.camera.position, { x: 1, y: 0, z: 3 });
+      const camera = backdrop.createCamera();
+      backdrop.poseCameraFor(main, camera);
+      close(camera.position, { x: 1, y: 0, z: 3 });
+    });
+
+    it('poses only the camera it is given', async () => {
+      const backdrop = await world.addBackdrop();
+      const wide = mockCamera(75);
+      wide.position = { x: 16, y: 0, z: 0 };
+      const mirror = mockCamera(40);
+      mirror.position = { x: -16, y: 0, z: 0 };
+      const forWide = backdrop.createCamera();
+      const forMirror = backdrop.createCamera();
+      backdrop.poseCameraFor(wide, forWide);
+      backdrop.poseCameraFor(mirror, forMirror);
+      close(forWide.position, { x: 1, y: 0, z: 0 });
+      expect(forWide.fov).toBe(75);
+      close(forMirror.position, { x: -1, y: 0, z: 0 });
+      expect(forMirror.fov).toBe(40);
     });
   });
 
@@ -173,17 +201,18 @@ describe('Backdrop3dEntity', () => {
     world.addEntity(cameraEntity);
     const camera = cameraEntity.object3D as any;
 
-    backdrop.poseCameraFor(camera);
-    const posed = { position: backdrop.camera.position, rotation: backdrop.camera.rotation };
+    const backdropCamera = backdrop.createCamera();
+    backdrop.poseCameraFor(camera, backdropCamera);
+    const posed = { position: backdropCamera.position, rotation: backdropCamera.rotation };
 
     world.switchFrame(new Frame3d({ x: 50, y: -20, z: 0 }, 0.7));
 
     expect(house.position).not.toEqual({ x: 10, y: 0, z: 0 });
     expect(mountain.position).toEqual({ x: 3, y: 4, z: 0 });
-    backdrop.poseCameraFor(camera);
-    close(backdrop.camera.position, posed.position);
-    close(Pnt3.rot(Pnt3.X, backdrop.camera.rotation), Pnt3.rot(Pnt3.X, posed.rotation));
-    close(Pnt3.rot(Pnt3.Z, backdrop.camera.rotation), Pnt3.rot(Pnt3.Z, posed.rotation));
+    backdrop.poseCameraFor(camera, backdropCamera);
+    close(backdropCamera.position, posed.position);
+    close(Pnt3.rot(Pnt3.X, backdropCamera.rotation), Pnt3.rot(Pnt3.X, posed.rotation));
+    close(Pnt3.rot(Pnt3.Z, backdropCamera.rotation), Pnt3.rot(Pnt3.Z, posed.rotation));
   });
 
   it("draws its children's components into its own scene, also when added before it spawns", async () => {
@@ -316,15 +345,13 @@ describe('Backdrop3dEntity', () => {
     expect(world.backdrops).toEqual([near, infinite]);
   });
 
-  it('dispose disposes its camera, its scene and its children', async () => {
+  it('dispose disposes its scene and its children', async () => {
     const backdrop = await world.addBackdrop();
     const child = displayEntity();
     backdrop.addChildren(child);
     const own = backdrop.ownedScene as unknown as MockScene;
-    const camera = backdrop.camera as any;
     world.removeEntity(backdrop, true);
     expect(own.dispose).toHaveBeenCalledTimes(1);
-    expect(camera.dispose).toHaveBeenCalledTimes(1);
     expect(child.disposed).toBe(true);
     expect(world.backdrops).toEqual([]);
     backdrop.dispose();

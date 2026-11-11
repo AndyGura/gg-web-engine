@@ -61,8 +61,9 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   protected override attachBackdrop(backdrop: ThreeBackdrop): void {
     super.attachBackdrop(backdrop);
     const scene = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
-    if (scene && !this.backdropPasses.has(backdrop)) {
-      this.backdropPasses.set(backdrop, new RenderPass(scene, backdrop.camera.nativeCamera));
+    const camera = this.backdropCamera(backdrop);
+    if (scene && camera && !this.backdropPasses.has(backdrop)) {
+      this.backdropPasses.set(backdrop, new RenderPass(scene, camera.nativeCamera));
     }
   }
 
@@ -120,7 +121,10 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
     this.syncBackdropPasses(backdrops);
     const drawn = backdrops.filter(b => this.backdropPasses.has(b));
     for (const backdrop of drawn) {
-      this.poseBackdropCamera(backdrop);
+      const camera = this.backdropCamera(backdrop);
+      if (camera) {
+        this.poseBackdropCamera(backdrop, camera);
+      }
       (backdrop.ownedScene as ThreeSceneComponent).prepareFrame(this.nativeRenderer, time);
     }
     if (drawn.length) {

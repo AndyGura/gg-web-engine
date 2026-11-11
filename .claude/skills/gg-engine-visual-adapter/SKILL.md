@@ -231,11 +231,17 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
     clears `parent` before it calls `removeEntity`, so by then the entity no longer resolves to the
     backdrop it was drawn in.
   - **Draw in passes.** When `world.backdrops` (ascending `scale`, i.e. farthest first, re-sorted
-    on every read) is non-empty, each renderer clears once, then per backdrop calls
-    `backdrop.poseCameraFor(ownCamera)`, gives `backdrop.camera` its own aspect ratio, prepares and
-    draws the backdrop scene through `backdrop.camera` and clears depth only; then draws the world
-    scene without clearing. The backdrop camera is shared by every renderer, so pose it right before
-    each draw, never once per frame. Without backdrops, render exactly as before.
+    on every read) is non-empty, each renderer clears once, then per backdrop gives its camera for
+    that backdrop its own camera's projection (aspect ratio and every other setting the library's
+    projection depends on, such as three.js's `zoom` and view offset; never the near and far planes,
+    which are the backdrop's `frustum`), calls `backdrop.poseCameraFor(ownCamera, backdropCamera)`
+    (position, rotation, fov), prepares and draws the backdrop scene through that camera and clears
+    depth only; then draws the world scene without clearing. Without backdrops, render exactly as
+    before. The backdrop camera is the renderer's own, one per backdrop: created with
+    `backdrop.createCamera()` when the renderer starts drawing a backdrop, disposed when it stops.
+    Never share one between renderers - a renderer leaves settings on a camera that the next would
+    not overwrite (a library's depth mode, a lens setting another kind of camera has no value for).
+    Recompute its projection only when a copied setting differs.
   - **Honor `drawBackdrops`** (`IRenderer3dComponent`'s accessor over `rendererOptions
     .drawBackdrops`, `true` by default; also on `Renderer3dEntity`). Take the backdrops to draw
     from core's protected `backdropsToDraw(world)` - `world.backdrops`, or none while the flag is
@@ -243,8 +249,8 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
     draws exactly what it draws for a world without backdrops - the world scene with its own sky,
     its per-frame sky preparation included - and neither poses a backdrop camera nor prepares a
     backdrop scene; the world's other renderers are unaffected. Whatever the renderer holds per
-    backdrop (a membership in the backdrop scene's renderers, which loading uploads to; a render
-    pass) is held only while it draws them: set it up or free it in `onDrawBackdropsChanged()`,
+    backdrop (its camera for it; a membership in the backdrop scene's renderers, which loading
+    uploads to; a render pass) is held only while it draws them: set it up or free it in `onDrawBackdropsChanged()`,
     which core calls after each change. Pass a constructor's options through `super` so core reads
     the option.
   - **Draw the world's one sky in the farthest pass.** Move the world scene's background (every
