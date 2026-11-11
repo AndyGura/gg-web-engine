@@ -679,7 +679,7 @@ following; a path fixed in space is written in global coordinates and mapped wit
   `null` to keep the raw Blender object names for a file loaded exactly once.
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
   content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"ParallaxLayer"`/`"Glb"`/`"GgCar"`/
-  `"MapGraph"` (all but the first two 3D only) classes and support for app-registered custom classes. Loading resolves to a
+  `"MapGraph"`/`"Backdrop"` (all but the first two 3D only) classes and support for app-registered custom classes. Loading resolves to a
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
@@ -721,6 +721,21 @@ following; a path fixed in space is written in global coordinates and mapped wit
   `proceduralSkyBodies(sky)`, which returns `sunDirection`, `moonDirection` and `sunLight: { color,
   intensity }` (`intensity` `0..1`, dimmed at dusk and under overcast). Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
+- **Distant scenery (3D backdrops, a "3D skybox")**: `await world.addBackdrop({ scale, anchor,
+  anchorInBackdrop, frustum })` returns a `Backdrop3dEntity`, a miniature scene every renderer draws
+  behind the world from the world camera mapped through `anchorInBackdrop + scale * (P - anchor)`
+  (`scale` 1/16 by default; `0` = infinitely far, turning with the camera but never moving).
+  Content goes in with `backdrop.addChildren(entity)` - display-only `Entity3d`s, lights, particle
+  systems, loaded models, any app entity; they tick and are named like any entity, but draw into the
+  backdrop's own scene. Author it in backdrop units (a 1/16 model at 1/16 coordinates). The world's
+  sky stays `world.visualScene.setEnvironment({ background })` and is drawn behind the farthest
+  backdrop; `backdrop.setEnvironment({ fog, environmentMap })` sets the backdrop's own (a
+  `background` there throws). Several backdrops draw farthest (smallest `scale`) first; `scale` and
+  the anchors are live. Physics bodies and audio sources are refused inside (they would live at
+  the wrong scale), and a world frame switch leaves backdrop content in place. The level JSON has a
+  matching `"Backdrop"` class with nested `children`. Prefer this to placing far-away scenery at
+  real distance in the world: that needs a huge far plane, fights the shadow frustum and moves on
+  every frame switch.
 - **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
   billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,
   opacityOverLife, rate, bursts, update, onStep, fixedTimeStep, attachTo, offset, space, ... })`
@@ -1020,6 +1035,9 @@ class GameScreen extends Screen {
   `world.keyboardInput`. `this.bindGamepadKeys()` in a menu screen's constructor or `enter()` has
   the gamepad press that keyboard too: d-pad or left stick are the arrows (held ones repeat), A is
   Enter, B is Escape, so a menu driven by `this.keyboard.bind('ArrowDown')` etc. works from a pad.
+  A pedal or a trigger reported as an axis (one resting at an end, `GamepadInput.axisRest`) presses
+  none of them, so a wheel base's pedals never move the selection; pass `{ sticksOnly: false }` to
+  let one.
   Moving DOM focus or clicking the focused button on those keys is your handler's job. Keep the
   menu keys off a game screen (B is a gameplay button there) and bind only its pause key:
   `this.bindGamepadKeys({ Escape: 'b9' })` (Start). With the pointer locked the browser keeps Escape for releasing the lock,

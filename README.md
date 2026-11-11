@@ -311,14 +311,14 @@ of the same dimensionality; audio, multiplayer and mobile controls are optional.
 ### Bundle sizes
 
 <!-- bundle-sizes:start -->
-Measured for 0.0.90 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
+Measured for 0.0.91 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
 size keeps every export and leaves out its dependencies; the library it wraps is listed separately. Apps
 import less than everything, so their bundles tree-shake below these sums.
 
 | Package | Own code (gzip) | Wrapped library (gzip) |
 |---|---|---|
-| `@gg-web-engine/core` | 85.8 kB | - |
-| `@gg-web-engine/three` | 20.2 kB | 185.6 kB `three` |
+| `@gg-web-engine/core` | 87.3 kB | - |
+| `@gg-web-engine/three` | 23.8 kB | 185.6 kB `three` |
 | `@gg-web-engine/pixi` | 8.7 kB | 259.8 kB `pixi.js` |
 | `@gg-web-engine/rapier3d` | 13.3 kB | 1.57 MB `@dimforge/rapier3d-compat`, WebAssembly inlined as base64 |
 | `@gg-web-engine/ammo` | 652.0 kB | Bullet, compiled to WebAssembly, ships inside the package |
@@ -326,9 +326,9 @@ import less than everything, so their bundles tree-shake below these sums.
 | `@gg-web-engine/matter` | 9.1 kB | 27.1 kB `matter-js` |
 | `@gg-web-engine/audio` | 12.4 kB | - |
 | `@gg-web-engine/multiplayer` | 34.4 kB | - |
-| `@gg-web-engine/mobile-controls` | 29.1 kB | - |
+| `@gg-web-engine/mobile-controls` | 29.3 kB | - |
 
-Core without the dev console (`GgStatic`, left out of an app that never imports it) is 79.6 kB.
+Core without the dev console (`GgStatic`, left out of an app that never imports it) is 81.2 kB.
 Core's own dependency, `rxjs`, is 18.1 kB if imported whole.
 
 The [starter templates](templates/README.md), bundled as complete apps (engine, libraries and game code):

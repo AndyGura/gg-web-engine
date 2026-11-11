@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.91] - 2026-11-11
+
 ### Added
 
 - core: 3D backdrops (Source-style 3D skyboxes). `world.addBackdrop(options)` or the new
@@ -1863,7 +1865,8 @@ tuning)`. `NetworkApplyContext.sinceReceivedMs` (optional): how long ago the sta
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.90...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.91...HEAD
+[0.0.91]: https://github.com/AndyGura/gg-web-engine/compare/0.0.90...0.0.91
 [0.0.90]: https://github.com/AndyGura/gg-web-engine/compare/0.0.89...0.0.90
 [0.0.89]: https://github.com/AndyGura/gg-web-engine/compare/0.0.88...0.0.89
 [0.0.88]: https://github.com/AndyGura/gg-web-engine/compare/0.0.87...0.0.88
