@@ -606,7 +606,9 @@ following; a path fixed in space is written in global coordinates and mapped wit
   the wrong scale), and a world frame switch leaves backdrop content in place. The level JSON has a
   matching `"Backdrop"` class with nested `children`. Prefer this to placing far-away scenery at
   real distance in the world: that needs a huge far plane, fights the shadow frustum and moves on
-  every frame switch.
+  every frame switch. A renderer that must show the world alone (a rear-view mirror) takes
+  `drawBackdrops: false` in `addRenderer`'s options; `renderer.drawBackdrops` switches it live. It
+  then draws the world under the world's own sky, as without backdrops.
 - **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
   billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,
   opacityOverLife, rate, bursts, update, onStep, fixedTimeStep, attachTo, offset, space, ... })`
@@ -760,8 +762,13 @@ following; a path fixed in space is written in global coordinates and mapped wit
 Everything loaded from a URL goes through `world.loader`: `loadLevel`/`loadLevelFromUrl` (see
 `gg-engine-level-json`), `loadGgGlb` (a Blender-exported `.glb`+`.meta` pair, as entities),
 `loadModel` (a plain `.glb`, as a display object), `loadTexture`, `loadCubeTexture` (3D),
-`loadClip` (audio) and `preload([...])` (several assets at once, by `AssetRef`). They share three
-options:
+`loadClip` (audio) and `preload([...])` (several assets at once, by `AssetRef`). With
+`@gg-web-engine/three`, a `.glb` may be meshopt-compressed (`EXT_meshopt_compression`/
+`KHR_meshopt_compression`, quantized attributes: what `gltfpack -c`/`-cc` writes) - the loader
+decodes it as it is, fetching the decoder with the first such file and decoding in web workers;
+Draco and KTX2 are not supported. A `GLTFLoader` of your own takes the same decoder:
+`new GLTFLoader().setMeshoptDecoder(lazyMeshoptDecoder)` (both from `@gg-web-engine/three`), and
+`lazyMeshoptDecoder.useWorkers(0)` keeps decoding on the main thread. They share three options:
 
 ```typescript
 const result = await world.loader.loadGgGlb('assets/city', {

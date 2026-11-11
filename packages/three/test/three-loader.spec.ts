@@ -12,7 +12,10 @@ import {
   TextureLoader,
 } from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { ThreeDisplayObjectComponent, ThreeLoader, ThreeSceneComponent } from '../src';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { lazyMeshoptDecoder, ThreeDisplayObjectComponent, ThreeLoader, ThreeSceneComponent } from '../src';
 
 const texturedMesh = () => {
   const map = new Texture();
@@ -156,6 +159,180 @@ describe('ThreeLoader', () => {
     );
     expect(fromData.magFilter).toBe(NearestFilter);
     expect(fromData.minFilter).toBe(NearestFilter);
+  });
+
+  describe('meshopt-compressed GLB', () => {
+    // fixtures/meshopt-quad.glb, written by fixtures/meshopt-quad.mjs: a quad of 16-bit integer
+    // positions (KHR_mesh_quantization) whose buffers are EXT_meshopt_compression streams, both required
+    const positions = [
+      [-100, -50, 0],
+      [100, -50, 0],
+      [100, 50, 25],
+      [-100, 50, 25],
+    ];
+    // copied into an ArrayBuffer of the test's own realm: GLTFLoader tells a .glb by `instanceof
+    // ArrayBuffer`, which a Node Buffer's backing store (another realm under jsdom) fails
+    const glb = (): ArrayBuffer => {
+      const file = readFileSync(join(__dirname, 'fixtures', 'meshopt-quad.glb'));
+      const data = new ArrayBuffer(file.byteLength);
+      new Uint8Array(data).set(file);
+      return data;
+    };
+    // `isMesh`, not `instanceof`: the isolated copies below load a three.js of their own
+    const quadOf = (component: { nativeMesh: Object3D } | null): Mesh => {
+      const quad = component!.nativeMesh.getObjectByName('quad') as Mesh;
+      expect(quad?.isMesh).toBe(true);
+      return quad;
+    };
+    const expectDecoded = (quad: Mesh) => {
+      const position = quad.geometry.getAttribute('position');
+      expect(position.count).toBe(positions.length);
+      positions.forEach(([x, y, z], i) => {
+        expect([position.getX(i), position.getY(i), position.getZ(i)]).toEqual([x, y, z]);
+      });
+      expect(Array.from(quad.geometry.index!.array)).toEqual([0, 1, 2, 0, 2, 3]);
+      expect(quad.scale.x).toBeCloseTo(0.01);
+    };
+
+    it('the fixture needs a meshopt decoder: three.js refuses it without one', async () => {
+      await expect(new GLTFLoader().parseAsync(glb(), '')).rejects.toThrow('setMeshoptDecoder');
+    });
+
+    it('loadFromGlb decodes it', async () => {
+      expectDecoded(quadOf(await new ThreeLoader().loadFromGlb(glb())));
+    });
+
+    it('loadFromGgGlb decodes it', async () => {
+      expectDecoded(quadOf(await new ThreeLoader().loadFromGgGlb(glb(), { entities: [] } as any)));
+    });
+
+    it("a GLTFLoader of the app's own decodes it with lazyMeshoptDecoder", async () => {
+      const gltf = await new GLTFLoader().setMeshoptDecoder(lazyMeshoptDecoder).parseAsync(glb(), '');
+      expectDecoded(quadOf({ nativeMesh: gltf.scene }));
+    });
+
+    describe('lazyMeshoptDecoder', () => {
+      const MESHOPT_MODULE = 'three/examples/jsm/libs/meshopt_decoder.module.js';
+
+      afterEach(() => {
+        jest.dontMock(MESHOPT_MODULE);
+        jest.useRealTimers();
+      });
+
+      /**
+       * A fresh copy of the package (the decoder is module state) whose meshopt module is a
+       * stand-in: three's real decoder on the main thread, with `useWorkers` recorded and workers
+       * that answer, or never do. `resetModules`, not `isolateModulesAsync`: the decoder's
+       * `import()` runs at the first decode, after an isolation callback would have returned, so it
+       * resolves through the shared registry, whose cached stand-in has to be a fresh one.
+       */
+      const isolated = async (workersAnswer = true) => {
+        const real = jest.requireActual(MESHOPT_MODULE).MeshoptDecoder;
+        let workers = 0;
+        const fake = {
+          supported: true,
+          ready: real.ready,
+          useWorkers: jest.fn((count: number) => {
+            workers = count;
+          }),
+          decodeGltfBuffer: jest.fn(),
+          decodeGltfBufferAsync: jest.fn((...args: any[]) =>
+            workers > 0 && !workersAnswer ? new Promise(() => {}) : real.decodeGltfBufferAsync(...args),
+          ),
+        };
+        const evaluated = jest.fn(() => ({ MeshoptDecoder: fake }));
+        jest.resetModules();
+        jest.doMock(MESHOPT_MODULE, evaluated);
+        const src: typeof import('../src') = await import('../src');
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        return { src, fake, evaluated, warn };
+      };
+      const probe = [0, 4, new Uint8Array(0), 'ATTRIBUTES'];
+
+      it('is not imported, nor its WebAssembly compiled, until a compressed buffer is decoded', async () => {
+        const { src, evaluated } = await isolated();
+        const loader = new src.ThreeLoader();
+        new src.ThreeSceneComponent();
+        expect(evaluated).not.toHaveBeenCalled();
+        expectDecoded(quadOf(await loader.loadFromGlb(glb())));
+        expectDecoded(quadOf(await loader.loadFromGlb(glb())));
+        expect(evaluated).toHaveBeenCalledTimes(1);
+      });
+
+      it('decodes on the main thread where there are no web workers, by default', async () => {
+        const { src, fake } = await isolated();
+        expectDecoded(quadOf(await new src.ThreeLoader().loadFromGlb(glb())));
+        expect(fake.useWorkers).not.toHaveBeenCalled();
+        expect(fake.decodeGltfBufferAsync).not.toHaveBeenCalledWith(...probe);
+      });
+
+      it('starts the workers useWorkers asks for, once one answers', async () => {
+        const { src, fake, warn } = await isolated();
+        src.lazyMeshoptDecoder.useWorkers(2);
+        expectDecoded(quadOf(await new src.ThreeLoader().loadFromGlb(glb())));
+        expect(fake.useWorkers.mock.calls).toEqual([[2]]);
+        expect(fake.decodeGltfBufferAsync.mock.calls[0]).toEqual(probe);
+        expect(fake.decodeGltfBufferAsync).toHaveBeenCalledTimes(3);
+        expect(warn).not.toHaveBeenCalled();
+
+        // resized later, before the next file
+        src.lazyMeshoptDecoder.useWorkers(0);
+        expectDecoded(quadOf(await new src.ThreeLoader().loadFromGlb(glb())));
+        expect(fake.useWorkers.mock.calls).toEqual([[2], [0]]);
+      });
+
+      it('decodes on the main thread when the workers can not start', async () => {
+        const { src, fake, warn } = await isolated();
+        fake.useWorkers.mockImplementationOnce(() => {
+          throw new Error('refused by the Content Security Policy');
+        });
+        src.lazyMeshoptDecoder.useWorkers(2);
+        expectDecoded(quadOf(await new src.ThreeLoader().loadFromGlb(glb())));
+        expect(fake.useWorkers.mock.calls).toEqual([[2], [0]]);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('could not start'), expect.any(Error));
+      });
+
+      it('decodes on the main thread when the workers never answer', async () => {
+        const { src, fake, warn } = await isolated(false);
+        const realSetTimeout = setTimeout;
+        jest.useFakeTimers();
+        src.lazyMeshoptDecoder.useWorkers(2);
+        const loading = new src.ThreeLoader().loadFromGlb(glb());
+        // the wait starts once the decoder's WebAssembly compiled, on no timer of its own
+        while (!fake.decodeGltfBufferAsync.mock.calls.length) {
+          await new Promise(resolve => realSetTimeout(resolve, 0));
+        }
+        await jest.advanceTimersByTimeAsync(5000);
+        expectDecoded(quadOf(await loading));
+        expect(fake.useWorkers.mock.calls).toEqual([[2], [0]]);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('did not answer'));
+      });
+
+      it('stops waiting for the workers once the Content Security Policy refuses them', async () => {
+        const { src, fake, warn } = await isolated(false);
+        src.lazyMeshoptDecoder.useWorkers(2);
+        const loading = new src.ThreeLoader().loadFromGlb(glb());
+        while (!fake.useWorkers.mock.calls.length) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        // how Chrome reports a refused blob: worker - it doesn't throw, the worker just never runs
+        document.dispatchEvent(
+          Object.assign(new Event('securitypolicyviolation'), { effectiveDirective: 'worker-src', blockedURI: 'blob' }),
+        );
+        expectDecoded(quadOf(await loading));
+        expect(fake.useWorkers.mock.calls).toEqual([[2], [0]]);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('did not answer'));
+      });
+
+      it('runs the synchronous decode functions once ready, like three.js', async () => {
+        const { src, fake } = await isolated();
+        const args = [new Uint8Array(4), 1, 4, new Uint8Array(1), 'ATTRIBUTES'] as const;
+        expect(() => src.lazyMeshoptDecoder.decodeGltfBuffer(...args)).toThrow('ready');
+        await src.lazyMeshoptDecoder.ready;
+        src.lazyMeshoptDecoder.decodeGltfBuffer(...args);
+        expect(fake.decodeGltfBuffer).toHaveBeenCalledWith(...args, undefined);
+      });
+    });
   });
 
   describe('prepare', () => {

@@ -13,7 +13,7 @@
     /* Language and Environment */
     "target": "es2016",                                  /* Set the JavaScript language version for emitted JavaScript. */
     "lib": ["ES2020", "DOM"],                             /* Explicit lib list (rather than the ES2016-target-implied default) so newer-but-widely-supported globals (Object.entries/values, Array.flatMap, etc.) type-check; doesn't affect emitted syntax, which `target` still controls. */
-    "module": "es6",                                /* Specify what module code is generated. */
+    "module": "es2020",                                  /* Specify what module code is generated. es2020 rather than es6 for dynamic `import()` (TS1323 under es6), which loads code only some apps need (three's meshopt decoder) on first use; static imports emit the same either way. */
     "declaration": true,                                /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
     "moduleResolution": "node",
     "outDir": "./dist/",                                /* Specify an output folder for all emitted files. */

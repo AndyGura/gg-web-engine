@@ -116,14 +116,26 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
 `ThreeSceneComponent` whose `setEnvironment` refuses a non-`null` `background`.
 
 - **Pass order in `ThreeRendererComponent.render`**: `prepareFrame` on the world scene, then (only
-  when `world.backdrops` is non-empty) `renderer.clear()`, `autoClear = false`, the sky lent to the
-  first backdrop, and per backdrop `poseBackdropCamera` (core's `poseCameraFor` plus the main
-  camera's `aspect`, copied with `updateProjectionMatrix` only when it differs), `prepareFrame` on
-  the backdrop scene, `render(backdropScene, backdrop.camera)`, `clearDepth()`; then the world
-  scene; in a `finally`, the sky taken back and `autoClear` restored. The physics debug view draws
-  after that, unchanged. A `WebGLRenderer.render` with `autoClear` off and `scene.background`
-  `null` draws no background at all, which is what keeps the world pass from painting over the
-  backdrops.
+  when core's `backdropsToDraw(world)` - `world.backdrops`, or none with `drawBackdrops` off - is
+  non-empty) `renderer.clear()`, `autoClear =
+  false`, the sky lent to the first backdrop, and per backdrop `poseBackdropCamera` (core's
+  `poseCameraFor` plus the main camera's `aspect`, copied with `updateProjectionMatrix` only when
+  it differs), `prepareFrame` on the backdrop scene, `render(backdropScene, backdrop.camera)`,
+  `clearDepth()`; then the world scene; in a `finally`, the sky taken back and `autoClear`
+  restored. The physics debug view draws after that, unchanged. A `WebGLRenderer.render` with
+  `autoClear` off and `scene.background` `null` draws no background at all, which is what keeps
+  the world pass from painting over the backdrops.
+- **`drawBackdrops` off** (core's `IRenderer3dComponent` accessor over the `drawBackdrops`
+  renderer option) gives the plain one-pass render a world without backdrops gets. Every lend is
+  taken back within its own render call, so a renderer drawing after one with backdrops (a
+  rear-view mirror) finds the world scene's sky in place, a dynamic sky's mesh included.
+- **A renderer joins a backdrop's scene (`renderers`) only while it draws backdrops**:
+  `attachBackdrop` runs for `backdropsToDraw(world)` in `addToWorld`, for a backdrop spawned while
+  `drawBackdrops` is on, and from `onDrawBackdropsChanged` when it is turned on; turning it off
+  detaches them all (`releaseRenderer` frees the backdrop skies baked with this renderer).
+  `ThreeLoader.prepare` uploads to a scene's `renderers`, so a permanent mirror on a canvas of its
+  own would otherwise hold a second copy of every backdrop texture and program in its WebGL
+  context. The price: turning it on compiles and uploads the backdrops on the next frame.
 - **`lendBackgroundTo(target, extraYaw)`/`takeBackgroundBack()`** move the sky for one frame:
   `background`, `backgroundIntensity`, `backgroundBlurriness` and `backgroundRotation` go to the
   backdrop's native scene (the world scene's `background` is set to `null`), and a `'DYNAMIC'`
@@ -142,14 +154,22 @@ A backdrop scene (`ThreeSceneComponent.createBackdropScene()`, `isBackdrop` true
   to `clear = true, clearDepth = false`. The inserted list is owned by that sync alone: a detach
   removes the pass from the composer but leaves the list as it was, or the next sync would see no
   change and leave `mainPass` clearing only depth. Cameras are posed and the sky lent around the
-  whole `nativeComposer.render()`.
+  whole `nativeComposer.render()`. With `drawBackdrops` off the backdrops are detached (their passes
+  disposed) and the sync gets an empty list, which puts `mainPass` back to `clear = true,
+  clearDepth = false`. `mainPass` itself is inserted at index 0 in `addToWorld` and taken out and
+  disposed in `removeFromWorld`: left in, a renderer removed and added again would have two world
+  passes, the stale one last, clearing everything the new one and the backdrop passes drew.
 - **Display objects remember their scene** (`attachedScene`) for `removeFromWorld`, and particle
   systems the scene whose `beforeRenderHooks` they joined: by removal time the entity may already be
   off its backdrop (see `gg-engine-visual-adapter`).
 - `test/components/three-backdrop.spec.ts` drives a recording fake `WebGLRenderer` (draw and clear
   order, each drawn scene's `background`/rotation/children at draw time) and stubs
-  `ThreeProceduralSky.prototype.bake` for the baked case. The sky lending was verified in headless
-  Chromium (SwiftShader): with a dynamic procedural sky, a baked one and an equirectangular texture
+  `ThreeProceduralSky.prototype.bake` for the baked case; its `drawBackdrops off` block covers both
+  renderers, a mirror drawing after a renderer with backdrops, runtime toggles, scene membership
+  and backdrops added or removed while it is off. The composer is driven through `addToWorld`/
+  `removeFromWorld` directly, so a remove and re-add is one line each. The sky lending was
+  verified in headless Chromium (SwiftShader): with a dynamic procedural sky, a baked one and an
+  equirectangular texture
   with vertical marker stripes, a frame switch with a yaw of about 1 rad left every pixel of the
   sky in place (under 0.5% of pixels differing, all from the scene itself). Re-run that comparison
   after any change to the lend or to `applyEnvironmentRotation`.
@@ -310,6 +330,50 @@ in a real context.
   object being in it. It needs a renderer, so `ThreeSceneComponent.renderers` is the set each
   renderer joins in `addToWorld` and leaves in `removeFromWorld`/`dispose`; with none, `prepare`
   resolves at once.
+- **Meshopt**: `ThreeLoader`'s `GLTFLoader` gets `lazyMeshoptDecoder` (`src/meshopt-decoder.ts`,
+  exported for a `GLTFLoader` of an app's own), so `.glb` files with
+  `EXT_meshopt_compression`/`KHR_meshopt_compression` load as they are (`KHR_mesh_quantization`
+  needs no decoder; Draco and KTX2 are not wired). It has the full `MeshoptDecoder` shape and
+  imports three's (`three/examples/jsm/libs/meshopt_decoder.module.js`) with a dynamic `import()`
+  on the first decode: that module compiles its WebAssembly as soon as it is evaluated, with no
+  handler on the result, so a static import cost every app a wasm compile at startup and an
+  unhandled rejection under a Content Security Policy without `'wasm-unsafe-eval'`. Bundlers put
+  the dynamic import in a chunk of its own; `module: es2020` in `tsconfig.base.json` is what
+  allows `import()` (es6 rejects it with TS1323). A failed load is retried by the next file.
+  - **Workers**: decoding runs in `useWorkers(n)` workers (half the cores, 1 to 4, where `Worker`
+    exists). three's decoder starts them from a `blob:` url, and Chrome does not throw for a
+    worker its CSP refuses (`worker-src` without `blob:`): `new Worker` returns, the script never
+    runs, and every decode sent to it would hang. So after `useWorkers` the workers must answer one
+    request (an empty, malformed buffer: any answer counts), or `useWorkers(0)` puts decoding back
+    on the main thread with a `warnOnce`; a throwing `useWorkers` does the same. The wait ends at
+    once on a `securitypolicyviolation` (`effectiveDirective` `worker-src`, `blockedURI` `blob`),
+    which Chrome fires for the refused workers, else after `WORKER_ANSWER_TIMEOUT_MS`. Never call
+    three's `useWorkers(0)` when no worker runs: it builds a blob url regardless, which throws where
+    `URL.createObjectURL` is missing (jsdom) - `runningWorkers` guards it. Verified in headless
+    Chrome (a page bundled with esbuild, served with each CSP, posting its result back): no CSP
+    decodes in 4 workers; `worker-src 'none'` falls back in milliseconds; a CSP without
+    `'wasm-unsafe-eval'` raises nothing at startup and fails the load itself with the CSP's
+    `CompileError`. jsdom has no `Worker`, so only a real browser runs this path.
+  - **Types**: @types/three re-exports the decoder's type from `meshoptimizer/decoder`, a package
+    `exports` subpath that `moduleResolution: node` can't follow, so `MeshoptDecoderLike` spells
+    the shape out and the imported module is cast to it. An app on `moduleResolution: bundler`
+    sees the real type on `setMeshoptDecoder`, which is why the object implements every member,
+    the synchronous decode functions included (they need `ready` first, as three's do).
+  - **Tests**: `test/three-loader.spec.ts` decodes `test/fixtures/meshopt-quad.glb` for real
+    (written by `meshopt-quad.mjs` next to it with the encoder of `meshoptimizer`, a devDependency
+    on the decoder's minor version): WebAssembly works under jsdom, `TextDecoder` comes from
+    `test/jest.polyfills.ts`, and the file is copied into an `ArrayBuffer` of the test's own realm,
+    since GLTFLoader tells a `.glb` by `instanceof ArrayBuffer`, which a Node `Buffer`'s backing
+    store fails under jsdom. Its `lazyMeshoptDecoder` block gets a fresh copy of the package per
+    test with `jest.resetModules()` + `jest.doMock` of the decoder module (a stand-in over the real
+    decoder recording `useWorkers`), not `jest.isolateModulesAsync`: the `import()` runs at the
+    first decode, after an isolation callback has returned, and so resolves through the shared
+    registry - whose cached mock would be the first test's. Assert on `isMesh`, not `instanceof
+    Mesh`, for what such a copy loads: it has a three.js of its own. A fake-timer test of the
+    answer timeout waits (on a `setTimeout` saved before `jest.useFakeTimers()`; jsdom has no
+    `setImmediate`) until the probe request was made before advancing the clock: the decoder's
+    WebAssembly compiles on no timer, so an early `advanceTimersByTimeAsync` passes before the
+    timeout exists and the test hangs - only intermittently, when the whole file runs.
 - Addons come straight from `three/examples/jsm/*` (`GLTFLoader`, `HDRLoader`, the postprocessing
   passes, `CopyShader`, `BufferGeometryUtils`, `SkeletonUtils`): `three` and `@types/three` export
   that subpath, and `index.ts` re-exports what consumers need. Nothing is vendored under `src/`.

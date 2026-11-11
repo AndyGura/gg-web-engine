@@ -1,15 +1,5 @@
 import { assertCanvasReusable } from '../base/components/rendering/canvas-reuse';
-import {
-  assertWorldDimensions,
-  BodyType,
-  GgConsoleHost,
-  GgWorld,
-  Pnt3,
-  Point3,
-  Point4,
-  Qtrn,
-  RendererOptions,
-} from '../base';
+import { assertWorldDimensions, BodyType, GgConsoleHost, GgWorld, Pnt3, Point3, Point4, Qtrn } from '../base';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { isFrameSwitchable } from './interfaces/i-frame-switchable';
 import { Gg3dLoader } from './loader';
@@ -19,7 +9,7 @@ import { BodyShape3DDescriptor } from './models/shapes';
 import { IVisualScene3dComponent } from './components/rendering/i-visual-scene-3d.component';
 import { Renderer3dEntity } from './entities/renderer-3d.entity';
 import { ICamera3dComponent } from './components/rendering/i-camera-3d.component';
-import { IRenderer3dComponent } from './components/rendering/i-renderer-3d.component';
+import { IRenderer3dComponent, Renderer3dOptions } from './components/rendering/i-renderer-3d.component';
 import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
 import {
   DisplayObject3dOpts,
@@ -624,7 +614,8 @@ export class Gg3dWorld<
    * @param canvas - The canvas to draw on, already in the DOM. One canvas hosts one renderer:
    * disposing the renderer releases its context, so the next world's renderer needs another canvas
    * (`replaceCanvas(canvas)` swaps in a blank copy)
-   * @param rendererOptions - Size, background, antialiasing and the adapter's own extra options
+   * @param rendererOptions - Size, background, antialiasing, whether the renderer draws the world's
+   * backdrops (`drawBackdrops`, see `Renderer3dOptions`) and the adapter's own extra options
    * @returns The renderer entity; set its `position`/`rotation` to move the camera
    * @throws if the world has no visual scene
    * @throws if a renderer drawing on `canvas` was disposed before
@@ -645,7 +636,7 @@ export class Gg3dWorld<
   addRenderer(
     camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
+    rendererOptions?: Partial<Renderer3dOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer3dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
       throw new Error(

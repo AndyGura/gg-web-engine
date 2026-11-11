@@ -47,6 +47,7 @@
     "babel-jest": "^30.5.2",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
+    "meshoptimizer": "~1.1.1",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
     "ts-jest": "^29.4.12",
@@ -71,6 +72,9 @@
       "^three$": "<rootDir>/../../node_modules/three/build/three.module.js"
     },
     "preset": "ts-jest/presets/default",
+    "setupFiles": [
+      "<rootDir>/test/jest.polyfills.ts"
+    ],
     "collectCoverageFrom": [
       "**/*.ts",
       "!**/*.module.ts"

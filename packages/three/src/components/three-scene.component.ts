@@ -7,7 +7,7 @@ import {
   notInitializedError,
   RenderLayer,
   resolveProceduralSky,
-  RendererOptions,
+  Renderer3dOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
 import { Camera, Color, Euler, Fog, FogExp2, Scene, Texture, WebGLRenderer, WebGLRendererParameters } from 'three';
@@ -348,7 +348,7 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   createRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
+    rendererOptions?: Partial<Renderer3dOptions & WebGLRendererParameters>,
   ): ThreeRendererComponent {
     return new ThreeRendererComponent(this, camera, canvas, rendererOptions);
   }
@@ -356,7 +356,7 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   createComposerRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
+    rendererOptions?: Partial<Renderer3dOptions & WebGLRendererParameters>,
   ): ThreeComposerRendererComponent {
     return new ThreeComposerRendererComponent(this, camera, canvas, rendererOptions);
   }

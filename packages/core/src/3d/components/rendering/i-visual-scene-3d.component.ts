@@ -2,11 +2,19 @@ import { IVisualSceneComponent, Point3, Point4, RenderLayer } from '../../../bas
 import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 import { Environment3dOpts } from '../../models/environment';
 import { Frame3d } from '../../models/frame-3d';
+import type { Renderer3dOptions } from './i-renderer-3d.component';
 
 export interface IVisualScene3dComponent<
   VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
 > extends IVisualSceneComponent<Point3, Point4, VTypeDoc> {
   readonly loader: VTypeDoc['loader'];
+
+  /** Creates a renderer of this scene; the 3D options add `drawBackdrops` (see `Renderer3dOptions`). */
+  createRenderer(
+    camera: VTypeDoc['camera'],
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<Renderer3dOptions & VTypeDoc['rendererExtraOpts']>,
+  ): VTypeDoc['renderer'];
 
   /**
    * The render layer every display object and every camera in this scene belongs to/renders by

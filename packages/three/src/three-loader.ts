@@ -25,6 +25,7 @@ import { ThreeAnimatedDisplayObjectComponent } from './components/three-animated
 import { ThreeVisualTypeDocRepo } from './types';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { applyTextureOptions } from './utils/texture-options';
+import { lazyMeshoptDecoder } from './meshopt-decoder';
 
 /** A loaded model's textures came with its file: it frees them along with its meshes. */
 function ownedByModel<T extends ThreeDisplayObjectComponent>(component: T): T {
@@ -49,7 +50,12 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
    */
   constructor(private readonly scene?: ThreeSceneComponent) {}
 
-  private gltfLoader: GLTFLoader = new GLTFLoader();
+  /**
+   * Decodes `EXT_meshopt_compression`/`KHR_meshopt_compression` buffers with three's own
+   * `MeshoptDecoder`, loaded with the first such file (`lazyMeshoptDecoder`); quantized attributes
+   * (`KHR_mesh_quantization`) need no decoder.
+   */
+  private gltfLoader: GLTFLoader = new GLTFLoader().setMeshoptDecoder(lazyMeshoptDecoder);
   private textureLoader: TextureLoader = new TextureLoader();
   private cubeTextureLoader: CubeTextureLoader = new CubeTextureLoader();
   private hdrLoader: HDRLoader = new HDRLoader();

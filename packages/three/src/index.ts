@@ -9,6 +9,7 @@ export * from './components/three-particle-system.component';
 export * from './components/three-procedural-sky';
 export * from './three-factory';
 export * from './three-loader';
+export * from './meshopt-decoder';
 export * from './types';
 
 export * from 'three/examples/jsm/loaders/GLTFLoader.js';

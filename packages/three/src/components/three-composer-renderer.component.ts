@@ -1,4 +1,4 @@
-import { Point2, RendererOptions } from '@gg-web-engine/core';
+import { Point2, Renderer3dOptions } from '@gg-web-engine/core';
 import { WebGLRendererParameters } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -13,12 +13,17 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
  * one `RenderPass` each in front of it, farthest first, the first clearing the buffer and every
  * later one (the world scene's included) clearing only depth. The farthest also draws the world's
  * sky, lent by the world scene for the frame. Post-processing passes therefore see the composed
- * color and the world scene's depth only - what depth of field and SSAO want.
+ * color and the world scene's depth only - what depth of field and SSAO want. With `drawBackdrops`
+ * off it has no backdrop passes (they are freed, and made again when it is turned back on), and the
+ * world pass clears and draws its own sky again.
  */
 export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   public readonly nativeComposer: EffectComposer;
 
-  /** The world scene's pass, created in `addToWorld`. */
+  /**
+   * The world scene's pass, inserted first in `addToWorld` and taken out in `removeFromWorld`, so a
+   * renderer added to a world again has one. Passes an app added after it stay in place.
+   */
   protected mainPass: RenderPass | null = null;
   private readonly backdropPasses: Map<ThreeBackdrop, RenderPass> = new Map();
   /** Backdrop passes as they are inserted in `nativeComposer`, in front of `mainPass`. */
@@ -28,7 +33,7 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
     scene: ThreeSceneComponent,
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions: Partial<RendererOptions & WebGLRendererParameters> = {},
+    rendererOptions: Partial<Renderer3dOptions & WebGLRendererParameters> = {},
   ) {
     super(scene, camera, canvas, rendererOptions);
     this.nativeComposer = new EffectComposer(this.nativeRenderer);
@@ -45,6 +50,11 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
 
   removeFromWorld(world: ThreeGgWorld, dispose?: boolean) {
     this.syncBackdropPasses([]);
+    if (this.mainPass) {
+      this.nativeComposer.removePass(this.mainPass);
+      this.mainPass.dispose();
+      this.mainPass = null;
+    }
     super.removeFromWorld(world, dispose);
   }
 
@@ -106,7 +116,7 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   render(): void {
     const time = this.world?.worldClock.elapsedTime;
     this.scene.prepareFrame(this.nativeRenderer, time);
-    const backdrops = this.world?.backdrops ?? [];
+    const backdrops = this.backdropsToDraw(this.world);
     this.syncBackdropPasses(backdrops);
     const drawn = backdrops.filter(b => this.backdropPasses.has(b));
     for (const backdrop of drawn) {

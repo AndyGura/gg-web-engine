@@ -1,4 +1,4 @@
-import { Backdrop3dEntity, IRenderer3dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
+import { Backdrop3dEntity, IRenderer3dComponent, Point2, Renderer3dOptions } from '@gg-web-engine/core';
 import { Camera, PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { Subscription } from 'rxjs';
 import { ThreeSceneComponent } from './three-scene.component';
@@ -19,7 +19,8 @@ function isPerspective(camera: Camera): camera is PerspectiveCamera {
  * farthest first, through its camera posed from this renderer's (`poseCameraFor`, plus this
  * camera's aspect ratio), clearing depth after each; the farthest one also draws the world's sky,
  * lent by the world scene (`ThreeSceneComponent.lendBackgroundTo`); then the world scene, without
- * its sky. A world without backdrops renders in one pass, as a plain `WebGLRenderer.render`.
+ * its sky. A world without backdrops, or a renderer with `drawBackdrops` off, renders in one pass,
+ * as a plain `WebGLRenderer.render` of the world scene with its own sky.
  */
 export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualTypeDocRepo> {
   public readonly nativeRenderer: WebGLRenderer;
@@ -50,7 +51,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     public readonly scene: ThreeSceneComponent,
     public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial<RendererOptions & WebGLRendererParameters> = {},
+    rendererOptions: Partial<Renderer3dOptions & WebGLRendererParameters> = {},
   ) {
     super(scene, canvas, rendererOptions);
     this.nativeRenderer = new WebGLRenderer({
@@ -67,12 +68,12 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   addToWorld(world: ThreeGgWorld) {
     this.world = world;
     this.scene.renderers.add(this);
-    for (const backdrop of world.backdrops) {
-      this.attachBackdrop(backdrop);
-    }
+    this.attachDrawnBackdrops();
     this.backdropTracking = new Subscription();
     this.backdropTracking.add(
-      world.entityAdded$.subscribe(e => e instanceof Backdrop3dEntity && this.attachBackdrop(e as ThreeBackdrop)),
+      world.entityAdded$.subscribe(
+        e => e instanceof Backdrop3dEntity && this.drawBackdrops && this.attachBackdrop(e as ThreeBackdrop),
+      ),
     );
     this.backdropTracking.add(
       world.entityRemoved$.subscribe(e => e instanceof Backdrop3dEntity && this.detachBackdrop(e as ThreeBackdrop)),
@@ -87,7 +88,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
       ThreePhysicsDebugView.stopDebugView(this.debugView!, this);
       this.debugView = null;
     }
-    this.detachAllBackdrops();
+    this.stopTrackingBackdrops();
     this.world = null;
     this.scene.renderers.delete(this);
     this.scene.releaseRenderer(this.nativeRenderer);
@@ -97,8 +98,20 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   }
 
   private backdropTracking: Subscription | null = null;
-  /** The backdrop scenes this renderer joined (`renderers`), for `ThreeLoader.prepare` and sky bakes. */
+  /**
+   * The backdrop scenes this renderer joined (`renderers`), for `ThreeLoader.prepare` and sky bakes:
+   * those it draws, so a renderer with `drawBackdrops` off gets nothing of theirs uploaded.
+   */
   private readonly backdropScenes: Map<ThreeBackdrop, ThreeSceneComponent> = new Map();
+
+  /** Turned on, joins the scenes of the world's backdrops; turned off, leaves them all. */
+  protected override onDrawBackdropsChanged(): void {
+    if (this.drawBackdrops) {
+      this.attachDrawnBackdrops();
+    } else {
+      this.detachAllBackdrops();
+    }
+  }
 
   /** Joins a backdrop's scene as one of its renderers. Overridden to add per-backdrop state. */
   protected attachBackdrop(backdrop: ThreeBackdrop): void {
@@ -121,12 +134,22 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     scene.releaseRenderer(this.nativeRenderer);
   }
 
+  private attachDrawnBackdrops(): void {
+    for (const backdrop of this.backdropsToDraw(this.world)) {
+      this.attachBackdrop(backdrop);
+    }
+  }
+
   private detachAllBackdrops(): void {
-    this.backdropTracking?.unsubscribe();
-    this.backdropTracking = null;
     for (const backdrop of [...this.backdropScenes.keys()]) {
       this.detachBackdrop(backdrop);
     }
+  }
+
+  private stopTrackingBackdrops(): void {
+    this.backdropTracking?.unsubscribe();
+    this.backdropTracking = null;
+    this.detachAllBackdrops();
   }
 
   /**
@@ -167,8 +190,8 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   render(): void {
     const time = this.world?.worldClock.elapsedTime;
     this.scene.prepareFrame(this.nativeRenderer, time);
-    const backdrops = this.world?.backdrops;
-    if (backdrops?.length) {
+    const backdrops = this.backdropsToDraw(this.world);
+    if (backdrops.length) {
       this.renderWithBackdrops(backdrops, time);
     } else {
       this.nativeRenderer.render(this.scene.nativeScene!, this.camera.nativeCamera);
@@ -209,7 +232,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
    * renderer afterwards: core's `replaceCanvas` puts a blank copy in its place for the next one.
    */
   dispose(): void {
-    this.detachAllBackdrops();
+    this.stopTrackingBackdrops();
     this.scene.renderers.delete(this);
     this.scene.releaseRenderer(this.nativeRenderer);
     this.camera.dispose();

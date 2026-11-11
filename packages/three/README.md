@@ -16,3 +16,13 @@ Addons are not included in three.js build, but `@gg-web-engine/three` provides G
 ```
 import { GLTFLoader } from '@gg-web-engine/three';
 ```
+
+`.glb` files compressed with meshopt (`EXT_meshopt_compression`/`KHR_meshopt_compression`, as
+`gltfpack -c`/`-cc` writes them) load as they are through `world.loader`. A `GLTFLoader` of your own
+needs the decoder set, as three.js requires; `lazyMeshoptDecoder` is three's `MeshoptDecoder`,
+fetched and compiled only when the first compressed file is decoded, in web workers:
+```
+import { GLTFLoader, lazyMeshoptDecoder } from '@gg-web-engine/three';
+
+const loader = new GLTFLoader().setMeshoptDecoder(lazyMeshoptDecoder);
+```

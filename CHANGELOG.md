@@ -29,6 +29,32 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+
+- core: `drawBackdrops`, per renderer: a world's backdrops can be left out of one view (a rear-view
+  mirror, a map). `world.addRenderer(camera, canvas, { drawBackdrops: false })` (the new
+  `Renderer3dOptions`, `RendererOptions` plus 3D-only fields), changed live through
+  `IRenderer3dComponent.drawBackdrops` (which is `rendererOptions.drawBackdrops`) or
+  `Renderer3dEntity.drawBackdrops`; `true` by default. Off, the renderer draws the world scene alone
+  under the world's own sky, as in a world without backdrops; the other renderers keep drawing
+  them. A visual adapter reads the backdrops it draws through `IRenderer3dComponent`'s protected
+  `backdropsToDraw(world)` and hears of a change in `onDrawBackdropsChanged()`.
+- three: `ThreeRendererComponent` and `ThreeComposerRendererComponent` honor `drawBackdrops`. While
+  it is off a renderer joins no backdrop scene, so loading uploads nothing of theirs to its WebGL
+  context, and the composer has no backdrop passes.
+- three: `.glb` files compressed with `EXT_meshopt_compression`/`KHR_meshopt_compression` (as
+  `gltfpack -c`/`-cc` writes them, quantized attributes included) load through `world.loader`
+  (`loadModel`, `loadGgGlb`) as they are. three's `MeshoptDecoder` (about 8 kB gzipped) is fetched
+  and its WebAssembly compiled with the first such file, so an app that never loads one pays
+  nothing, and it decodes in web workers (`lazyMeshoptDecoder.useWorkers(0)` keeps it on the main
+  thread). `lazyMeshoptDecoder` is the same decoder for a `GLTFLoader` of the app's own.
+
+### Fixed
+
+- three: a `ThreeComposerRendererComponent` removed from a world and added again kept its old world
+  pass next to the new one, which drew the world twice and wiped out the backdrops and the sky; it
+  now takes its world pass out on removal.
+
 ## [0.0.91] - 2026-11-11
 
 ### Added

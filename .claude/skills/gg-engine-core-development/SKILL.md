@@ -233,6 +233,17 @@ there. What to keep when changing it:
   every read (stable, so ties keep insertion order) - renderers read it every frame, so it must not
   filter `children`. `addBackdrop(options)` creates the scene, awaits `init()`, wraps and adds it.
 - `dispose()` disposes children first (via `super`), then the camera, then the owned scene.
+- **Per renderer, backdrops can be left out**: `IRenderer3dComponent.drawBackdrops` is an accessor
+  over `rendererOptions.drawBackdrops` (the protected constructor fills in `true`; the subclass
+  re-declares `rendererOptions` as `Renderer3dOptions & ...` with `declare`), stored nowhere else, so
+  the options describe the renderer as it is and a renderer rebuilt from them draws the same.
+  `Renderer3dEntity.drawBackdrops` proxies it. The setter calls the protected no-op
+  `onDrawBackdropsChanged()` on a change, for adapter state held per backdrop, and the protected
+  `backdropsToDraw(world)` (`world.backdrops`, or a shared empty array while off or outside a
+  world) is the one place the rule lives: adapters iterate it instead of `world.backdrops`.
+  `Renderer3dOptions` (`RendererOptions` plus 3D-only fields) types `Gg3dWorld.addRenderer` and
+  `IVisualScene3dComponent.createRenderer`; the shared `RendererOptions` stays dimension-agnostic,
+  so a new 3D-only option goes into `Renderer3dOptions`.
 
 The `"Backdrop"` level class (`Gg3dLevelLoader.createBackdrop`) builds `children` with the same
 loader's `createEntity` into a nested `LoadProgressGroup` (one slot per child up front), names an

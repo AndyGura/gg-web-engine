@@ -19,6 +19,20 @@ export class Renderer3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   }
 
   /**
+   * Whether this renderer draws the world's backdrops behind the world: proxies to
+   * `renderer.drawBackdrops` (see `IRenderer3dComponent`), the `drawBackdrops` renderer option.
+   * Turn it off for a view that must show the world alone, such as a rear-view mirror; the next
+   * frame follows a change.
+   */
+  get drawBackdrops(): boolean {
+    return this.renderer.drawBackdrops;
+  }
+
+  set drawBackdrops(value: boolean) {
+    this.renderer.drawBackdrops = value;
+  }
+
+  /**
    * Proxies to `this.camera.enableRenderLayer`/`disableRenderLayer`/`isRenderLayerEnabled` - see
    * `ICamera3dComponent`'s own doc for what enabling/disabling a render layer on a camera means.
    * Mirrors the inherited `position`/`rotation` accessors (`IRendererEntity`), which proxy to the

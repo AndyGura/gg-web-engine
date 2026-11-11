@@ -87,9 +87,10 @@ describe('backdrops (three)', () => {
     jest.restoreAllMocks();
   });
 
-  const addRenderer = () => {
+  const addRenderer = (options: { drawBackdrops?: boolean } = {}) => {
     const entity = world.addRenderer(scene.factory.createPerspectiveCamera(), document.createElement('canvas'), {
       size: { x: 200, y: 100 },
+      ...options,
     });
     calls.length = 0;
     return entity;
@@ -280,11 +281,134 @@ describe('backdrops (three)', () => {
     expect(after.z).toBeCloseTo(before.z);
   });
 
+  describe('drawBackdrops off', () => {
+    it('is on unless the renderer options turn it off', () => {
+      expect(addRenderer().drawBackdrops).toBe(true);
+      const mirror = addRenderer({ drawBackdrops: false });
+      expect(mirror.drawBackdrops).toBe(false);
+      expect(mirror.renderer.drawBackdrops).toBe(false);
+    });
+
+    it('draws the world in one pass with its own sky, as without backdrops', async () => {
+      scene.setEnvironment({ background: 0x334455 });
+      const mirror = addRenderer({ drawBackdrops: false });
+      const backdrop = await world.addBackdrop();
+      const pose = jest.spyOn(backdrop, 'poseCameraFor');
+      const prepareBackdrop = jest.spyOn(backdrop.ownedScene as ThreeSceneComponent, 'prepareFrame');
+      calls.length = 0;
+      mirror.renderer.render();
+      expect(calls.map(c => c.op)).toEqual(['render']);
+      expect(calls[0].scene).toBe(scene.nativeScene);
+      expect(calls[0].camera).toBe(mirror.camera.nativeCamera);
+      expect(calls[0].autoClear).toBe(true);
+      expect((calls[0].background as Color).getHex()).toBe(0x334455);
+      expect(pose).not.toHaveBeenCalled();
+      expect(prepareBackdrop).not.toHaveBeenCalled();
+    });
+
+    it('keeps a dynamic procedural sky in the world scene, advanced every frame', async () => {
+      scene.setEnvironment({ background: { type: 'PROCEDURAL', mode: 'DYNAMIC' } });
+      const skyMesh = scene.nativeScene!.children.find(c => c.name === 'gg-procedural-sky') as Mesh;
+      world.frame = { position: Pnt3.O, yaw: 0.3 };
+      const mirror = addRenderer({ drawBackdrops: false });
+      await world.addBackdrop();
+      const advance = jest.spyOn(ThreeProceduralSky.prototype, 'advance');
+      const setFrameYaw = jest.spyOn(ThreeProceduralSky.prototype, 'setFrameYaw');
+      calls.length = 0;
+      mirror.renderer.render();
+      const [pass] = renders();
+      expect(renders()).toHaveLength(1);
+      expect(pass.scene).toBe(scene.nativeScene);
+      expect(pass.children).toContain(skyMesh);
+      expect(advance).toHaveBeenCalledTimes(1);
+      expect(setFrameYaw).not.toHaveBeenCalled();
+    });
+
+    it('draws the baked procedural sky this renderer baked', async () => {
+      const baked = new Texture();
+      const bake = jest.spyOn(ThreeProceduralSky.prototype, 'bake').mockReturnValue(baked as any);
+      scene.setEnvironment({ background: { type: 'PROCEDURAL', mode: 'BAKED' } });
+      const mirror = addRenderer({ drawBackdrops: false });
+      await world.addBackdrop();
+      calls.length = 0;
+      mirror.renderer.render();
+      expect(bake).toHaveBeenCalledWith((mirror.renderer as ThreeRendererComponent).nativeRenderer, expect.anything());
+      expect(renders().map(c => [c.scene, c.background])).toEqual([[scene.nativeScene, baked]]);
+    });
+
+    it('leaves the other renderers drawing backdrops, and finds the sky back in place after them', async () => {
+      scene.setEnvironment({ background: 0x334455 });
+      const main = addRenderer();
+      const mirror = addRenderer({ drawBackdrops: false });
+      const backdrop = await world.addBackdrop();
+      calls.length = 0;
+      main.renderer.render();
+      mirror.renderer.render();
+      const own = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
+      expect(calls.map(c => c.op)).toEqual(['clear', 'render', 'clearDepth', 'render', 'render']);
+      expect(renders().map(c => [c.scene, c.camera])).toEqual([
+        [own, backdrop.camera.nativeCamera],
+        [scene.nativeScene, main.camera.nativeCamera],
+        [scene.nativeScene, mirror.camera.nativeCamera],
+      ]);
+      const mirrorPass = renders()[2];
+      expect((mirrorPass.background as Color).getHex()).toBe(0x334455);
+      expect(mirrorPass.autoClear).toBe(true);
+    });
+
+    it('follows a change at runtime, through the entity', async () => {
+      const renderer = addRenderer();
+      const backdrop = await world.addBackdrop();
+      const own = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
+      renderer.drawBackdrops = false;
+      expect(renderer.renderer.drawBackdrops).toBe(false);
+      calls.length = 0;
+      renderer.renderer.render();
+      expect(renders().map(c => c.scene)).toEqual([scene.nativeScene]);
+      renderer.drawBackdrops = true;
+      calls.length = 0;
+      renderer.renderer.render();
+      expect(renders().map(c => c.scene)).toEqual([own, scene.nativeScene]);
+    });
+
+    it('joins the backdrop scenes only while it draws them, so nothing of theirs is uploaded to it', async () => {
+      const mirror = addRenderer({ drawBackdrops: false });
+      const component = mirror.renderer as ThreeRendererComponent;
+      const before = await world.addBackdrop({ scale: 1 / 256 });
+      const joined = () => [before, after].map(b => (b.ownedScene as ThreeSceneComponent).renderers.has(component));
+      const after = await world.addBackdrop({ scale: 1 / 16 });
+      expect(joined()).toEqual([false, false]);
+
+      mirror.drawBackdrops = true;
+      expect(joined()).toEqual([true, true]);
+
+      const release = jest.spyOn(before.ownedScene as ThreeSceneComponent, 'releaseRenderer');
+      mirror.drawBackdrops = false;
+      expect(joined()).toEqual([false, false]);
+      expect(release).toHaveBeenCalledWith(component.nativeRenderer);
+    });
+
+    it('draws the backdrops added and leaves out those removed while it was off, once turned on', async () => {
+      const renderer = addRenderer({ drawBackdrops: false });
+      const removed = await world.addBackdrop({ scale: 1 / 256 });
+      const added = await world.addBackdrop({ scale: 1 / 16 });
+      world.removeEntity(removed);
+      renderer.drawBackdrops = true;
+      calls.length = 0;
+      renderer.renderer.render();
+      expect(renders().map(c => c.scene)).toEqual([
+        (added.ownedScene as ThreeSceneComponent).nativeScene,
+        scene.nativeScene,
+      ]);
+    });
+  });
+
   describe('composer renderer', () => {
-    const addComposer = () => {
+    const addComposer = (options: { drawBackdrops?: boolean } = {}) => {
       const component = scene.createComposerRenderer(
         scene.factory.createPerspectiveCamera(),
         document.createElement('canvas'),
+        options,
       );
       component.addToWorld(world);
       calls.length = 0;
@@ -315,10 +439,85 @@ describe('backdrops (three)', () => {
 
       world.removeEntity(far);
       composer.render();
-      expect(passes.map(p => p.scene)).toEqual([(near.ownedScene as ThreeSceneComponent).nativeScene, scene.nativeScene]);
+      expect(passes.map(p => p.scene)).toEqual([
+        (near.ownedScene as ThreeSceneComponent).nativeScene,
+        scene.nativeScene,
+      ]);
       world.removeEntity(near);
       composer.render();
       expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([[scene.nativeScene, true, false]]);
+      composer.removeFromWorld(world, true);
+    });
+
+    it('with drawBackdrops off, composes the world pass alone, clearing and with its own sky', async () => {
+      scene.setEnvironment({ background: 0x334455 });
+      const composer = addComposer({ drawBackdrops: false });
+      expect(composer.drawBackdrops).toBe(false);
+      const backdrop = await world.addBackdrop();
+      const pose = jest.spyOn(backdrop, 'poseCameraFor');
+      calls.length = 0;
+      composer.render();
+      const passes = composer.nativeComposer.passes as any[];
+      expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([[scene.nativeScene, true, false]]);
+      expect(renders().map(c => c.scene)).toEqual([scene.nativeScene]);
+      expect((renders()[0].background as Color).getHex()).toBe(0x334455);
+      expect(pose).not.toHaveBeenCalled();
+
+      // turned on and off again at runtime
+      composer.drawBackdrops = true;
+      composer.render();
+      const own = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
+      expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([
+        [own, true, false],
+        [scene.nativeScene, false, true],
+      ]);
+      composer.drawBackdrops = false;
+      calls.length = 0;
+      composer.render();
+      expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([[scene.nativeScene, true, false]]);
+      expect((renders()[0].background as Color).getHex()).toBe(0x334455);
+      composer.removeFromWorld(world, true);
+    });
+
+    it('with drawBackdrops off, has passes for none; turned on, for the backdrops there are then', async () => {
+      const composer = addComposer({ drawBackdrops: false });
+      const removed = await world.addBackdrop({ scale: 1 / 256 });
+      const added = await world.addBackdrop({ scale: 1 / 16 });
+      composer.render();
+      const passes = composer.nativeComposer.passes as any[];
+      expect(passes.map(p => p.scene)).toEqual([scene.nativeScene]);
+      expect((removed.ownedScene as ThreeSceneComponent).renderers.has(composer)).toBe(false);
+
+      world.removeEntity(removed);
+      composer.drawBackdrops = true;
+      calls.length = 0;
+      composer.render();
+      const own = (added.ownedScene as ThreeSceneComponent).nativeScene;
+      expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([
+        [own, true, false],
+        [scene.nativeScene, false, true],
+      ]);
+      expect(renders().map(c => c.scene)).toEqual([own, scene.nativeScene]);
+      composer.removeFromWorld(world, true);
+    });
+
+    it('added to a world again, draws it through one world pass', async () => {
+      const composer = addComposer();
+      const backdrop = await world.addBackdrop();
+      composer.render();
+      composer.removeFromWorld(world);
+      expect(composer.nativeComposer.passes).toEqual([]);
+
+      composer.addToWorld(world);
+      calls.length = 0;
+      composer.render();
+      const own = (backdrop.ownedScene as ThreeSceneComponent).nativeScene;
+      const passes = composer.nativeComposer.passes as any[];
+      expect(passes.map(p => [p.scene, p.clear, p.clearDepth])).toEqual([
+        [own, true, false],
+        [scene.nativeScene, false, true],
+      ]);
+      expect(renders().map(c => c.scene)).toEqual([own, scene.nativeScene]);
       composer.removeFromWorld(world, true);
     });
   });
