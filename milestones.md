@@ -470,9 +470,8 @@ Objectives
 Status
 - ✅ Broad example coverage across feature areas and library combinations: primitives (4 combos,
   each built from a hardcoded `LevelJson` object via `world.loader.loadLevel()` rather than manual
-  entity construction, added 2026-08-27), GLB loader (2), collision groups (4), collision-groups
-  pool (2), a car-physics demo, a shooter demo, and a city-flythrough demo — this grows with each
-  feature and is in reasonable shape.
+  entity construction, added 2026-08-27), GLB loader (2), a car-physics demo, a shooter demo, and
+  a city-flythrough demo — this grows with each feature and is in reasonable shape.
 - ✅ Examples gallery with in-place backend switching (2026-10-05): examples live once each under
   `examples/2d` and `examples/3d` and choose their physics adapter at startup from `?physics=`
   (`backends.ts`, dynamic import per adapter), so the static gallery page (`examples/index.html`,

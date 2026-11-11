@@ -59,6 +59,11 @@ where one exists.
   default in `Screen.bindGamepadKeys`, so pedals listed as a gamepad (a wheel base's, on the axes
   `GAMEPAD_MENU_KEYS` puts the arrows on) no longer move a menu's selection when pressed.
 
+### Removed
+
+- Examples: the collision groups and collision groups pool demos (`examples/3d/collision-groups`,
+  `examples/3d/collision-groups-pool`).
+
 ### Fixed
 
 - core: `GamepadInput` measures an axis from where it rests, in `value`, `value$`, `pressed`,

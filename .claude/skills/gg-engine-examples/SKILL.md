@@ -21,7 +21,7 @@ or `examples/2d/primitives`. It contains `index.html`, `index.ts`, `backends.ts`
 backend switch), `webpack.config.js` (prod build), `webpack.dev.config.js` (dev server),
 `tsconfig.json`, `package.json`.
 
-Naming convention: `examples/<2d|3d>/<feature-or-topic>` (e.g. `3d/collision-groups-pool`,
+Naming convention: `examples/<2d|3d>/<feature-or-topic>` (e.g. `3d/raycast-vehicle`,
 `2d/coin-run`) — no library names in the directory, since one directory covers every backend. The
 `name` in `package.json` is `<feature-or-topic>-<2d|3d>`.
 
@@ -58,9 +58,9 @@ What that implies for the rest of the example:
   example may call is on core's physics interfaces anyway (`npm run lint:examples` forbids anything
   else), so no adapter type is ever needed in `index.ts`.
 - **Backend-specific tuning goes in `backends.ts`, in that backend's branch**, not in `index.ts`
-  behind an `instanceof` (which would need a static import and defeat the splitting).
-  `3d/collision-groups-pool` raises Bullet's `maxSubSteps` this way, because only Bullet needs it
-  there. A setting that is on core's interfaces and wanted on every backend is set in `index.ts`
+  behind an `instanceof` (which would need a static import and defeat the splitting) - e.g.
+  raising Bullet's `maxSubSteps` in the `ammo` branch for a demo whose fast kinematic bodies only
+  Bullet needs more sub-steps for. A setting that is on core's interfaces and wanted on every backend is set in `index.ts`
   instead - `fixedTimeStep`/`maxSubSteps` are on `IPhysicsWorldComponent` (ignored by adapters that
   don't substep).
 - **A world created later than startup** (a game screen's `enter()` in `3d/screens`) awaits
@@ -557,7 +557,7 @@ carry the concrete visual scene type through — `world.visualScene` infers as t
 like `world.visualScene.nativeScene` fails with `TS2339: Property 'nativeScene' does not exist on
 type 'IVisualScene3dComponent<...>'` regardless of which physics adapter is paired with it. The
 explicit annotation sidesteps the inference entirely and is the pattern already used by examples
-like `3d/collision-groups`.
+like `3d/glb-loader`.
 
 ## TypeScript 6 pitfalls in examples specifically (hit upgrading every example off TS 5.x)
 

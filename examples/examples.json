@@ -18,20 +18,6 @@
       "physics": ["ammo", "rapier3d"]
     },
     {
-      "dir": "3d/collision-groups",
-      "title": "Collision groups",
-      "description": "Collision filtering: bodies and triggers that only interact with their own groups.",
-      "visual": ["three"],
-      "physics": ["ammo", "rapier3d"]
-    },
-    {
-      "dir": "3d/collision-groups-pool",
-      "title": "Collision groups pool",
-      "description": "Hundreds of balls on stacked kinematic floors, where each floor only ever carries its own collision group.",
-      "visual": ["three"],
-      "physics": ["ammo", "rapier3d"]
-    },
-    {
       "dir": "3d/sky",
       "title": "Procedural sky",
       "description": "The engine's shader-drawn sky with sliders for time of day, haze, clouds (up to full overcast), stars and moon, drawn every frame or baked, and lighting the scene; fly around with a free camera.",
