@@ -7,6 +7,7 @@ import {
   fetchWithProgress,
   IEntity,
   imageBlob,
+  LoadProgressGroup,
   LoadTaskOptions,
   Pnt3,
   Point3,
@@ -23,6 +24,8 @@ import { Trigger3dEntity } from './entities/trigger-3d.entity';
 import { Camera3dEntity } from './entities/camera-3d.entity';
 import { Light3dEntity } from './entities/light-3d.entity';
 import { Environment3dEntity } from './entities/environment-3d.entity';
+import { Backdrop3dEntity } from './entities/backdrop-3d.entity';
+import { Backdrop3dOpts } from './models/backdrop';
 import { Light3dDescriptor } from './models/lights';
 import { CubeTextureFaces, Environment3dOpts, Fog3dOpts, LoadTextureOptions } from './models/environment';
 import { isProceduralSky, ProceduralSky3dOpts } from './models/procedural-sky';
@@ -380,6 +383,33 @@ export interface Environment3DSettings {
   environmentMap?: EnvironmentTexture3DSettings | ProceduralSky3dOpts | null;
   /** Fog, or `null` for none. */
   fog?: Fog3dOpts | null;
+}
+
+/**
+ * Settings for the built-in `"Backdrop"` entity class: a miniature scene drawn behind the level
+ * (see `Backdrop3dEntity`), with the entities that make it up. Creates a `Backdrop3dEntity`; a no-op
+ * without a visual scene.
+ *
+ * Everything inside `children` is authored in backdrop units - what the backdrop camera sees: a
+ * model exported at the backdrop's `scale` is placed at that scale, and fog distances and light
+ * ranges are in the same units. Any class works there (built-in or app-registered) except those
+ * with physics or positional audio, which a backdrop refuses. A child `"Environment"` sets the
+ * backdrop's own fog and environment map; it can't set a `background` - the level's sky stays in
+ * a top-level `"Environment"` and is drawn behind the farthest backdrop.
+ */
+export interface Backdrop3DSettings extends Backdrop3dOpts {
+  /**
+   * The entities of the backdrop, built by the same loader before the backdrop is spawned and
+   * named like a level's entities (an entry without a `name` becomes `<backdrop name>__<class>_<index>`).
+   * Their `events` may use inline blueprints only: the level's named `blueprints` are not passed down.
+   */
+  children?: EntityJson[];
+
+  /**
+   * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel`, not meant
+   * to be set in `config`
+   */
+  name?: string;
 }
 
 /**
@@ -781,6 +811,10 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     });
     this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
+    this.registerClass('Backdrop', this.createBackdrop.bind(this), {
+      assets: (settings: Backdrop3DSettings) =>
+        this.collectLevelAssets({ entities: settings.children ?? [] }, settings.name ?? ''),
+    });
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
     this.registerLiveSerializer(this.serializeTrigger.bind(this));
@@ -1077,6 +1111,58 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       entity.lookAt(target);
     }
     return entity;
+  }
+
+  /**
+   * Create a `"Backdrop"` entity: a scene from `visualScene.createBackdropScene()`, initialized and
+   * wrapped in a `Backdrop3dEntity`, with every entry of `children` built by this loader
+   * (`createEntity`) and attached before the backdrop is returned - so they spawn with it, into its
+   * scene. Returns `undefined` without a visual scene. A child that fails to build (or that a
+   * backdrop refuses) disposes the backdrop and what was built so far before the error propagates.
+   */
+  private async createBackdrop(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Backdrop3DSettings,
+    load: LoadTaskOptions = {},
+  ): Promise<Backdrop3dEntity<TypeDoc['vTypeDoc']> | undefined> {
+    if (!world.visualScene) {
+      return undefined;
+    }
+    const { children = [], name, scale, anchor, anchorInBackdrop, frustum } = settings;
+    const scene = world.visualScene.createBackdropScene();
+    await scene.init();
+    const backdrop = new Backdrop3dEntity<TypeDoc['vTypeDoc']>(scene, { scale, anchor, anchorInBackdrop, frustum });
+    if (name !== undefined) {
+      backdrop.name = name;
+    }
+    const group = new LoadProgressGroup(load);
+    // one slot per child up front, so the first finished child does not read as the whole backdrop
+    const slots = children.map(() => group.sub());
+    try {
+      for (let index = 0; index < children.length; index++) {
+        const childJson = children[index];
+        const child = await this.createEntity(
+          childJson,
+          `${backdrop.name}__${childJson.class}_${index}`,
+          undefined,
+          slots[index],
+        );
+        group.complete(slots[index]);
+        if (child) {
+          try {
+            backdrop.addChildren(child);
+          } catch (e) {
+            child.dispose();
+            throw e;
+          }
+        }
+      }
+    } catch (e) {
+      backdrop.dispose();
+      throw e;
+    }
+    group.finish();
+    return backdrop;
   }
 
   /**

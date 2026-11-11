@@ -1,6 +1,6 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Light"/"Environment"/"ParallaxLayer"/"Player"/"Glb"/"GgCar"/"MapGraph"/"Sound" classes, app-defined entity classes via registerClass, blueprint graphs - including the built-in "RemoveEntity"/"PlaySound" nodes - wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Light"/"Environment"/"ParallaxLayer"/"Player"/"Glb"/"GgCar"/"MapGraph"/"Sound"/"Backdrop" classes, app-defined entity classes via registerClass, blueprint graphs - including the built-in "RemoveEntity"/"PlaySound" nodes - wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
@@ -639,6 +639,50 @@ spawned one that sets it, and the pre-level value returns once none is left. The
 the load that built the entity: they are freed when the level is removed, or, for an entity built on
 its own with `createEntity`, when that entity is disposed. It has no live serializer: one built by
 the loader serializes through its spawn record (the original `config`, texture URLs included).
+
+### `"Backdrop"` (3D only) - a miniature scene drawn behind the level (a "3D skybox")
+
+`config: { scale?, anchor?, anchorInBackdrop?, frustum?, children? }` creates a `Backdrop3dEntity`
+(a no-op without a visual scene). `children` is an array of ordinary entity entries - any built-in
+or app-registered class - built by the same loader and attached before the backdrop spawns; their
+meshes, lights and particle systems draw into the backdrop's own scene, while they tick, get
+world-unique names (an unnamed one becomes `<backdrop name>__<class>_<index>`) and are found with
+`getEntityByName` like any entity. Every renderer draws the backdrop behind the level, from the
+level camera mapped through `anchorInBackdrop + scale * (P - anchor)`: `scale` is backdrop units
+per meter (default `0.0625`, i.e. 1/16; `0` = infinitely far, turning with the camera but never
+moving), `anchor` the global level point that maps onto `anchorInBackdrop` (both default to the
+origin), `frustum` the backdrop camera's `{ near, far }` in backdrop units (default
+`{ near: 0.05, far: 10000 }`). Several backdrops draw farthest (smallest `scale`) first.
+
+```json
+{ "class": "Environment", "config": { "background": { "type": "PROCEDURAL", "timeOfDay": 17 } } },
+{ "class": "Backdrop", "name": "Horizon",
+  "config": {
+    "scale": 0.0625,
+    "children": [
+      { "class": "Environment", "config": { "fog": { "type": "LINEAR", "color": 14267530, "near": 40, "far": 400 } } },
+      { "class": "Light", "position": { "x": 50, "y": 30, "z": 80 }, "config": { "type": "DIRECTIONAL", "intensity": 3 } },
+      { "class": "Glb", "position": { "x": 0, "y": 0, "z": -2 }, "config": { "path": "assets/mountain_ring" } }
+    ]
+  } }
+```
+
+- **Everything inside is in backdrop units** - what the backdrop camera sees: a model exported at
+  1/16 is placed at 1/16 coordinates, fog distances and light ranges likewise. The loader does not
+  rescale anything (it couldn't reach inside a model, a fog or a light).
+- **The level's sky stays in a top-level `"Environment"`** and is drawn behind the farthest backdrop
+  automatically. A child `"Environment"` sets the backdrop's own `fog`/`environmentMap`; a
+  `background` there fails the level load.
+- **No physics, no positional audio inside**: a child with a body (`"Primitive"` in a world with
+  physics, `"Trigger"`, `"Player"`, `"GgCar"`, a `"Glb"` whose `.meta` has bodies) or a `"Sound"`
+  fails the load, which is rolled back as for any failing entity. Backdrop content is never hit by
+  raycasts or triggers. For primitive scenery, register a display-only class of the app's own (an
+  `Entity3d` with only `object3D`, from `world.visualScene.factory.createPrimitive`); it validates
+  against the schema inside `children` like any app class.
+- `events` on a child may use inline blueprints only; the level's named `blueprints` are not passed
+  down. Assets of the children are part of the level preload. A world frame switch leaves backdrop
+  content where it is. It serializes through its spawn record (the original `config`, children
+  included).
 
 ### `"ParallaxLayer"` (2D only) - a `ParallaxLayer2dEntity`
 
@@ -1311,7 +1355,7 @@ await world.loader.loadLevel(level, 'MainLevel'); // level has an entity with "c
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
-same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"ParallaxLayer"`/`"Player"`/`"Glb"`/`"GgCar"`/`"MapGraph"`
+same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"ParallaxLayer"`/`"Player"`/`"Glb"`/`"GgCar"`/`"MapGraph"`/`"Backdrop"`
 classes are internally.
 Extending `IEntity` is what makes it eligible to be parented under the level's group (so
 `world.removeEntity(level, true)` disposes it - and, via the `dispose` override, stops its clock -

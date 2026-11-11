@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>GG example</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font:
+          12px/1.4 system-ui,
+          sans-serif;
+      }
+      #panel {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 250px;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        background: rgba(20, 22, 28, 0.78);
+        color: #e8e8ea;
+        border-radius: 6px;
+      }
+      #panel label,
+      #panel .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0;
+      }
+      #panel select,
+      #panel button {
+        font: inherit;
+      }
+      #panel button {
+        width: 100%;
+        margin-top: 4px;
+      }
+      #panel .hint {
+        color: #9aa3b5;
+        margin: 0 0 6px;
+      }
+      #panel output {
+        font-variant-numeric: tabular-nums;
+        color: #9aa3b5;
+      }
+    </style>
+    <canvas id="gg"></canvas>
+    <div id="panel">
+      <p class="hint">
+        Click the view to look around. WASD to walk, Space to jump, Shift to run. Esc releases the mouse.
+      </p>
+      <label><input id="backdrops" type="checkbox" checked /> Draw backdrops</label>
+      <div class="row">
+        <span>Coast scale</span>
+        <select id="coast-scale">
+          <option value="0">0 (infinitely far)</option>
+          <option value="0.015625">1/64</option>
+          <option value="0.0625" selected>1/16</option>
+          <option value="0.25">1/4</option>
+        </select>
+      </div>
+      <button id="switch-frame">Switch world frame</button>
+      <div class="row"><output id="frame"></output></div>
+    </div>
+  </body>
+</html>

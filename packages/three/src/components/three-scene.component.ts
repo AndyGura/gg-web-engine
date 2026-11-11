@@ -10,7 +10,7 @@ import {
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
-import { Camera, Color, Fog, FogExp2, Scene, Texture, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { Camera, Color, Euler, Fog, FogExp2, Scene, Texture, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -39,6 +39,25 @@ import { ThreeProceduralSky } from './three-procedural-sky';
  */
 export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {
   public readonly backendName: string = 'three';
+
+  private _isBackdrop: boolean = false;
+  /**
+   * Whether this is a backdrop's scene (`createBackdropScene`): it never has a background of its
+   * own, and gets the world scene's sky lent for the farthest backdrop pass instead.
+   */
+  public get isBackdrop(): boolean {
+    return this._isBackdrop;
+  }
+
+  /**
+   * `IVisualScene3dComponent.createBackdropScene`: a new, uninitialized `ThreeSceneComponent` for
+   * a `Backdrop3dEntity`. Its `setEnvironment` refuses a `background`.
+   */
+  createBackdropScene(): ThreeSceneComponent {
+    const scene = new ThreeSceneComponent();
+    scene._isBackdrop = true;
+    return scene;
+  }
 
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {
@@ -99,6 +118,12 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   setEnvironment(environment: Partial<Environment3dOpts<Texture>>): void {
+    if (this._isBackdrop && environment.background != null) {
+      throw new Error(
+        "A backdrop's scene has no background of its own: the world's sky (world.visualScene.setEnvironment({ background })) " +
+          'is drawn behind the farthest backdrop automatically. Set only fog and environmentMap on a backdrop',
+      );
+    }
     this._environment = { ...this._environment, ...environment };
     this.applyEnvironment();
   }
@@ -215,6 +240,79 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
     }
   }
 
+  /** What `lendBackgroundTo` moved, for `takeBackgroundBack` to put back. */
+  private lent: {
+    target: Scene;
+    background: Scene['background'];
+    intensity: number;
+    blurriness: number;
+    targetRotation: Euler;
+    dynamicSky: boolean;
+  } | null = null;
+
+  /**
+   * Lends this scene's sky to `target`, a backdrop scene drawn first: `background` (color, cube or
+   * panorama texture, baked procedural sky) with its rotation, intensity and blurriness, and the box
+   * mesh of a `'DYNAMIC'` procedural sky, which is reparented into `target`. This scene draws no sky
+   * until `takeBackgroundBack`. Called by a renderer around its passes, after `prepareFrame`.
+   *
+   * The backdrop camera's rotation is global while this scene's cameras are in the world's local
+   * frame, so the sky is turned by `extraYaw` - the world frame's yaw - on top of its own rotation
+   * (texture skies: the Z-up quarter turn and the frame switches' yaw; a dynamic sky: its frame yaw).
+   * @param target - The farthest backdrop's scene
+   * @param extraYaw - `world.frame.yaw`
+   */
+  lendBackgroundTo(target: ThreeSceneComponent, extraYaw: number): void {
+    const main = this._nativeScene;
+    const dst = target._nativeScene;
+    if (!main || !dst || this.lent || target === this) {
+      return;
+    }
+    const rotation = main.backgroundRotation;
+    const sky = this.backgroundSky;
+    const dynamicSky = !!sky && sky.mesh.parent === main;
+    this.lent = {
+      target: dst,
+      background: main.background,
+      intensity: main.backgroundIntensity,
+      blurriness: main.backgroundBlurriness,
+      targetRotation: dst.backgroundRotation.clone(),
+      dynamicSky,
+    };
+    dst.background = main.background;
+    dst.backgroundIntensity = main.backgroundIntensity;
+    dst.backgroundBlurriness = main.backgroundBlurriness;
+    // the Euler order is 'ZYX' (see applyEnvironmentRotation): adding to `z` turns about the global +Z
+    dst.backgroundRotation.set(rotation.x, rotation.y, rotation.z + extraYaw, rotation.order);
+    main.background = null;
+    if (dynamicSky) {
+      dst.add(sky!.mesh);
+      sky!.setFrameYaw(this.frameYaw + extraYaw);
+    }
+  }
+
+  /** Puts back what `lendBackgroundTo` lent; a no-op when nothing is lent. */
+  takeBackgroundBack(): void {
+    const lent = this.lent;
+    const main = this._nativeScene;
+    if (!lent) {
+      return;
+    }
+    this.lent = null;
+    lent.target.background = null;
+    lent.target.backgroundRotation.copy(lent.targetRotation);
+    if (!main) {
+      return;
+    }
+    main.background = lent.background;
+    main.backgroundIntensity = lent.intensity;
+    main.backgroundBlurriness = lent.blurriness;
+    if (lent.dynamicSky && this.backgroundSky) {
+      main.add(this.backgroundSky.mesh);
+      this.backgroundSky.setFrameYaw(this.frameYaw);
+    }
+  }
+
   /**
    * Frees what procedural skies baked with `renderer`. Called by a renderer of this scene when it
    * leaves the world or is disposed.
@@ -264,6 +362,7 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   dispose(): void {
+    this.takeBackgroundBack();
     this.beforeRenderHooks.clear();
     this.backgroundSky?.dispose();
     this.backgroundSky = null;

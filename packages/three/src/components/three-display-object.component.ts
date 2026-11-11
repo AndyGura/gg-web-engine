@@ -9,6 +9,7 @@ import {
   Point4,
   Qtrn,
   RenderLayer,
+  resolveVisualScene,
   UniqueResources3d,
 } from '@gg-web-engine/core';
 import { Box3, BufferGeometry, Group, Light, Material, Matrix4, Mesh, Object3D, Scene, Texture } from 'three';
@@ -292,12 +293,23 @@ export class ThreeDisplayObjectComponent
     this.resourceOwnership = resources;
   }
 
+  /**
+   * Adds `nativeMesh` to the world's scene, or to the scene of the backdrop this object's entity
+   * belongs to (`resolveVisualScene`).
+   */
   addToWorld(world: ThreeGgWorld): void {
-    world.visualScene.requireNativeScene('adding display objects to the world').add(this.nativeMesh);
+    this.attachedScene = resolveVisualScene(this.entity, world).requireNativeScene(
+      'adding display objects to the world',
+    );
+    this.attachedScene.add(this.nativeMesh);
   }
 
+  // where addToWorld put nativeMesh: by removal time the entity may already be off its backdrop
+  private attachedScene: Scene | null = null;
+
   removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void {
-    world.visualScene.nativeScene?.remove(this.nativeMesh);
+    (this.attachedScene ?? world.visualScene.nativeScene)?.remove(this.nativeMesh);
+    this.attachedScene = null;
     if (dispose) {
       this.dispose();
     }

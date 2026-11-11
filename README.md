@@ -362,6 +362,7 @@ click; the source lives under
 | [Player character](https://gg-web-demos.guraklgames.com/?example=3d/player-character&physics=rapier3d) | Animated character controllers, in 3D and 2D |
 | [Shooter](https://gg-web-demos.guraklgames.com/?example=3d/shooter) | Free-fly camera shooting balls through a textured physics scene |
 | [Procedural sky](https://gg-web-demos.guraklgames.com/?example=3d/sky) | Shader-drawn sky with live sliders: time of day, haze, clouds up to full overcast, stars and moon |
+| [Backdrops](https://gg-web-demos.guraklgames.com/?example=3d/backdrop) | Miniature coastline and mountain ring drawn behind the world, Source-style 3D skybox |
 | [Collision groups pool](https://gg-web-demos.guraklgames.com/?example=3d/collision-groups-pool&physics=rapier3d) | Collision filtering |
 | [Primitives](https://gg-web-demos.guraklgames.com/?example=3d/primitives&physics=rapier3d) | A level built from JSON, in 3D and 2D, on every physics backend |
 

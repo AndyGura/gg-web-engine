@@ -149,7 +149,8 @@ so `frame` and `frameSwitched$` always describe every move. `GgWorld`'s tick cle
 back.
 
 What gets moved, in order:
-- Every entity in `world.children` (the flat list, nested ones included), deepest first, through its
+- Every entity in `world.children` (the flat list, nested ones included) that has no `ISceneOwner`
+  ancestor (backdrop content lives in its backdrop's own space - see the next section), deepest first, through its
   `onFrameSwitch(delta)` (`IFrameSwitchable`, `3d/interfaces/i-frame-switchable.ts`). Each hook moves
   only what it owns; children get their own call. Positions go through `delta.toGlobalPoint`
   (rotated about `+Z`, then translated), orientations through `toGlobalRotation` (yaw multiplied in
@@ -192,6 +193,63 @@ once per world. Engine code never imports `GgStatic` for it.
 Tests: `test/3d/gg-3d-world-switch-frame.spec.ts` (timing, every built-in hook, dedupe, the warning);
 the adapters run the shared physics suite `test/contract/frame-switch.contract.ts` (see
 `gg-engine-physics-adapter`).
+
+## Scene ownership and backdrops: `ISceneOwner`, `Backdrop3dEntity`
+
+One rule, in `3d/interfaces/i-scene-owner.ts`: **an entity draws into the `ownedScene` of its nearest
+proper ancestor implementing `ISceneOwner`, otherwise into the world's `visualScene`.**
+`resolveVisualScene(entity, world)` applies it (`findSceneOwner` returns the ancestor), and every
+visual adapter component calls it in `addToWorld` instead of reading `world.visualScene`;
+`Environment3dEntity` applies its override to the resolved scene too. `IEntity` stays
+visual-agnostic: ownership is an opt-in interface, duck-typed by `isSceneOwner` (an `ownedScene`
+member). The contract is wider than "draws elsewhere": an owned scene is its own coordinate space,
+which is why `Gg3dWorld.moveIntoFrame` skips every entity with an owning ancestor without a second
+flag. Anything later needing a subtree in another space reuses this interface.
+
+`Backdrop3dEntity` (`3d/entities/backdrop-3d.entity.ts`) is the one implementation: a scene from
+`IVisualScene3dComponent.createBackdropScene()` plus a perspective camera created by that scene's
+factory, with `scale` (backdrop units per meter, `DEFAULT_BACKDROP_SCALE` 1/16), `anchor` (global)
+and `anchorInBackdrop` live-settable, `frustum` fixed at construction (`models/backdrop.ts`).
+`poseCameraFor(mainCamera)` maps through `world.frame` (`anchorInBackdrop + scale * (global P -
+anchor)`, global rotation, fov copied only when it differs), so a frame switch changes nothing
+there. What to keep when changing it:
+
+- **Children are validated, not the world.** `addChildren` (and `onSpawned`, for a subtree that grew
+  afterwards) throws on any physics component (`debugBodySettings` + `interactWithCollisionGroups`,
+  which every `IBodyComponent` has) or audio source (`fadeTo` + `isVirtual`) anywhere in the
+  subtree, naming the entity, before anything is attached. The check in `onSpawned` runs before
+  `super.onSpawned`, so a refused spawn leaves nothing registered. A descendant added later to an
+  already-spawned child is not checked.
+- **An entity already in a world with no parent is taken out first** (`world.removeEntity`) by
+  `addChildren`: `IEntity.addChildren` only re-adds through `removeChildren` of a previous parent,
+  so a generator that self-added its result (`addPrimitiveRigidBody` does) would otherwise stay
+  attached to the world's scene while being parented under the backdrop.
+- **No background on a backdrop scene**: `setEnvironment` and a descendant `Environment3dEntity`
+  both go through `assertNoBackdropBackground` (a non-`null` `background` throws; the
+  `Environment3dEntity` check runs before `super.onSpawned`). The world's single sky is drawn by
+  the farthest backdrop pass, an adapter concern.
+- **`Gg3dWorld.backdrops`** is a private array kept by the world's own `entityAdded$`/
+  `entityRemoved$` subscriptions (`instanceof Backdrop3dEntity`) and sorted in place by `scale` on
+  every read (stable, so ties keep insertion order) - renderers read it every frame, so it must not
+  filter `children`. `addBackdrop(options)` creates the scene, awaits `init()`, wraps and adds it.
+- `dispose()` disposes children first (via `super`), then the camera, then the owned scene.
+
+The `"Backdrop"` level class (`Gg3dLevelLoader.createBackdrop`) builds `children` with the same
+loader's `createEntity` into a nested `LoadProgressGroup` (one slot per child up front), names an
+unnamed child `<backdrop name>__<class>_<index>`, and disposes the backdrop and the child on any
+failure; its `assets` hook is `collectLevelAssets({ entities: children }, name)`, so the nested
+default names match. Named level `blueprints` are not passed down (a generator never sees them).
+In the schema composition its `children` are `BuiltIn3DEntityJson[]`, and
+`etc/generate_level_schema.mjs` rewrites every array of the built-in union nested in a `$defs`
+entry to `LevelEntityJson`, so app-registered classes validate inside a backdrop as they do at the
+top level.
+
+Tests: `test/3d/backdrop.spec.ts` (pose mapping and frame, switchFrame exemption, routing through a
+mock scene recording `resolveVisualScene`, refusals, environment, ordering, disposal, the level
+class). A mock component built with `{ ...base, addToWorld() { ... result ... } }` records the
+*original* object, not the spread copy (its closures reference the object they were defined on):
+merge extras with `Object.assign(base, extra, { methods })` instead, as that spec's
+`recordingObject` does.
 
 ## Networking contracts: core knows how to be corrected, not who corrects it
 
@@ -2053,7 +2111,8 @@ Changing any of these is a breaking change for every adapter package — grep
   `createParticleSystem` (`VisualTypeDocRepo3D`/`VisualTypeDocRepo2D` have `particleSystem`/
   `particleSystemExtraOpts` members for them), and `ParticleRenderBuffers`, the layout an adapter
   reads
-- `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
+- `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`/`createBackdropScene`
+  (see "Scene ownership and backdrops"), plus the 3D loader's
   `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former).
   `models/procedural-sky.ts` holds the shader-drawn sky's settings (`ProceduralSky3dOpts`, an
   alternative `background`/`environmentMap` value), their defaults and `proceduralSkyBodies`, the

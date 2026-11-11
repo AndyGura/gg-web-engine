@@ -188,8 +188,9 @@ copy of `package.json` there is, uncomments a `devServer.static` block in `webpa
 and its `npm install` writes a `package-lock.json` without those packages. Before running it on an
 example that isn't committed yet, copy `package.json` aside; afterwards put it back, delete the
 lockfile, and re-comment (or remove, if the example serves nothing from `../assets`) the
-`devServer.static` block. `npm install --package-lock-only` can't produce the real lockfile while
-the example uses engine APIs newer than the last published version.
+`devServer.static` block. Then `npm install --package-lock-only` writes the real lockfile from the
+published versions `package.json` pins: it only resolves versions and never compiles, so it works
+even while the example uses engine APIs newer than the last release.
 
 **Do not run a bare `npm install` inside the example directory after this script** (with at least
 npm v11) — `npm link <path>` only creates the `node_modules/@gg-web-engine/*` symlinks, it does not
@@ -485,7 +486,11 @@ you can confirm live from this tool.
 
 Playwright from this environment (`page.keyboard`, Chromium with `--use-gl=swiftshader
 --enable-unsafe-swiftshader`) does deliver real key events to the page, unlike the background
-automation tab above, so a game can be played with real input. Swiftshader runs at about 7-20 fps,
+automation tab above, so a game can be played with real input. A Playwright installed fresh (in the scratchpad, say)
+may expect a newer Chromium build than `~/Library/Caches/ms-playwright` holds; pass the cached
+build's binary as `chromium.launch({ executablePath })` instead of downloading another. Serving a
+built `dist/` with `python3 -m http.server` is enough for an example that loads no shared assets.
+Swiftshader runs at about 7-20 fps,
 though, and a platforming route driven in real time from Node misses jumps (the press lands after
 the character has left the ledge). For a route that has to be exact, freeze the world with the dev
 console (`timescale 0`) and advance it with `step 16` between key presses: deterministic and still
