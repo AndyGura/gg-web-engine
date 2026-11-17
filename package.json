@@ -18,6 +18,7 @@
     "check:level-schema": "node etc/generate_level_schema.mjs --check",
     "validate:levels": "node etc/validate_levels.mjs",
     "bundle-sizes": "node etc/bundle_sizes.mjs",
+    "agent-eval": "node etc/agent_eval.mjs",
     "prettier-format": "npm run prettier-format --workspaces --if-present",
     "prettier-format:examples": "bash examples/prettier.sh"
   },
