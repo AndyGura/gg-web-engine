@@ -702,7 +702,7 @@ committing.
 
 If the engine is useful to you, a ⭐ on the repo helps others find it.
 
-<a href="https://www.buymeacoffee.com/andygura"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee"/></a>
+<a href="https://ko-fi.com/andygura"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"/></a>
 
 ## 📜 License
 
